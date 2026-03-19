@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Votrio",
-  description: "Terminal AI Detector",
+  description: "Stop stack traces and security leaks in their tracks.",
 };
 
 export default function RootLayout({
@@ -24,14 +13,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <nav className="container justify-between ">
-        <Link href="/documentation"> Docs </Link>
-      </nav>
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className="dark">
+      <body className={` bg-black text-white antialiased`}>
+        <header className="border-b border-zinc-800 py-4 px-8 flex justify-between items-center">
+          <div className="font-bold tracking-tighter text-xl">VOTRIO_</div>
+          <nav className="flex gap-6 text-sm text-zinc-400">
+            <Link href="/"> Home </Link>
+            <Link href="/documentation">Docs</Link>
+            <a
+              href="https://github.com/shaypat112"
+              className="hover:text-white transition-colors"
+            >
+              GitHub
+            </a>
+          </nav>
+        </header>
+        {children}
+      </body>
     </html>
   );
 }

@@ -2,38 +2,66 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen flex flex-col items-center">
+      <main className="max-w-5xl w-full px-6 py-24">
+        {/* Hero Section */}
+        <section className="flex flex-col items-center text-center space-y-8 mb-20">
+          <div className="px-3 py-1 text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 rounded-full">
+            Now detecting AI-generated slop
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+            Security for the <br />
+            <span className="text-zinc-500">modern terminal.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-zinc-400 text-lg max-w-2xl leading-relaxed">
+            Votrio intercepts stack traces, audits GitHub repos for injections,
+            and identifies unoptimized AI-generated code—all from your CLI.
           </p>
-        </div>
+
+          <div className="flex gap-4">
+            <button className="bg-white text-black px-8 py-3 rounded-md font-bold hover:bg-zinc-200 transition-all">
+              Get Started
+            </button>
+            <button className="bg-zinc-900 border border-zinc-800 px-8 py-3 rounded-md font-bold hover:bg-zinc-800 transition-all">
+              View Source
+            </button>
+          </div>
+        </section>
+
+        {/* Terminal Demo Section */}
+        <section className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+          <div className="relative bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
+            <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
+              <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
+              <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+              <span className="ml-2 text-xs text-zinc-500 font-mono italic">
+                votrio — zsh
+              </span>
+            </div>
+            <div className="p-6 font-mono text-sm sm:text-base leading-relaxed">
+              <div className="flex gap-3">
+                <span className="text-emerald-500">➜</span>
+                <span className="text-zinc-300">
+                  npm install -g vigilance-cli
+                </span>
+              </div>
+              <div className="flex gap-3 mt-2">
+                <span className="text-emerald-500">➜</span>
+                <span className="text-zinc-300">
+                  votrio audit --repo "shaypat112/app"
+                </span>
+              </div>
+              <div className="mt-4 text-zinc-500 animate-pulse">
+                [info] Scanning for SQL Injections...
+              </div>
+              <div className="mt-1 text-red-400">
+                [vulnerability] Potential injection found in /api/db.ts:L24
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
