@@ -43,7 +43,7 @@ export default function MainDocsPage() {
       {/* Navigation Call to Action */}
       <section className="pt-6">
         <Link
-          href="/docs/installation"
+          href="/documentation/installation"
           className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-bold hover:bg-zinc-200 transition-all"
         >
           Start Installation <ArrowRight size={18} />

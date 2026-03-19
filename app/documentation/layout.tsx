@@ -24,6 +24,7 @@ export default function DocsLayout({
                   Introduction
                 </Link>
               </li>
+
               <li>
                 <Link
                   href="/documentation/installation"
