@@ -1,4 +1,5 @@
-import Image from "next/image";
+import ButtonAuth from "./components/Button";
+import ViewSourceButton from "./components/ViewSource";
 
 export default function Home() {
   return (
@@ -19,12 +20,8 @@ export default function Home() {
           </p>
 
           <div className="flex gap-4">
-            <button className="bg-white text-black px-8 py-3 rounded-md font-bold hover:bg-zinc-200 transition-all">
-              Get Started
-            </button>
-            <button className="bg-zinc-900 border border-zinc-800 px-8 py-3 rounded-md font-bold hover:bg-zinc-800 transition-all">
-              View Source
-            </button>
+            <ButtonAuth />
+            <ViewSourceButton />
           </div>
         </section>
 
