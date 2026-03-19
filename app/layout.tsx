@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: "Votrio",
   description: "Stop stack traces and security leaks in their tracks.",
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
