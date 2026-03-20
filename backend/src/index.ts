@@ -53,6 +53,8 @@ program
   .option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)")
   .option("--watch", "daemon mode: rescan on file changes")
   .option("--publish", "publish scan summary to Supabase scan_history")
+  .option("--ai", "enable AI refactoring suggestions via Mistral")
+  .option("--ai-model <model>", "Mistral model name", "mistral-large-latest")
   .action(scanCommand);
 
 program

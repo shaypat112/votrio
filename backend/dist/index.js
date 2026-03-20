@@ -322,13 +322,51 @@ import path2 from "path";
 import chalk3 from "chalk";
 import ora2 from "ora";
 import { glob } from "glob";
-var SEVERITY_ORDER = {
-  low: 0,
-  medium: 1,
-  high: 2,
-  critical: 3
+
+// src/lib/mistral.ts
+var MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+async function analyzeCode(prompt, model = "mistral-large-latest") {
+  if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY not set");
+  try {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: "You are a security reviewer. Return concise findings and refactoring advice."
+          },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 500
+      })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text);
+    }
+    const data = await response.json();
+    return data?.choices?.[0]?.message?.content ?? null;
+  } catch (err) {
+    console.error("Mistral API error:", err.message);
+    return null;
+  }
+}
+
+// src/commands/scan.ts
+var SEVERITY_SCORE = {
+  low: 30,
+  medium: 55,
+  high: 75,
+  critical: 90
 };
-var SEVERITY_COLORS = {
+var SEVERITY_COLOR = {
   low: chalk3.blue,
   medium: chalk3.yellow,
   high: chalk3.red,
@@ -336,149 +374,181 @@ var SEVERITY_COLORS = {
 };
 var QUICK_PATTERNS = [
   {
-    pattern: /process\.env\.\w+\s*\|\|\s*["'][^"']{8,}/g,
-    severity: "medium",
-    type: "HARDCODED_FALLBACK",
-    message: "Hardcoded fallback secret detected"
-  },
-  {
-    pattern: /(?:password|passwd|secret|api_?key|token)\s*[:=]\s*["'][^"']{6,}/gi,
-    severity: "high",
-    type: "HARDCODED_SECRET",
-    message: "Possible hardcoded credential"
-  },
-  {
-    pattern: /dangerouslySetInnerHTML\s*=\s*\{\s*\{.*__html/g,
-    severity: "medium",
-    type: "XSS_RISK",
-    message: "dangerouslySetInnerHTML detected \u2014 verify input is sanitized"
-  },
-  {
     pattern: /eval\s*\(/g,
     severity: "high",
     type: "EVAL",
-    message: "eval() detected \u2014 potential code injection"
+    message: "eval() detected \u2014 possible code injection",
+    suggestion: "Avoid eval() and use safer parsing."
+  },
+  {
+    pattern: /dangerouslySetInnerHTML/g,
+    severity: "medium",
+    type: "XSS_RISK",
+    message: "dangerouslySetInnerHTML usage detected",
+    suggestion: "Sanitize user input before rendering."
   },
   {
     pattern: /child_process.*exec\s*\(/g,
-    severity: "medium",
+    severity: "high",
     type: "CMD_INJECTION",
-    message: "exec() with potential unsanitized input"
+    message: "exec() usage detected",
+    suggestion: "Use spawn with arguments instead."
   },
   {
-    pattern: /Math\.random\(\).*(?:token|secret|key|nonce|csrf)/gi,
+    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"']{6,}/gi,
     severity: "high",
-    type: "WEAK_RANDOM",
-    message: "Math.random() used for security token \u2014 use crypto.randomBytes()"
+    type: "HARDCODED_SECRET",
+    message: "Possible hardcoded credential",
+    suggestion: "Move secrets to environment variables."
   }
 ];
 async function scanCommand(scanPath = ".", options) {
-  const apiKey = await getApiKey();
-  const resolvedPath = path2.resolve(process.cwd(), scanPath);
+  const resolved = path2.resolve(process.cwd(), scanPath);
   console.log(`
 ${chalk3.bold("votrio")} ${chalk3.dim("scan")}
 `);
-  const defaultIgnore = [
+  const ignore = [
     "node_modules/**",
+    ".git/**",
     ".next/**",
     "dist/**",
     "build/**",
-    ".git/**",
     "**/*.min.js",
-    "**/*.map",
     ...options.ignore ?? []
   ];
-  const spinner = ora2("Discovering files...").start();
-  const files = await glob("**/*.{ts,tsx,js,jsx,py,go,rs}", {
-    cwd: resolvedPath,
-    ignore: defaultIgnore,
+  const files = await discoverFiles(resolved, ignore);
+  const findings = await scanFiles(files, options);
+  const deduped = dedupe(findings);
+  outputResults(deduped, options);
+  if (options.ci) handleCI(deduped, options);
+}
+async function discoverFiles(root, ignore) {
+  const spinner = ora2("Discovering files").start();
+  const files = await glob("**/*.{ts,tsx,js,jsx,py,go,rs,java,cs,php}", {
+    cwd: root,
+    ignore,
     absolute: true
   });
-  spinner.succeed(`Found ${chalk3.cyan(files.length)} files to scan`);
-  const scanSpinner = ora2("Scanning for vulnerabilities...").start();
+  spinner.succeed(`Found ${chalk3.cyan(files.length)} files`);
+  return files;
+}
+async function scanFiles(files, options) {
+  const spinner = ora2("Scanning").start();
   const findings = [];
-  let scanned = 0;
+  let index = 0;
   for (const file of files) {
-    scanned++;
-    scanSpinner.text = `Scanning ${scanned}/${files.length} \u2014 ${path2.relative(process.cwd(), file)}`;
+    index++;
+    spinner.text = `Scanning ${index}/${files.length}`;
+    let content;
     try {
-      const content = await fs2.readFile(file, "utf-8");
-      const lines = content.split("\n");
-      const relFile = path2.relative(process.cwd(), file);
-      for (const check of QUICK_PATTERNS) {
-        const matches = [...content.matchAll(check.pattern)];
-        for (const match of matches) {
-          const lineNum = content.slice(0, match.index).split("\n").length;
-          findings.push({
-            file: relFile,
-            line: lineNum,
-            severity: check.severity,
-            type: check.type,
-            message: check.message,
-            snippet: lines[lineNum - 1]?.trim().slice(0, 120)
-          });
-        }
-      }
+      content = await fs2.readFile(file, "utf8");
     } catch {
+      continue;
+    }
+    const lines = content.split("\n");
+    for (const check of QUICK_PATTERNS) {
+      const matches = [...content.matchAll(check.pattern)];
+      for (const match of matches) {
+        const line = content.slice(0, match.index).split("\n").length;
+        findings.push({
+          file: path2.relative(process.cwd(), file),
+          line,
+          severity: check.severity,
+          score: SEVERITY_SCORE[check.severity],
+          type: check.type,
+          message: check.message,
+          snippet: lines[line - 1]?.trim(),
+          suggestion: check.suggestion,
+          source: "regex"
+        });
+      }
+    }
+    if (options.ai) {
+      const ai = await runAIAnalysis(content, options.aiModel);
+      if (ai) {
+        findings.push({
+          file: path2.relative(process.cwd(), file),
+          line: 1,
+          severity: "medium",
+          score: 60,
+          type: "AI_ANALYSIS",
+          message: "AI detected potential issues",
+          snippet: ai.slice(0, 200),
+          suggestion: "Review AI suggestions",
+          source: "ai"
+        });
+      }
     }
   }
-  scanSpinner.succeed(`Scanned ${chalk3.cyan(scanned)} files`);
-  const deduped = deduplicate(findings).sort(
-    (a, b) => SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity]
+  spinner.succeed(`Scanned ${files.length} files`);
+  return findings;
+}
+async function runAIAnalysis(code, model) {
+  try {
+    const prompt = `
+Analyze this code for vulnerabilities, inefficiencies, or insecure patterns.
+
+Respond briefly.
+
+${code.slice(0, 6e3)}
+`;
+    const result = await analyzeCode(prompt, model);
+    return result;
+  } catch {
+    return null;
+  }
+}
+function dedupe(findings) {
+  const map = /* @__PURE__ */ new Map();
+  for (const f of findings) {
+    const key = `${f.file}:${f.line}:${f.type}`;
+    if (!map.has(key)) map.set(key, f);
+  }
+  return [...map.values()].sort(
+    (a, b) => SEVERITY_SCORE[b.severity] - SEVERITY_SCORE[a.severity]
   );
+}
+function outputResults(findings, options) {
   if (options.format === "json") {
-    console.log(JSON.stringify(deduped, null, 2));
+    console.log(JSON.stringify(findings, null, 2));
+    return;
+  }
+  if (options.format === "markdown") {
+    console.log("# Votrio Scan Report\n");
+    console.log("| Severity | File | Line | Type | Message |");
+    console.log("|---|---|---|---|---|");
+    for (const f of findings) {
+      console.log(
+        `| ${f.severity} | ${f.file} | ${f.line} | ${f.type} | ${f.message} |`
+      );
+    }
     return;
   }
   console.log();
-  if (deduped.length === 0) {
-    console.log(`${chalk3.green("\u2713")} No issues found
-`);
-  } else {
-    for (const f of deduped) {
-      const color = SEVERITY_COLORS[f.severity];
-      const severityBadge = color(`[${f.severity.toUpperCase()}]`);
-      console.log(
-        `${severityBadge} ${chalk3.white(f.type)} \u2014 ${chalk3.dim(f.file)}:${chalk3.yellow(f.line)}`
-      );
-      console.log(`  ${chalk3.dim(f.message)}`);
-      if (f.snippet) {
-        console.log(`  ${chalk3.dim("\u2192")} ${chalk3.dim(f.snippet)}`);
-      }
-      console.log();
-    }
-    const bySeverity = deduped.reduce((acc, f) => {
-      acc[f.severity] = (acc[f.severity] ?? 0) + 1;
-      return acc;
-    }, {});
-    const summary = ["critical", "high", "medium", "low"].filter((s) => bySeverity[s]).map((s) => `${SEVERITY_COLORS[s](bySeverity[s])} ${s}`).join("  ");
-    console.log(`${deduped.length} issue${deduped.length > 1 ? "s" : ""} found  ${summary}`);
-    if (!options.fix) {
-      console.log(
-        `
-Run ${chalk3.cyan("votrio scan --fix")} to auto-patch safe issues
-`
-      );
-    }
+  if (!findings.length) {
+    console.log(chalk3.green("\u2713 No issues found\n"));
+    return;
   }
-  if (options.ci) {
-    const threshold = SEVERITY_ORDER[options.failOn];
-    const hasAboveThreshold = deduped.some(
-      (f) => SEVERITY_ORDER[f.severity] >= threshold
+  for (const f of findings) {
+    const badge = f.source === "ai" ? chalk3.magenta("[AI]") : SEVERITY_COLOR[f.severity](`[${f.severity.toUpperCase()}]`);
+    console.log(
+      `${badge} ${chalk3.white(f.type)} (${chalk3.yellow(
+        f.score
+      )}) ${chalk3.dim(f.file)}:${chalk3.yellow(f.line)}`
     );
-    if (hasAboveThreshold) {
-      process.exit(1);
-    }
+    console.log(`  ${chalk3.dim(f.message)}`);
+    if (f.snippet) console.log(`  ${chalk3.dim("\u2192")} ${chalk3.dim(f.snippet)}`);
+    if (f.suggestion)
+      console.log(`  ${chalk3.dim("fix")} ${chalk3.dim(f.suggestion)}`);
+    console.log();
   }
+  console.log(`${findings.length} issue(s) detected
+`);
 }
-function deduplicate(findings) {
-  const seen = /* @__PURE__ */ new Set();
-  return findings.filter((f) => {
-    const key = `${f.file}:${f.line}:${f.type}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function handleCI(findings, options) {
+  const threshold = SEVERITY_SCORE[options.failOn];
+  const fail = findings.some((f) => SEVERITY_SCORE[f.severity] >= threshold);
+  if (fail) process.exit(1);
 }
 
 // src/commands/auth.ts
@@ -575,7 +645,7 @@ program.name("votrio").description(
 ).version(pkg.version, "-v, --version", "print current version").helpOption("-h, --help", "display help");
 program.command("init").description("initialize votrio in the current project").option("--skip-gitignore", "do not modify .gitignore").action(initCommand);
 program.command("run <command>").description('wrap a process and analyze its output (e.g. votrio run "npm start")').option("--no-ai", "disable AI analysis, just pipe output").option("--model <model>", "Anthropic model to use", "claude-sonnet-4-20250514").option("--verbose", "print debug info from votrio itself").allowUnknownOption().action(runCommand);
-program.command("scan [path]").description("scan a directory for security vulnerabilities (default: .)").option("--fix", "auto-apply safe patches where possible").option("--ci", "exit with code 1 if issues found (for CI pipelines)").option("--fail-on <severity>", "fail on: low | medium | high | critical", "high").option("--format <fmt>", "output format: text | json | sarif", "text").option("--ignore <patterns...>", "glob patterns to ignore").action(scanCommand);
+program.command("scan [path]").description("scan a directory for security vulnerabilities (default: .)").option("--fix", "auto-apply safe patches where possible").option("--ci", "exit with code 1 if issues found (for CI pipelines)").option("--fail-on <severity>", "fail on: low | medium | high | critical", "high").option("--format <fmt>", "output format: text | json | markdown | sarif", "text").option("--ignore <patterns...>", "glob patterns to ignore").option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)").option("--watch", "daemon mode: rescan on file changes").option("--publish", "publish scan summary to Supabase scan_history").option("--ai", "enable AI refactoring suggestions via Mistral").option("--ai-model <model>", "Mistral model name", "mistral-large-latest").action(scanCommand);
 program.command("auth").description("configure your Anthropic API key").option("--clear", "remove stored credentials").action(authCommand);
 program.on("command:*", (operands) => {
   console.error(
