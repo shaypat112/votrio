@@ -1,0 +1,23 @@
+{
+  "ignore": ["**/vendor/**", "**/generated/**"],
+  "rules": [
+    {
+      "pattern": "TODO\s*:\\s*SECURITY",
+      "flags": "gi",
+      "severity": "medium",
+      "type": "SECURITY_TODO",
+      "message": "Security TODO left in code",
+      "suggestion": "Replace TODO with a tracked issue or fix before release",
+      "score": 60
+    },
+    {
+      "pattern": "\\bmd5\\(",
+      "flags": "g",
+      "severity": "high",
+      "type": "WEAK_HASH",
+      "message": "Weak hash function detected",
+      "suggestion": "Use SHA-256 or stronger",
+      "score": 78
+    }
+  ]
+}
