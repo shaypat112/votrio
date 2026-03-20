@@ -46,6 +46,7 @@
     "@types/node": "^20.0.0",
     "@types/update-notifier": "^6.0.8",
     "tsup": "^8.0.0",
+    "build": "tsup src/index.ts --format esm --dts --clean --banner.js '#!/usr/bin/env node'",
     "typescript": "^5.4.0"
   },
   "engines": {
