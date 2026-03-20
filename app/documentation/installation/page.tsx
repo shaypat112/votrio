@@ -91,7 +91,7 @@ function Step({
       <div className="flex flex-col items-center">
         <div
           className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0",
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
             done
               ? "bg-zinc-800/60 text-zinc-200 border border-zinc-700/70"
               : "bg-zinc-800 text-white border border-zinc-700",
@@ -146,7 +146,7 @@ export default function InstallationPage() {
             { label: "npm, pnpm, yarn, or bun", check: "npm --version" },
           ].map((req) => (
             <li key={req.label} className="flex items-center gap-3 text-sm">
-              <CheckCircle2 size={14} className="text-zinc-300 flex-shrink-0" />
+              <CheckCircle2 size={14} className="text-zinc-300 shrink-0" />
               <span className="text-zinc-300">{req.label}</span>
               <code className="ml-auto text-xs font-mono text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded hidden sm:block">
                 {req.check}
