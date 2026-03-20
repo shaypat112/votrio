@@ -50,6 +50,9 @@ program
   .option("--fail-on <severity>", "fail on: low | medium | high | critical", "high")
   .option("--format <fmt>", "output format: text | json | markdown | sarif", "text")
   .option("--ignore <patterns...>", "glob patterns to ignore")
+  .option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)")
+  .option("--watch", "daemon mode: rescan on file changes")
+  .option("--publish", "publish scan summary to Supabase scan_history")
   .action(scanCommand);
 
 program
