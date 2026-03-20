@@ -1,63 +1,117 @@
-import ButtonAuth from "./components/Button";
-import ViewSourceButton from "./components/ViewSource";
+import Link from "next/link";
+import { Terminal, ShieldCheck, Cpu, GitBranch } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+const features = [
+  {
+    icon: Terminal,
+    title: "Live Trace Analysis",
+    description:
+      "Wrap any command and get root-cause summaries as errors stream in.",
+    command: 'votrio run "npm start"',
+  },
+  {
+    icon: ShieldCheck,
+    title: "Security Scanning",
+    description:
+      "Scan your repo for secrets, injection risks, and unsafe patterns.",
+    command: "votrio scan",
+  },
+  {
+    icon: Cpu,
+    title: "Slop Detection",
+    description:
+      "Flag hallucinated imports and low-confidence AI-generated code blocks.",
+    command: "votrio scan --fix",
+  },
+  {
+    icon: GitBranch,
+    title: "Git-Aware Context",
+    description:
+      "Pinpoint the commit that introduced a failure and outline a fix.",
+    command: "votrio run --verbose",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col items-center">
-      <main className="max-w-5xl w-full px-6 py-24">
-        {/* Hero Section */}
-        <section className="flex flex-col items-center text-center space-y-8 mb-20">
-          <div className="px-3 py-1 text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 rounded-full">
-            Built By Devs. For Devs
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
-            Security for the <br />
-            <span className="text-zinc-500">modern terminal.</span>
-          </h1>
-          <p className="text-zinc-400 text-lg max-w-2xl leading-relaxed">
-            Votrio intercepts stack traces, audits GitHub repos for injections,
-            and identifies unoptimized AI-generated code—all from your CLI.
-          </p>
-
-          <div className="flex gap-4">
-            <ButtonAuth />
-            <ViewSourceButton />
+    <div className="min-h-screen">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <section className="pt-20 pb-16">
+          <div className="flex flex-col gap-6">
+            <Badge variant="subtle">Built for terminal-native teams</Badge>
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight text-white">
+                AI security and debugging
+                <span className="block text-zinc-400">without leaving your shell.</span>
+              </h1>
+              <p className="max-w-2xl text-base sm:text-lg text-zinc-400">
+                Votrio watches your command output, analyzes stack traces, and
+                scans repos for security issues and AI-generated slop.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild size="lg">
+                <Link href="/documentation/installation">Get started</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/documentation">Read the docs</Link>
+              </Button>
+            </div>
           </div>
         </section>
 
-        {/* Terminal Demo Section */}
-        <section className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-          <div className="relative bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
-            <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
-              <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-              <div className="w-3 h-3 rounded-full border border-green-500/50" />
-              <span className="ml-2 text-xs text-zinc-500 font-mono italic">
-                votrio — zsh
-              </span>
-            </div>
-            <div className="p-6 font-mono text-sm sm:text-base leading-relaxed">
-              <div className="flex gap-3">
-                <span className="text-emerald-500">➜</span>
-                <span className="text-zinc-300">
-                  npm install -g vigilance-cli
-                </span>
+        <section className="grid gap-4 sm:grid-cols-2">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <Card key={feature.title}>
+                <CardHeader className="gap-3">
+                  <div className="flex items-center gap-3 text-zinc-200">
+                    <Icon size={18} />
+                    <CardTitle>{feature.title}</CardTitle>
+                  </div>
+                  <CardDescription>{feature.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg border border-zinc-800/70 bg-black/40 px-3 py-2 text-xs text-zinc-300 font-mono">
+                    $ {feature.command}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </section>
+
+        <section className="pt-14 pb-20">
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle>Works with your existing flow</CardTitle>
+              <CardDescription>
+                No web dashboards. No repo uploads. Votrio runs locally and only
+                uses your API key when you opt in to AI analysis.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-3 text-sm text-zinc-400">
+              <div className="rounded-lg border border-zinc-800/60 bg-black/30 p-3">
+                Wrap any process: Node, Python, Go, Rust
               </div>
-              <div className="flex gap-3 mt-2">
-                <span className="text-emerald-500">➜</span>
-                <span className="text-zinc-300">
-                  votrio audit --repo "shaypat112/app"
-                </span>
+              <div className="rounded-lg border border-zinc-800/60 bg-black/30 p-3">
+                Security scanning for CI or pre-commit
               </div>
-              <div className="mt-4 text-zinc-500 animate-pulse">
-                [info] Scanning for SQL Injections...
+              <div className="rounded-lg border border-zinc-800/60 bg-black/30 p-3">
+                Simple config via `votrio init`
               </div>
-              <div className="mt-1 text-red-400">
-                [vulnerability] Potential injection found in /api/db.ts:L24
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </section>
       </main>
     </div>

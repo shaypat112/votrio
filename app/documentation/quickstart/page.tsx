@@ -43,8 +43,8 @@ function CodeBlock({
           >
             {copied ? (
               <>
-                <Check size={11} className="text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <Check size={11} className="text-zinc-200" />
+                <span className="text-zinc-200">Copied</span>
               </>
             ) : (
               <>
@@ -61,7 +61,7 @@ function CodeBlock({
             <span className="text-zinc-600 font-mono text-sm select-none">
               $
             </span>
-            <code className="text-emerald-400 font-mono text-sm flex-1">
+            <code className="text-zinc-200 font-mono text-sm flex-1">
               {code}
             </code>
             {!label && (
@@ -70,7 +70,7 @@ function CodeBlock({
                 className="flex-shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
               >
                 {copied ? (
-                  <Check size={14} className="text-emerald-400" />
+                  <Check size={14} className="text-zinc-200" />
                 ) : (
                   <Copy size={14} />
                 )}
@@ -89,7 +89,7 @@ function CodeBlock({
                     : line.startsWith("→") ||
                         line.startsWith("✓") ||
                         line.startsWith("●")
-                      ? "text-emerald-400"
+                      ? "text-zinc-200"
                       : highlight?.some((h) => line.includes(h))
                         ? "text-amber-300"
                         : "text-zinc-300",
@@ -126,7 +126,7 @@ Ready. Run: votrio run "npm start"`,
     description:
       "Replace your usual start command with votrio run. It pipes your process output through the AI analyzer.",
     cmd: `votrio run "npm start"`,
-    output: `● votrio watching — node v20.11.0
+    output: `● votrio watching - node v20.11.0
 ● Intercepting stderr + uncaught exceptions
 
   > myapp@1.0.0 start
@@ -145,7 +145,7 @@ Server listening on :3000`,
     at /src/routes/user.ts:42:18
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-● votrio — trace analysis
+● votrio - trace analysis
 
   Root cause: req.user is undefined because the
   auth middleware isn't applied to this route.
@@ -168,7 +168,7 @@ Server listening on :3000`,
 
 ✓ No hardcoded secrets found
 ✓ No SQL injection patterns
-⚠  XSS risk — src/pages/search.tsx:88
+⚠  XSS risk - src/pages/search.tsx:88
    Unsanitized user input rendered via dangerouslySetInnerHTML
 
 2 low-severity warnings
@@ -221,7 +221,7 @@ export default function QuickStartPage() {
             className={cn(
               "rounded-xl border transition-all",
               activeStep === i
-                ? "border-emerald-500/30 bg-emerald-500/5"
+                ? "border-zinc-700/60 bg-zinc-900/40"
                 : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700",
             )}
           >
@@ -233,7 +233,7 @@ export default function QuickStartPage() {
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all",
                   activeStep === i
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                    ? "bg-zinc-800/60 text-zinc-200 border border-zinc-700/70"
                     : "bg-zinc-800 text-white border border-zinc-700",
                 )}
               >
@@ -249,7 +249,7 @@ export default function QuickStartPage() {
                 size={14}
                 className={cn(
                   "text-zinc-600 flex-shrink-0 transition-transform",
-                  activeStep === i && "rotate-90 text-emerald-400",
+                  activeStep === i && "rotate-90 text-zinc-200",
                 )}
               />
             </button>

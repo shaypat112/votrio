@@ -39,8 +39,8 @@ function CodeBlock({
           >
             {copied ? (
               <>
-                <Check size={11} className="text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <Check size={11} className="text-zinc-200" />
+                <span className="text-zinc-200">Copied</span>
               </>
             ) : (
               <>
@@ -55,7 +55,7 @@ function CodeBlock({
         {!label && (
           <span className="text-zinc-600 font-mono text-sm select-none">$</span>
         )}
-        <code className="text-emerald-400 font-mono text-sm flex-1 overflow-x-auto">
+        <code className="text-zinc-200 font-mono text-sm flex-1 overflow-x-auto">
           {code}
         </code>
         {!label && (
@@ -64,7 +64,7 @@ function CodeBlock({
             className="flex-shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
           >
             {copied ? (
-              <Check size={14} className="text-emerald-400" />
+              <Check size={14} className="text-zinc-200" />
             ) : (
               <Copy size={14} />
             )}
@@ -93,7 +93,7 @@ function Step({
           className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0",
             done
-              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+              ? "bg-zinc-800/60 text-zinc-200 border border-zinc-700/70"
               : "bg-zinc-800 text-white border border-zinc-700",
           )}
         >
@@ -148,7 +148,7 @@ export default function InstallationPage() {
             <li key={req.label} className="flex items-center gap-3 text-sm">
               <CheckCircle2
                 size={14}
-                className="text-emerald-500 flex-shrink-0"
+                className="text-zinc-300 flex-shrink-0"
               />
               <span className="text-zinc-300">{req.label}</span>
               <code className="ml-auto text-xs font-mono text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded hidden sm:block">
@@ -210,8 +210,8 @@ export default function InstallationPage() {
 
         <div className="flex gap-5">
           <div className="flex flex-col items-center">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-              <CheckCircle2 size={16} className="text-emerald-400" />
+            <div className="w-8 h-8 rounded-full bg-zinc-800/60 border border-zinc-700/70 flex items-center justify-center">
+              <CheckCircle2 size={16} className="text-zinc-200" />
             </div>
           </div>
           <div className="pb-2 flex-1">
@@ -220,7 +220,7 @@ export default function InstallationPage() {
               Head to{" "}
               <a
                 href="/documentation/quickstart"
-                className="text-emerald-400 hover:underline"
+                className="text-zinc-200 hover:underline"
               >
                 Quick Start
               </a>{" "}

@@ -2,133 +2,189 @@
 
 import { useState } from "react";
 import { createClient } from "../lib/supabase";
-import { Github, Mail, Lock, ArrowRight, Shield } from "lucide-react";
+import { Github, Mail, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const supabase = createClient();
 
-  // GitHub OAuth Login
-  const loginWithGithub = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        // Redirects straight to the installation docs after success
-        redirectTo: `${window.location.origin}/docs/installation`,
-      },
-    });
-  };
-
-  // Email/Password Login
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loginWithProvider = async (provider: "github" | "google") => {
+    setError(null);
+    setNotice(null);
     setLoading(true);
 
-    const { error } = isLogin
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/documentation/installation`,
+      },
+    });
 
-    if (error) {
-      alert(error.message);
-    } else {
-      // Manual redirect for email login
-      window.location.href = "/docs/installation";
+    if (oauthError) setError(oauthError.message);
+    setLoading(false);
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+
+    if (isLogin) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) setError(signInError.message);
+      else window.location.href = "/documentation/installation";
+      setLoading(false);
+      return;
     }
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth`,
+      },
+    });
+    if (signUpError) setError(signUpError.message);
+    else setNotice("Check your email to confirm your account.");
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-mono">
-      <div className="w-full max-w-100 space-y-8">
-        {/* Minimal Header */}
-        <div className="flex flex-col items-center space-y-2">
-          <Shield size={40} strokeWidth={1} className="text-white mb-2" />
-          <h1 className="text-xl tracking-[0.3em] uppercase font-black italic">
-            Vigilance_OS
-          </h1>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
-            Protocol: {isLogin ? "Authentication" : "Registration"}
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-black px-4 py-12">
+      <Card className="w-full max-w-md border border-zinc-800 bg-zinc-900 shadow-xl">
+        <CardHeader className="space-y-2 text-center">
+          <Badge variant="outline" className="px-3 py-1 text-sm">
+            Votrio Access
+          </Badge>
+          <CardTitle className="text-2xl text-white font-semibold">
+            {isLogin ? "Sign in" : "Create your account"}
+          </CardTitle>
+          <CardDescription className="text-zinc-400 text-sm">
+            Connect your account to unlock AI-powered trace analysis.
+          </CardDescription>
+        </CardHeader>
 
-        {/* Auth Container */}
-        <div className="border border-zinc-800 bg-black p-8 shadow-[0_0_50px_-12px_rgba(255,255,255,0.1)]">
-          {/* GitHub Action */}
-          <button
-            onClick={loginWithGithub}
-            className="w-full group relative flex items-center justify-center gap-3 border border-zinc-700 h-12 hover:bg-white hover:text-black transition-all duration-300 mb-8"
-          >
-            <Github size={18} />
-            <span className="text-xs uppercase font-bold tracking-widest">
-              Connect GitHub
-            </span>
-          </button>
+        <CardContent className="space-y-6">
+          {/* Social Login */}
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              className="w-full justify-center gap-2 hover:bg-zinc-800/50 transition"
+              onClick={() => loginWithProvider("github")}
+              disabled={loading}
+            >
+              <Github size={16} />
+              Continue with GitHub
+            </Button>
 
-          <div className="relative mb-8 flex items-center justify-center">
-            <div className="absolute w-full border-t border-zinc-900"></div>
-            <span className="relative bg-black px-4 text-[9px] text-zinc-600 uppercase tracking-[0.4em]">
-              Internal_Mail
-            </span>
+            <Button
+              variant="outline"
+              className="w-full justify-center gap-2 hover:bg-zinc-800/50 transition"
+              onClick={() => loginWithProvider("google")}
+              disabled={loading}
+            >
+              <GoogleIcon />
+              Continue with Google
+            </Button>
           </div>
 
-          {/* Form */}
+          <div className="flex items-center gap-3 text-xs text-zinc-500">
+            <Separator className="flex-1" />
+            or use email
+            <Separator className="flex-1" />
+          </div>
+
+          {/* Email Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div className="group relative">
-              <Mail
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-white transition-colors"
-                size={14}
-              />
-              <input
-                type="email"
-                placeholder="EMAIL_ADDRESS"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-black border border-zinc-800 h-11 pl-10 pr-4 text-[10px] outline-none focus:border-zinc-500 transition-all placeholder:text-zinc-800"
-                required
-              />
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
+                  size={14}
+                />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
             </div>
 
-            <div className="group relative">
-              <Lock
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-700 group-focus-within:text-white transition-colors"
-                size={14}
-              />
-              <input
-                type="password"
-                placeholder="ACCESS_CIPHER"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black border border-zinc-800 h-11 pl-10 pr-4 text-[10px] outline-none focus:border-zinc-500 transition-all placeholder:text-zinc-800"
-                required
-              />
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
+                  size={14}
+                />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
             </div>
 
-            <button
-              disabled={loading}
-              className="w-full bg-zinc-900 border border-zinc-700 h-12 flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all duration-300 disabled:opacity-50 mt-6"
-            >
-              <span className="text-xs uppercase font-black tracking-widest">
-                {loading ? "Verifying..." : isLogin ? "Authorize" : "Create_ID"}
-              </span>
-              <ArrowRight size={14} />
-            </button>
+            {error && (
+              <div className="rounded-md border border-red-600/40 bg-red-600/10 px-3 py-2 text-xs text-red-200">
+                {error}
+              </div>
+            )}
+
+            {notice && (
+              <div className="rounded-md border border-zinc-700/70 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-300">
+                {notice}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Working..." : isLogin ? "Sign in" : "Create account"}
+            </Button>
           </form>
-        </div>
 
-        {/* Bottom Toggle */}
-        <div className="flex justify-center">
-          <button
+          <Button
+            variant="link"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-[10px] text-zinc-600 hover:text-white uppercase tracking-widest transition-colors underline underline-offset-8 decoration-zinc-800"
+            className="w-full text-xs text-zinc-500 hover:text-zinc-300 transition"
           >
-            {isLogin ? "Request New Access" : "Return to Login"}
-          </button>
-        </div>
-      </div>
+            {isLogin
+              ? "Need an account? Create one"
+              : "Already have an account? Sign in"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

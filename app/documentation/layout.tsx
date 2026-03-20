@@ -7,19 +7,18 @@ export default function DocsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-black text-zinc-300">
-      {/* Fixed Sidebar */}
-      <aside className="w-64 border-r border-zinc-800 hidden md:block p-6 sticky top-0 h-screen">
+    <div className="flex min-h-screen bg-black text-zinc-200">
+      <aside className="w-64 border-r border-zinc-800/80 hidden md:block p-6 sticky top-0 h-screen bg-black">
         <div className="space-y-8">
           <div>
-            <h4 className="text-white font-bold mb-4 text-xs tracking-widest uppercase">
+            <h4 className="text-zinc-500 font-semibold mb-4 text-[10px] tracking-[0.35em] uppercase">
               Getting Started
             </h4>
             <ul className="space-y-3 text-sm">
               <li>
                 <Link
                   href="/documentation"
-                  className="hover:text-emerald-400 transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Introduction
                 </Link>
@@ -28,7 +27,7 @@ export default function DocsLayout({
               <li>
                 <Link
                   href="/documentation/installation"
-                  className="hover:text-emerald-400 transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Installation
                 </Link>
@@ -36,7 +35,7 @@ export default function DocsLayout({
               <li>
                 <Link
                   href="/documentation/quickstart"
-                  className="hover:text-emerald-400 transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   Quick Start
                 </Link>
@@ -44,8 +43,8 @@ export default function DocsLayout({
             </ul>
           </div>
           <div>
-            <h4 className="text-white font-bold mb-4 text-xs tracking-widest uppercase">
-              Features
+            <h4 className="text-zinc-500 font-semibold mb-4 text-[10px] tracking-[0.35em] uppercase">
+              Core Features
             </h4>
             <ul className="space-y-3 text-sm text-zinc-500">
               <li className="flex items-center gap-2">
@@ -57,12 +56,14 @@ export default function DocsLayout({
               <li className="flex items-center gap-2">
                 <Cpu size={14} /> Slop Detection
               </li>
+              <li className="flex items-center gap-2">
+                <BookOpen size={14} /> Git-aware Context
+              </li>
             </ul>
           </div>
         </div>
       </aside>
 
-      {/* Content Area */}
       <main className="flex-1 p-8 md:p-16 max-w-4xl">{children}</main>
     </div>
   );
