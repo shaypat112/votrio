@@ -3,7 +3,7 @@ import path from "path";
 import chalk from "chalk";
 import ora from "ora";
 import { glob } from "glob";
-import Anthropic from "@anthropic-ai/sdk";
+
 import { getApiKey } from "../utils/config.js";
 
 interface ScanOptions {
@@ -20,10 +20,11 @@ interface Finding {
   file: string;
   line: number;
   severity: Severity;
+  score: number;
   type: string;
   message: string;
   snippet?: string;
-  fix?: string;
+  suggestion?: string;
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = {
@@ -33,7 +34,7 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 3,
 };
 
-const SEVERITY_COLORS: Record<Severity, chalk.Chalk> = {
+const SEVERITY_COLORS: Record<Severity, (text:any, string:any) => string> = {
   low: chalk.blue,
   medium: chalk.yellow,
   high: chalk.red,
@@ -85,6 +86,33 @@ const QUICK_PATTERNS: Array<{
   },
 ];
 
+const SUGGESTIONS: Record<string, string> = {
+  HARDCODED_FALLBACK:
+    "Move secrets to environment variables or a secret manager.",
+  HARDCODED_SECRET:
+    "Remove hardcoded credentials and rotate the exposed secret.",
+  XSS_RISK: "Sanitize or escape user input before rendering.",
+  EVAL: "Avoid eval(); use safe parsing or a whitelist approach.",
+  CMD_INJECTION:
+    "Prefer spawn with args and validate or escape user input.",
+  WEAK_RANDOM: "Use crypto.randomBytes() or a CSPRNG.",
+};
+
+const SCORE_BY_SEVERITY: Record<Severity, number> = {
+  low: 30,
+  medium: 55,
+  high: 75,
+  critical: 90,
+};
+
+function getSuggestion(type: string) {
+  return SUGGESTIONS[type] ?? "Review this finding and apply a safe fix.";
+}
+
+function getScore(severity: Severity) {
+  return SCORE_BY_SEVERITY[severity];
+}
+
 export async function scanCommand(scanPath: string = ".", options: ScanOptions) {
   const apiKey = await getApiKey();
   const resolvedPath = path.resolve(process.cwd(), scanPath);
@@ -104,7 +132,7 @@ export async function scanCommand(scanPath: string = ".", options: ScanOptions) 
 
   // Find files
   const spinner = ora("Discovering files...").start();
-  const files = await glob("**/*.{ts,tsx,js,jsx,py,go,rs}", {
+  const files = await glob("**/*.{ts,tsx,js,jsx,py,go,rs,java,cs,kt,rb,php}", {
     cwd: resolvedPath,
     ignore: defaultIgnore,
     absolute: true,
@@ -132,9 +160,11 @@ export async function scanCommand(scanPath: string = ".", options: ScanOptions) 
             file: relFile,
             line: lineNum,
             severity: check.severity,
+            score: getScore(check.severity),
             type: check.type,
             message: check.message,
             snippet: lines[lineNum - 1]?.trim().slice(0, 120),
+            suggestion: getSuggestion(check.type),
           });
         }
       }
@@ -156,6 +186,26 @@ export async function scanCommand(scanPath: string = ".", options: ScanOptions) 
     return;
   }
 
+  if (options.format === "markdown") {
+    console.log(`# Votrio Scan Report\n`);
+    if (deduped.length === 0) {
+      console.log("No issues found.");
+      return;
+    }
+    console.log(
+      "| Severity | Score | Type | File | Line | Message | Suggestion |"
+    );
+    console.log(
+      "| --- | --- | --- | --- | --- | --- | --- |"
+    );
+    for (const f of deduped) {
+      console.log(
+        `| ${f.severity} | ${f.score} | ${f.type} | ${f.file} | ${f.line} | ${f.message} | ${f.suggestion ?? ""} |`
+      );
+    }
+    return;
+  }
+
   console.log();
 
   if (deduped.length === 0) {
@@ -165,11 +215,14 @@ export async function scanCommand(scanPath: string = ".", options: ScanOptions) 
       const color = SEVERITY_COLORS[f.severity];
       const severityBadge = color(`[${f.severity.toUpperCase()}]`);
       console.log(
-        `${severityBadge} ${chalk.white(f.type)} — ${chalk.dim(f.file)}:${chalk.yellow(f.line)}`
+        `${severityBadge} ${chalk.white(f.type)} (${chalk.yellow(f.score)}) — ${chalk.dim(f.file)}:${chalk.yellow(f.line)}`
       );
       console.log(`  ${chalk.dim(f.message)}`);
       if (f.snippet) {
         console.log(`  ${chalk.dim("→")} ${chalk.dim(f.snippet)}`);
+      }
+      if (f.suggestion) {
+        console.log(`  ${chalk.dim("fix")} ${chalk.dim(f.suggestion)}`);
       }
       console.log();
     }

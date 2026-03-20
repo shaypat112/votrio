@@ -48,7 +48,7 @@ program
   .option("--fix", "auto-apply safe patches where possible")
   .option("--ci", "exit with code 1 if issues found (for CI pipelines)")
   .option("--fail-on <severity>", "fail on: low | medium | high | critical", "high")
-  .option("--format <fmt>", "output format: text | json | sarif", "text")
+  .option("--format <fmt>", "output format: text | json | markdown | sarif", "text")
   .option("--ignore <patterns...>", "glob patterns to ignore")
   .action(scanCommand);
 
