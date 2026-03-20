@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
@@ -28,6 +27,12 @@ export default function AuthPage() {
   const supabase = createClient();
 
   const loginWithProvider = async (provider: "github" | "google") => {
+    if (!supabase) {
+      setError(
+        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      );
+      return;
+    }
     setError(null);
     setNotice(null);
     setLoading(true);
@@ -45,6 +50,12 @@ export default function AuthPage() {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError(
+        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      );
+      return;
+    }
     setError(null);
     setNotice(null);
     setLoading(true);
@@ -112,9 +123,9 @@ export default function AuthPage() {
           </div>
 
           <div className="flex items-center gap-3 text-xs text-zinc-500">
-            <Separator className="flex-1" />
+            <div className="flex-1 h-px bg-zinc-800" />
             or use email
-            <Separator className="flex-1" />
+            <div className="flex-1 h-px bg-zinc-800" />
           </div>
 
           {/* Email Form */}
@@ -132,7 +143,7 @@ export default function AuthPage() {
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-zinc-500 focus:border-zinc-500"
                   required
                 />
               </div>
@@ -151,7 +162,7 @@ export default function AuthPage() {
                   placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-zinc-500 focus:border-zinc-500"
                   required
                 />
               </div>

@@ -35,6 +35,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    if (!supabase) {
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     const init = async () => {
       const { data } = await supabase.auth.getUser();
       if (mounted) {
@@ -69,6 +76,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     .toUpperCase();
 
   const signOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
   };
 

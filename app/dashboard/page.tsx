@@ -77,6 +77,10 @@ export default function DashboardPage() {
     let mounted = true;
 
     const load = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from("scan_history")
         .select("repo, created_at, severity, issues, score")

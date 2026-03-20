@@ -67,7 +67,7 @@ function CodeBlock({
             {!label && (
               <button
                 onClick={copy}
-                className="flex-shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
+                className="shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
               >
                 {copied ? (
                   <Check size={14} className="text-zinc-200" />
@@ -215,69 +215,73 @@ export default function QuickStartPage() {
 
       {/* Steps */}
       <div className="space-y-2">
-        {steps.map((step, i) => (
-          <div
-            key={step.number}
-            className={cn(
-              "rounded-xl border transition-all",
-              activeStep === i
-                ? "border-zinc-700/60 bg-zinc-900/40"
-                : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700",
-            )}
-          >
-            <button
-              className="w-full flex items-center gap-4 p-5 text-left"
-              onClick={() => setActiveStep(activeStep === i ? null : i)}
+        {steps.map((step, i) => {
+          return (
+            <div
+              key={step.number}
+              className={cn(
+                "rounded-xl border transition-all",
+                activeStep === i
+                  ? "border-zinc-700/60 bg-zinc-900/40"
+                  : "border-zinc-800 bg-zinc-900/20 hover:border-zinc-700",
+              )}
             >
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all",
-                  activeStep === i
-                    ? "bg-zinc-800/60 text-zinc-200 border border-zinc-700/70"
-                    : "bg-zinc-800 text-white border border-zinc-700",
-                )}
+              <button
+                className="w-full flex items-center gap-4 p-5 text-left"
+                onClick={() => setActiveStep(activeStep === i ? null : i)}
               >
-                {step.number}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm">{step.title}</p>
-                <p className="text-zinc-500 text-xs mt-0.5 truncate">
-                  {step.description}
-                </p>
-              </div>
-              <ArrowRight
-                size={14}
-                className={cn(
-                  "text-zinc-600 flex-shrink-0 transition-transform",
-                  activeStep === i && "rotate-90 text-zinc-200",
-                )}
-              />
-            </button>
-
-            {activeStep === i && (
-              <div className="px-5 pb-5 space-y-3">
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  {step.description}
-                </p>
-                {step.cmd && <CodeBlock code={step.cmd} />}
-                <CodeBlock
-                  label="terminal output"
-                  code={step.output}
-                  highlight={["⚠", "TypeError", "Error"]}
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all",
+                    activeStep === i
+                      ? "bg-zinc-800/60 text-zinc-200 border border-zinc-700/70"
+                      : "bg-zinc-800 text-white border border-zinc-700",
+                  )}
+                >
+                  {step.number}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">
+                    {step.title}
+                  </p>
+                  <p className="text-zinc-500 text-xs mt-0.5 truncate">
+                    {step.description}
+                  </p>
+                </div>
+                <ArrowRight
+                  size={14}
+                  className={cn(
+                    "text-zinc-600 shrink-0 transition-transform",
+                    activeStep === i && "rotate-90 text-zinc-200",
+                  )}
                 />
-                {step.tip && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg border border-zinc-800 bg-zinc-950">
-                    <Info
-                      size={13}
-                      className="text-cyan-400 mt-0.5 flex-shrink-0"
-                    />
-                    <p className="text-xs text-zinc-400">{step.tip}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+              </button>
+
+              {activeStep === i && (
+                <div className="px-5 pb-5 space-y-3">
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {step.description}
+                  </p>
+                  {step.cmd && <CodeBlock code={step.cmd} />}
+                  <CodeBlock
+                    label="terminal output"
+                    code={step.output}
+                    highlight={["⚠", "TypeError", "Error"]}
+                  />
+                  {step.tip && (
+                    <div className="flex items-start gap-2 p-3 rounded-lg border border-zinc-800 bg-zinc-950">
+                      <Info
+                        size={13}
+                        className="text-cyan-400 mt-0.5 shrink-0"
+                      />
+                      <p className="text-xs text-zinc-400">{step.tip}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* What's next */}

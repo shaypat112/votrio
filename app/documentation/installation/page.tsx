@@ -61,7 +61,7 @@ function CodeBlock({
         {!label && (
           <button
             onClick={copy}
-            className="flex-shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
+            className="shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors opacity-0 group-hover:opacity-100"
           >
             {copied ? (
               <Check size={14} className="text-zinc-200" />
@@ -146,10 +146,7 @@ export default function InstallationPage() {
             { label: "npm, pnpm, yarn, or bun", check: "npm --version" },
           ].map((req) => (
             <li key={req.label} className="flex items-center gap-3 text-sm">
-              <CheckCircle2
-                size={14}
-                className="text-zinc-300 flex-shrink-0"
-              />
+              <CheckCircle2 size={14} className="text-zinc-300 flex-shrink-0" />
               <span className="text-zinc-300">{req.label}</span>
               <code className="ml-auto text-xs font-mono text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded hidden sm:block">
                 {req.check}
