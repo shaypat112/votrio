@@ -8,7 +8,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="flex flex-col items-center text-center space-y-8 mb-20">
           <div className="px-3 py-1 text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 rounded-full">
-            Now detecting AI-generated slop
+            Built By Devs. For Devs
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
             Security for the <br />
@@ -27,12 +27,12 @@ export default function Home() {
 
         {/* Terminal Demo Section */}
         <section className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+          <div className="absolute -inset-1 bg-gradient-to-r rounded-lg blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
           <div className="relative bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden shadow-2xl">
             <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
               <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50" />
               <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50" />
-              <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50" />
+              <div className="w-3 h-3 rounded-full border border-green-500/50" />
               <span className="ml-2 text-xs text-zinc-500 font-mono italic">
                 votrio — zsh
               </span>

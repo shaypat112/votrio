@@ -43,7 +43,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-mono">
-      <div className="w-full max-w-[400px] space-y-8">
+      <div className="w-full max-w-100 space-y-8">
         {/* Minimal Header */}
         <div className="flex flex-col items-center space-y-2">
           <Shield size={40} strokeWidth={1} className="text-white mb-2" />
