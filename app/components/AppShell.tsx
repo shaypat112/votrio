@@ -66,8 +66,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
     .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
+    .filter((part) => part.length > 0)
+    .map((part: string) => part[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
