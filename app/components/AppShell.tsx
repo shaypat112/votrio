@@ -17,11 +17,7 @@ import {
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
   return (
-    meta.full_name ||
-    meta.name ||
-    meta.user_name ||
-    user.email ||
-    "Account"
+    meta.full_name || meta.name || meta.user_name || user.email || "Account"
   );
 }
 
@@ -53,7 +49,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       (_event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
-      }
+      },
     );
 
     return () => {
@@ -66,7 +62,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
     .split(" ")
-    .filter((part) => part.length > 0)
+    .filter((part: any) => part.length > 0)
     .map((part: string) => part[0])
     .slice(0, 2)
     .join("")
@@ -80,7 +76,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-200">
       <header className="border-b border-zinc-800/70">
         <div className="flex h-14 items-center justify-between px-6">
-          <Link href="/" className="text-sm font-semibold text-white tracking-wide">
+          <Link
+            href="/"
+            className="text-sm font-semibold text-white tracking-wide"
+          >
             votrio
           </Link>
 
@@ -118,7 +117,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <Link href="/documentation">Docs</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>Sign out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>
+                    Sign out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
