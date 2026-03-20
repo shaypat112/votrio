@@ -61,7 +61,7 @@ export default function Home() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg">
-                <Link href="/documentation/installation">Get started</Link>
+                <Link href="/demo">Get started</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/documentation">Read the docs</Link>
