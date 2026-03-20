@@ -50,7 +50,7 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 3,
 };
 
-const SEVERITY_COLORS: Record<Severity, chalk.Chalk> = {
+const SEVERITY_COLORS: Record<Severity, (text: string) => string> = {
   low: chalk.blue,
   medium: chalk.yellow,
   high: chalk.red,
@@ -63,6 +63,8 @@ const QUICK_PATTERNS: Array<{
   severity: Severity;
   type: string;
   message: string;
+  suggestion?: string;
+  score?: number;
 }> = [
   {
     pattern: /process\.env\.\w+\s*\|\|\s*["'][^"']{8,}/g,
