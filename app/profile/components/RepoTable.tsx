@@ -25,9 +25,13 @@ export type ConnectedRepo = {
 export default function RepoTable({
   repos,
   onConnect,
+  onScan,
+  scanningRepo,
 }: {
   repos: ConnectedRepo[];
   onConnect: () => void;
+  onScan: (repo: ConnectedRepo) => void;
+  scanningRepo?: string | null;
 }) {
   return (
     <Card>
@@ -68,8 +72,13 @@ export default function RepoTable({
                       : "never"}
                   </TableCell>
                   <TableCell>
-                    <Button size="sm" variant="outline">
-                      Scan
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onScan(repo)}
+                      disabled={scanningRepo === repo.full_name}
+                    >
+                      {scanningRepo === repo.full_name ? "Scanning..." : "Scan"}
                     </Button>
                   </TableCell>
                 </TableRow>

@@ -21,6 +21,7 @@ export type ScanRow = {
   severity: string;
   issues: number;
   score: number;
+  summary?: string | null;
 };
 
 export default function ScanTable({ scans }: { scans: ScanRow[] }) {
@@ -48,7 +49,14 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
               {scans.map((scan) => (
                 <TableRow key={`${scan.repo}-${scan.created_at}`}>
                   <TableCell className="font-medium text-zinc-100">
-                    {scan.repo}
+                    <div className="space-y-1">
+                      <div>{scan.repo}</div>
+                      {scan.summary ? (
+                        <div className="text-xs text-zinc-500">
+                          {scan.summary}
+                        </div>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {new Date(scan.created_at).toLocaleDateString()}

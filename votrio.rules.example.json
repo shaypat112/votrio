@@ -17,7 +17,7 @@
       "type": "WEAK_HASH",
       "message": "Weak hash function detected",
       "suggestion": "Use SHA-256 or stronger",
-      "score": 78
+      "score": 12
     }
   ]
 }

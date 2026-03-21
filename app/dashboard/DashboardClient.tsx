@@ -57,6 +57,7 @@ type ScanRow = {
   severity: string;
   issues: number;
   score: number;
+  findings?: { ai_summary?: string };
 };
 
 function formatDate(value: string) {
@@ -71,6 +72,7 @@ function formatDate(value: string) {
 export default function DashboardPage() {
   const [scans, setScans] = useState(fallbackScans);
   const [loading, setLoading] = useState(true);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function DashboardPage() {
       }
       const { data, error } = await supabase
         .from("scan_history")
-        .select("repo, created_at, severity, issues, score")
+        .select("repo, created_at, severity, issues, score, findings")
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -103,6 +105,7 @@ export default function DashboardPage() {
       }));
 
       setScans(mapped);
+      setAiInsight((data as ScanRow[])[0]?.findings?.ai_summary ?? null);
       setLoading(false);
     };
 
@@ -152,8 +155,8 @@ export default function DashboardPage() {
       <Alert>
         <AlertTitle>AI refactor suggestions ready</AlertTitle>
         <AlertDescription>
-          3 improvements detected in your last scan. Review fixes before your
-          next release.
+          {aiInsight ??
+            "3 improvements detected in your last scan. Review fixes before your next release."}
         </AlertDescription>
       </Alert>
 

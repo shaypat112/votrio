@@ -26,10 +26,11 @@ export default function ProfileClient() {
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [ignoredPaths, setIgnoredPaths] = useState(
-    "node_modules/**, dist/**, .next/**"
+    "node_modules/**, dist/**, .next/**",
   );
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -39,7 +40,7 @@ export default function ProfileClient() {
     const load = async () => {
       if (!supabase) {
         setError(
-          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
         );
         setLoading(false);
         return;
@@ -74,7 +75,7 @@ export default function ProfileClient() {
 
       const { data: scanData } = await supabase
         .from("scan_history")
-        .select("repo, created_at, severity, issues, score")
+        .select("repo, created_at, severity, issues, score, findings")
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -84,7 +85,15 @@ export default function ProfileClient() {
         .order("full_name", { ascending: true });
 
       if (!mounted) return;
-      setScans((scanData as ScanRow[]) ?? []);
+      const mappedScans =
+        (scanData as Array<ScanRow & { findings?: { ai_summary?: string } }>)?.map(
+          (scan) => ({
+            ...scan,
+            summary: scan.findings?.ai_summary ?? null,
+          })
+        ) ?? [];
+
+      setScans(mappedScans);
       setRepos((repoData as ConnectedRepo[]) ?? []);
       setLoading(false);
     };
@@ -116,8 +125,8 @@ export default function ProfileClient() {
         scans.length > 0
           ? String(
               Math.round(
-                scans.reduce((sum, scan) => sum + scan.score, 0) / scans.length
-              )
+                scans.reduce((sum, scan) => sum + scan.score, 0) / scans.length,
+              ),
             )
           : "-",
     },
@@ -164,6 +173,69 @@ export default function ProfileClient() {
     setRepos(synced ?? []);
   };
 
+  const runRepoScan = async (repo: ConnectedRepo) => {
+    if (!supabase) return;
+    setError(null);
+    setScanningRepo(repo.full_name);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const providerToken = sessionData.session?.provider_token;
+
+    if (!accessToken || !providerToken) {
+      setError("GitHub is not connected. Sign in with GitHub first.");
+      setScanningRepo(null);
+      return;
+    }
+
+    const res = await fetch("/api/github/repo-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        providerToken,
+        repo: repo.full_name,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error ?? "Failed to scan repository.");
+      setScanningRepo(null);
+      return;
+    }
+
+    const data = await res.json();
+    const now = new Date().toISOString();
+    const newScan: ScanRow = data.scan
+      ? {
+          repo: data.scan.repo ?? repo.full_name,
+          created_at: data.scan.created_at ?? now,
+          severity: data.scan.severity ?? data.severity,
+          issues: data.scan.issues ?? data.issues,
+          score: data.scan.score ?? data.score,
+          summary: data.scan.findings?.ai_summary ?? data.summary ?? null,
+        }
+      : {
+          repo: repo.full_name,
+          created_at: now,
+          severity: data.severity ?? "medium",
+          issues: data.issues ?? 0,
+          score: data.score ?? 0,
+          summary: data.summary ?? null,
+        };
+
+    setScans((prev) => [newScan, ...prev].slice(0, 8));
+    setRepos((prev) =>
+      prev.map((item) =>
+        item.full_name === repo.full_name
+          ? { ...item, last_scanned_at: newScan.created_at }
+          : item
+      )
+    );
+    setScanningRepo(null);
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl py-10 text-sm text-zinc-500">
@@ -200,7 +272,22 @@ export default function ProfileClient() {
         </CardContent>
       </Card>
 
-      {activeTab === "overview" && <ScanTable scans={scans} />}
+      {activeTab === "overview" && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <p className="text-xs uppercase tracking-wide text-zinc-500">
+                Mistral AI insight
+              </p>
+              <p className="text-sm text-zinc-100">
+                {scans[0]?.summary ??
+                  "Run a repository scan to generate AI security insights and refactoring tips."}
+              </p>
+            </CardContent>
+          </Card>
+          <ScanTable scans={scans} />
+        </div>
+      )}
       {activeTab === "scans" && <ScanTable scans={scans} />}
       {activeTab === "settings" && (
         <div className="space-y-4">
@@ -212,10 +299,7 @@ export default function ProfileClient() {
             <CardContent className="p-4 space-y-3">
               <div className="space-y-2">
                 <Label>Full name</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Username</Label>
@@ -250,12 +334,13 @@ export default function ProfileClient() {
             connected={repos.length > 0}
             onClick={connectGitHub}
           />
-          <IntegrationPanel
-            title="Slack"
-            description="Get alerts when high severity issues appear."
-            connected={false}
+
+          <RepoTable
+            repos={repos}
+            onConnect={connectGitHub}
+            onScan={runRepoScan}
+            scanningRepo={scanningRepo}
           />
-          <RepoTable repos={repos} onConnect={connectGitHub} />
         </div>
       )}
     </div>

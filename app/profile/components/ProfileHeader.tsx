@@ -42,9 +42,6 @@ export default function ProfileHeader({
         </div>
         <div className="flex gap-2 sm:ml-auto">
           <Button size="sm" variant="outline">
-            Edit profile
-          </Button>
-          <Button size="sm" variant="outline">
             Billing
           </Button>
         </div>
