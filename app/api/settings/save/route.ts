@@ -59,10 +59,12 @@ export async function POST(request: Request) {
   }
 
   const payload = {
-    user_id: userId,
-    data: settings,
-    updated_at: new Date().toISOString(),
-  };
+  user_id: userId,
+  email_alerts: settings.emailNotifications ?? true,
+  scan_depth: settings.scanDepth ?? 3,
+  ignored_paths: settings.ignoredPaths ?? "",
+  updated_at: new Date().toISOString(),
+};
 
   const res = await fetch(`${supabaseUrl}/rest/v1/user_settings`, {
     method: "POST",
@@ -81,5 +83,5 @@ export async function POST(request: Request) {
   }
 
   const saved = await res.json();
-  return NextResponse.json({ settings: saved?.[0]?.data ?? settings });
+return NextResponse.json({ settings: saved?.[0] ?? payload });
 }

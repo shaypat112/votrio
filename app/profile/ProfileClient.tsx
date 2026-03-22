@@ -10,7 +10,7 @@ import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
 import TabNav, { type TabKey } from "./components/TabNav";
-import SettingsPanel from "./components/SettingsPanel";
+
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 
@@ -86,12 +86,12 @@ export default function ProfileClient() {
 
       if (!mounted) return;
       const mappedScans =
-        (scanData as Array<ScanRow & { findings?: { ai_summary?: string } }>)?.map(
-          (scan) => ({
-            ...scan,
-            summary: scan.findings?.ai_summary ?? null,
-          })
-        ) ?? [];
+        (
+          scanData as Array<ScanRow & { findings?: { ai_summary?: string } }>
+        )?.map((scan) => ({
+          ...scan,
+          summary: scan.findings?.ai_summary ?? null,
+        })) ?? [];
 
       setScans(mappedScans);
       setRepos((repoData as ConnectedRepo[]) ?? []);
@@ -230,8 +230,8 @@ export default function ProfileClient() {
       prev.map((item) =>
         item.full_name === repo.full_name
           ? { ...item, last_scanned_at: newScan.created_at }
-          : item
-      )
+          : item,
+      ),
     );
     setScanningRepo(null);
   };
@@ -289,43 +289,7 @@ export default function ProfileClient() {
         </div>
       )}
       {activeTab === "scans" && <ScanTable scans={scans} />}
-      {activeTab === "settings" && (
-        <div className="space-y-4">
-          <SettingsPanel
-            ignoredPaths={ignoredPaths}
-            setIgnoredPaths={setIgnoredPaths}
-          />
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="space-y-2">
-                <Label>Full name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Username</Label>
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Avatar URL</Label>
-                <Input
-                  value={avatarUrl ?? ""}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                />
-              </div>
-              <button
-                onClick={saveProfile}
-                disabled={savingProfile}
-                className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-800"
-              >
-                {savingProfile ? "Saving..." : "Save profile"}
-              </button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+
       {activeTab === "integrations" && (
         <div className="space-y-3">
           <IntegrationPanel
