@@ -10,7 +10,7 @@ import {
   Zap,
   Info,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/app/lib/utils";
 import Link from "next/link";
 
 function CodeBlock({

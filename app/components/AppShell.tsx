@@ -115,12 +115,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">Profile</Link>
-                </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">Profile</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/settings">Settings</Link>
                   </DropdownMenuItem>
@@ -148,6 +148,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   className="border-zinc-700/70 text-zinc-200 hover:bg-zinc-800"
                 >
                   <Link href="/auth">Sign in</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="default"
+                  className="border-zinc-700/70  hover:bg-zinc-800"
+                >
+                  <Link href="/dashboard/billing"> Billing </Link>
                 </Button>
               </>
             )}

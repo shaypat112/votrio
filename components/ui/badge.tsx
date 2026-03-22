@@ -1,7 +1,7 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/app/lib/utils";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border border-zinc-700/60 bg-zinc-900 px-2.5 py-0.5 text-xs font-medium text-zinc-200",
@@ -16,8 +16,8 @@ const badgeVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 function Badge({
   className,
@@ -26,7 +26,7 @@ function Badge({
 }: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
   return (
     <span className={cn(badgeVariants({ variant, className }))} {...props} />
-  )
+  );
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };
