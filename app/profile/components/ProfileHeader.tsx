@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 export default function ProfileHeader({
   name,
@@ -15,6 +16,7 @@ export default function ProfileHeader({
   initials: string;
   avatarUrl?: string | null;
 }) {
+  const router = useRouter();
   return (
     <Card>
       <CardContent className="p-6 flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -41,7 +43,11 @@ export default function ProfileHeader({
           </div>
         </div>
         <div className="flex gap-2 sm:ml-auto">
-          <Button size="sm" variant="outline">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push("/dashboard/billing")}
+          >
             Billing
           </Button>
         </div>

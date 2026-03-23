@@ -194,7 +194,7 @@ export default function DemoPage() {
   ]);
   const [scanning, setScanning] = useState(false);
   const [ran, setRan] = useState(false);
-  const [copied, setCopied] = useState(false);
+
   const [copiedInstall, setCopiedInstall] = useState(false);
   const [activeSample, setActiveSample] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
