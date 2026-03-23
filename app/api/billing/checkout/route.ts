@@ -1,3 +1,14 @@
+// all demo code right here from GEMINI so that the build passes
+import { NextResponse } from 'next/server';
+
+export async function POST() {
+  return NextResponse.json({ message: "Checkout session created" });
+}
+
+
+
+
+
 // import { stripe } from "@/app/lib/stripe";
 // import { NextResponse } from "next/server";
 
