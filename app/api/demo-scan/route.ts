@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+
 const SAMPLES: Record<string, string> = {
   node: `// Node.js + SQL
 app.get("/users", (req, res) => {
@@ -31,6 +32,7 @@ function buildOutput(severity: "critical" | "high" | "medium" | "low") {
     "  fix Sanitize user input before rendering",
     "",
     "2 issues found  critical  medium",
+    "Random Error Occured ..~ Fetching AI Reasoning Model Mistral for support and LLM Reasoning"
   ];
   return lines.join("\n");
 }
