@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { openPortal } from "../dashboard/billing/page";
+import { useRouter } from "next/navigation";
 
 type SettingsState = {
   fullName: string;
@@ -96,6 +98,7 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [testingWebhook, setTestingWebhook] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -103,7 +106,7 @@ export default function SettingsClient() {
     const loadSettings = async () => {
       if (!supabase) {
         setError(
-          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
         );
         setLoading(false);
         return;
@@ -145,7 +148,10 @@ export default function SettingsClient() {
     };
   }, [supabase]);
 
-  const update = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+  const update = <K extends keyof SettingsState>(
+    key: K,
+    value: SettingsState[K],
+  ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -230,16 +236,21 @@ export default function SettingsClient() {
       </div>
     );
   }
+  const provideFeedback = () => {
+    router.push("/feedback");
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <Badge variant="subtle">Settings</Badge>
-          <h1 className="text-2xl font-semibold text-white">Workspace controls</h1>
-          <p className="text-sm text-zinc-400">
-            Tune scan automation, security alerts, and team access controls.
-          </p>
+          <h1 className="text-2xl font-semibold text-white">
+            Workspace controls
+          </h1>
+          <Button variant="ghost" onClick={provideFeedback}>
+            Provide FeedBack
+          </Button>
         </div>
         <Button onClick={saveSettings} disabled={saving}>
           {saving ? "Saving..." : "Save changes"}
@@ -387,7 +398,10 @@ export default function SettingsClient() {
                   className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                   value={settings.riskThreshold}
                   onChange={(event) =>
-                    update("riskThreshold", event.target.value as SettingsState["riskThreshold"])
+                    update(
+                      "riskThreshold",
+                      event.target.value as SettingsState["riskThreshold"],
+                    )
                   }
                 >
                   <option value="low">Low and above</option>
@@ -401,7 +415,10 @@ export default function SettingsClient() {
                   className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                   value={settings.reportFormat}
                   onChange={(event) =>
-                    update("reportFormat", event.target.value as SettingsState["reportFormat"])
+                    update(
+                      "reportFormat",
+                      event.target.value as SettingsState["reportFormat"],
+                    )
                   }
                 >
                   <option value="markdown">Markdown</option>
@@ -416,7 +433,10 @@ export default function SettingsClient() {
                 className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                 value={settings.aiModel}
                 onChange={(event) =>
-                  update("aiModel", event.target.value as SettingsState["aiModel"])
+                  update(
+                    "aiModel",
+                    event.target.value as SettingsState["aiModel"],
+                  )
                 }
               >
                 <option value="mistral-large-latest">Mistral Large</option>
@@ -467,7 +487,9 @@ export default function SettingsClient() {
                 min={7}
                 max={365}
                 value={settings.retentionDays}
-                onChange={(event) => update("retentionDays", Number(event.target.value))}
+                onChange={(event) =>
+                  update("retentionDays", Number(event.target.value))
+                }
               />
             </div>
             <Toggle
@@ -492,7 +514,7 @@ export default function SettingsClient() {
           <CardContent className="space-y-3 text-sm text-zinc-400">
             <p className="text-zinc-100">Pro trial</p>
             <p>Unlimited scans, AI refactors, CI/CD gating.</p>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" onClick={openPortal}>
               Manage billing
             </Button>
           </CardContent>

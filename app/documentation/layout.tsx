@@ -42,25 +42,6 @@ export default function DocsLayout({
               </li>
             </ul>
           </div>
-          <div>
-            <h4 className="text-zinc-500 font-semibold mb-4 text-[10px] tracking-[0.35em] uppercase">
-              Core Features
-            </h4>
-            <ul className="space-y-3 text-sm text-zinc-500">
-              <li className="flex items-center gap-2">
-                <Terminal size={14} /> Stack Traces
-              </li>
-              <li className="flex items-center gap-2">
-                <ShieldCheck size={14} /> Security
-              </li>
-              <li className="flex items-center gap-2">
-                <Cpu size={14} /> Slop Detection
-              </li>
-              <li className="flex items-center gap-2">
-                <BookOpen size={14} /> Git-aware Context
-              </li>
-            </ul>
-          </div>
         </div>
       </aside>
 

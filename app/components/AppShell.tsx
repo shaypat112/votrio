@@ -153,14 +153,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <Link href="/auth">Sign in</Link>
                 </Button>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="default"
-                  className="border-zinc-700/70  hover:bg-zinc-800"
-                >
-                  <Link href="/dashboard/billing"> Billing </Link>
-                </Button>
               </>
             )}
           </nav>

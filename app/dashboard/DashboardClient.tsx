@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createClient } from "@/app/lib/supabase";
+import { useRouter } from "next/navigation";
 
 const fallbackScans = [
   {
@@ -75,6 +76,8 @@ export default function DashboardPage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
 
+  const router = useRouter();
+
   useEffect(() => {
     let mounted = true;
 
@@ -129,9 +132,12 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm">Start scan</Button>
-          <Button size="sm" variant="outline">
-            View reports
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push("/reports")}
+          >
+            View Scan reports
           </Button>
         </div>
       </div>

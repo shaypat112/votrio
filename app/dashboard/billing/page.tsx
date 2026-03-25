@@ -3,15 +3,15 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+export async function openPortal() {
+  const res = await fetch("/api/billing/portal", { method: "POST" });
+  const data = await res.json();
+  window.location.href = data.url;
+}
+
 export default function BillingPage() {
   async function startCheckout() {
     const res = await fetch("/api/billing/checkout", { method: "POST" });
-    const data = await res.json();
-    window.location.href = data.url;
-  }
-
-  async function openPortal() {
-    const res = await fetch("/api/billing/portal", { method: "POST" });
     const data = await res.json();
     window.location.href = data.url;
   }
