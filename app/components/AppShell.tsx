@@ -160,12 +160,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-6 py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-3">
-              <Link
-                href="/"
-                className="text-sm font-semibold text-white tracking-wide"
-              >
-                votrio
-              </Link>
               <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-zinc-400">
                 <Link
                   href="/profile"
@@ -185,6 +179,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   Docs
                 </Link>
+                <Link href="/settings"> Settings</Link>
               </nav>
             </div>
 
@@ -229,7 +224,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             </div>
                             {item.type === "scan.completed" ? (
                               <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                                {item.data?.severity ?? "unknown"} severity · {item.data?.issues ?? 0} issues
+                                {item.data?.severity ?? "unknown"} severity ·{" "}
+                                {item.data?.issues ?? 0} issues
                               </div>
                             ) : null}
                             <div className="text-[10px] text-zinc-500">
@@ -267,14 +263,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile">Profile</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings">Settings</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+
                     <DropdownMenuItem onClick={signOut}>
                       Sign out
                     </DropdownMenuItem>
