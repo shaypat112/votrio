@@ -1,28 +1,48 @@
-// all demo code right here from GEMINI so that the build passes
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { stripe, getStripeConfig } from "@/app/lib/stripe";
+import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 
-export async function POST() {
-  return NextResponse.json({ message: "Checkout session created" });
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const accessToken = body?.accessToken as string | undefined;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
+    }
+
+    const userId = decodeUserId(accessToken);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    }
+
+    const { secretKey, siteUrl } = getStripeConfig();
+    if (!secretKey) {
+      return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
+    }
+
+    const env = getSupabaseEnv();
+    const customerRes = await supabaseFetch(
+      env,
+      `billing_customers?user_id=eq.${userId}&select=stripe_customer_id`,
+      { accessToken },
+    );
+    const customerRows = customerRes.ok ? await customerRes.json() : [];
+    const customerId = customerRows?.[0]?.stripe_customer_id as string | undefined;
+
+    if (!customerId) {
+      return NextResponse.json({ error: "No Stripe customer found." }, { status: 404 });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${siteUrl}/dashboard/billing`,
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message ?? "Portal failed." }, { status: 500 });
+  }
 }
-
-
-
-
-
-
-// import { stripe } from "./lib/stripe";
-// import { NextResponse } from "next/server";
-
-// export async function POST() {
-
-//   const session = await stripe.billingPortal.sessions.create({
-//     customer: "stripe_customer_id",
-//     return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/billing`,
-//   });
-// // 
-//   return NextResponse.json({
-//     url: session.url,
-//   });
-// }
-
-// // set up your STRIPE API KEy for building here and fix the red erors in this code

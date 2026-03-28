@@ -1,14 +1,16 @@
 import Stripe from "stripe";
 
+const secretKey = process.env.STRIPE_SECRET_KEY ?? "";
 
+export const stripe = new Stripe(secretKey || "sk_test_placeholder", {
+  apiVersion: "2026-02-25.clover",
+});
 
-try {
-    console.log(process.env.STRIPL_SECRET_KEY!)
-} catch(err) {
-    const key = process.env.STRIPE_SECRET_KEY
-
-    console.log(`the error in your code is that the ${key}`)
+export function getStripeConfig() {
+  return {
+    secretKey,
+    pricePro: process.env.STRIPE_PRICE_PRO ?? "price_test_pro",
+    priceTeam: process.env.STRIPE_PRICE_TEAM ?? "price_test_team",
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  };
 }
-// export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-//   apiVersion: "2024-06-20",
-// });

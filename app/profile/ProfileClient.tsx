@@ -184,8 +184,14 @@ export default function ProfileClient() {
     const accessToken = sessionData.session?.access_token;
     const providerToken = sessionData.session?.provider_token;
 
-    if (!accessToken || !providerToken) {
-      setError("GitHub is not connected. Sign in with GitHub first.");
+    if (!accessToken) {
+      setError("Please sign in to scan repositories.");
+      setScanningRepo(null);
+      return;
+    }
+
+    if (repo.private && !providerToken) {
+      setError("GitHub authorization is required for private repositories.");
       setScanningRepo(null);
       return;
     }
@@ -195,7 +201,7 @@ export default function ProfileClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         accessToken,
-        providerToken,
+        providerToken: providerToken ?? null,
         repo: repo.full_name,
       }),
     });

@@ -19,16 +19,19 @@ function decodeUserId(token: string): string | null {
   }
 }
 
-async function fetchJson(url: string, token: string) {
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-    },
-  });
+async function fetchJson(url: string, token?: string) {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { headers });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text);
+    const error = new Error(text);
+    (error as any).status = res.status;
+    throw error;
   }
   return res.json();
 }
@@ -36,12 +39,12 @@ async function fetchJson(url: string, token: string) {
 export async function POST(request: Request) {
   const body = await request.json();
   const accessToken = body?.accessToken as string | undefined;
-  const providerToken = body?.providerToken as string | undefined;
+  const providerToken = (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
 
-  if (!accessToken || !providerToken || !repoFullName) {
+  if (!accessToken || !repoFullName) {
     return NextResponse.json(
-      { error: "Missing accessToken, providerToken, or repo" },
+      { error: "Missing accessToken or repo" },
       { status: 400 }
     );
   }
@@ -200,6 +203,20 @@ export async function POST(request: Request) {
       scan: inserted?.[0] ?? null,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const status = Number(err?.status ?? 0);
+    const message = String(err?.message ?? "Scan failed.");
+    if (status === 409 && message.includes("Repository is empty")) {
+      return NextResponse.json(
+        { error: "GitHub repository is empty. Add at least one commit to scan." },
+        { status: 409 }
+      );
+    }
+    if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("requires authentication")) {
+      return NextResponse.json(
+        { error: "GitHub authorization required for private repositories." },
+        { status: 403 }
+      );
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

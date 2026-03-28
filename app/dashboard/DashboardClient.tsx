@@ -137,7 +137,7 @@ export default function DashboardPage() {
             variant="outline"
             onClick={() => router.push("/reports")}
           >
-            View Scan =reports
+            View scan reports
           </Button>
         </div>
       </div>
@@ -186,7 +186,11 @@ export default function DashboardPage() {
             </TableHeader>
             <TableBody>
               {scans.map((scan) => (
-                <TableRow key={`${scan.repo}-${scan.date}`}>
+                <TableRow
+                  key={`${scan.repo}-${scan.date}`}
+                  className="cursor-pointer hover:bg-zinc-950/60"
+                  onClick={() => router.push(`/reports/${encodeURIComponent(scan.repo)}`)}
+                >
                   <TableCell className="font-medium text-zinc-100">
                     {scan.repo}
                   </TableCell>
@@ -195,7 +199,7 @@ export default function DashboardPage() {
                   <TableCell>
                     <Badge variant="outline">{scan.severity}</Badge>
                   </TableCell>
-                  <TableCell>{scan.score}</TableCell>
+                  <TableCell className="text-zinc-100">{scan.score}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

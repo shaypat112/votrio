@@ -104,6 +104,16 @@ create table if not exists public.site_feedback (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.billing_customers (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  status text,
+  price_id text,
+  current_period_end timestamptz,
+  updated_at timestamptz not null default now()
+);
+
 -- RLS
 alter table public.repositories enable row level security;
 alter table public.reviews enable row level security;
@@ -113,6 +123,8 @@ alter table public.webhook_endpoints enable row level security;
 alter table public.webhook_deliveries enable row level security;
 alter table public.activity_log enable row level security;
 alter table public.site_feedback enable row level security;
+alter table public.scan_history enable row level security;
+alter table public.billing_customers enable row level security;
 
 create policy "Public can read published repositories"
   on public.repositories for select
@@ -168,3 +180,23 @@ create policy "Authenticated can insert activity log"
 create policy "Authenticated can insert feedback"
   on public.site_feedback for insert
   with check (auth.uid() is not null);
+
+create policy "Users can read own scans"
+  on public.scan_history for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own scans"
+  on public.scan_history for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can read own billing"
+  on public.billing_customers for select
+  using (auth.uid() = user_id);
+
+create policy "Users can update own billing"
+  on public.billing_customers for update
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own billing"
+  on public.billing_customers for insert
+  with check (auth.uid() = user_id);

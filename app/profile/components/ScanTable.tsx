@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 
 export type ScanRow = {
   repo: string;
@@ -47,7 +48,13 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
             </TableHeader>
             <TableBody>
               {scans.map((scan) => (
-                <TableRow key={`${scan.repo}-${scan.created_at}`}>
+                <TableRow
+                  key={`${scan.repo}-${scan.created_at}`}
+                  className="cursor-pointer hover:bg-zinc-950/60"
+                  onClick={() => {
+                    window.location.href = `/reports/${encodeURIComponent(scan.repo)}`;
+                  }}
+                >
                   <TableCell className="font-medium text-zinc-100">
                     <div className="space-y-1">
                       <div>{scan.repo}</div>

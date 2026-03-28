@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { openPortal } from "../dashboard/billing/page";
 import { useRouter } from "next/navigation";
 
 type SettingsState = {
@@ -271,6 +270,30 @@ export default function SettingsClient() {
 
     setStatus("Webhook delivered.");
     setTestingWebhook(false);
+  };
+
+  const openBillingPortal = async () => {
+    if (!supabase) return;
+    setStatus(null);
+    setError(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setError("Please sign in to manage billing.");
+      return;
+    }
+    const res = await fetch("/api/billing/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error ?? "Unable to open billing portal.");
+      return;
+    }
+    const data = await res.json();
+    window.location.href = data.url;
   };
 
   if (loading) {
@@ -631,7 +654,7 @@ export default function SettingsClient() {
           <CardContent className="space-y-3 text-sm text-zinc-400">
             <p className="text-zinc-100">Pro trial</p>
             <p>Unlimited scans, AI refactors, CI/CD gating.</p>
-            <Button size="sm" variant="outline" onClick={openPortal}>
+            <Button size="sm" variant="outline" onClick={openBillingPortal}>
               Manage billing
             </Button>
           </CardContent>
