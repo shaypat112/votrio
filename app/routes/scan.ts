@@ -1,6 +1,8 @@
 import { runGitHubScan, type ScanOptions, type Finding } from "@/app/services/githubScanner";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
+import { createNotification } from "@/app/lib/server/notifications";
+import { purgeUserData } from "@/app/lib/server/retention";
 import { logActivity } from "@/app/lib/server/activity";
 
 function summarizeFindings(findings: Finding[]) {
@@ -69,7 +71,7 @@ export async function handleGitHubScan(input: {
     findings: { list: result.findings },
   };
 
-  if (userId) scanPayload.user_id = userId;
+  if (userId && accessToken) scanPayload.user_id = userId;
   if (repoId) scanPayload.repo_id = repoId;
 
   let scanInsertRes = await supabaseFetch(env, "scan_history", {
@@ -116,6 +118,46 @@ export async function handleGitHubScan(input: {
         total_findings: total,
       },
     });
+if (userId && accessToken) {
+  await logActivity(env, accessToken, {
+    actor_id: userId,
+    action: "scan.completed",
+    target_type: "repository",
+    target_id: repoId,
+    meta: { repo_url: result.repoUrl },
+  });
+
+  await deliverWebhooks(env, accessToken, {
+    userId,
+    event: "scan.completed",
+    payload: {
+      repo_url: result.repoUrl,
+      repo_id: repoId,
+      total_findings: total,
+    },
+  });
+
+  await createNotification({
+    env,
+    accessToken,
+    userId,
+    type: "scan.completed",
+    data: {
+      repo_name: result.repoName,
+      repo_url: result.repoUrl,
+      severity,
+      issues: total,
+      score: avgScore,
+    },
+  });
+
+  await purgeUserData({
+    env,
+    accessToken,
+    userId,
+    days: 30,
+  });
+}
   }
 
   return {

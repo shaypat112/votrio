@@ -24,12 +24,10 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         checked={checked}
         onChange={(event) => {
           onCheckedChange?.(event.target.checked);
-          props.onChange?.(event);
         }}
         {...props}
       />
     );
   },
 );
-
 Checkbox.displayName = "Checkbox";

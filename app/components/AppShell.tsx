@@ -27,6 +27,19 @@ function getAvatarUrl(user: User) {
   return meta.avatar_url || meta.picture || null;
 }
 
+function formatNotificationTitle(type: string) {
+  switch (type) {
+    case "scan.completed":
+      return "Scan completed";
+    case "review.created":
+      return "Review created";
+    case "repository.published":
+      return "Repository published";
+    default:
+      return type.replace(".", " ");
+  }
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,12 +174,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Profile
                 </Link>
                 <Link
-                  href="/dashboard"
-                  className="hover:text-zinc-100 transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
                   href="/repositories"
                   className="hover:text-zinc-100 transition-colors"
                 >
@@ -213,13 +220,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             className="px-3 py-2 text-xs text-zinc-200"
                           >
                             <div className="font-medium">
-                              {item.type.replace(".", " ")}
+                              {formatNotificationTitle(item.type)}
                             </div>
                             <div className="text-zinc-400">
                               {item.data?.repo_name ??
                                 item.data?.repo_url ??
                                 "Activity update"}
                             </div>
+                            {item.type === "scan.completed" ? (
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                                {item.data?.severity ?? "unknown"} severity · {item.data?.issues ?? 0} issues
+                              </div>
+                            ) : null}
                             <div className="text-[10px] text-zinc-500">
                               {new Date(item.created_at).toLocaleString()}
                             </div>

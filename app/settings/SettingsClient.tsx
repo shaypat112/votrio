@@ -28,12 +28,13 @@ type SettingsState = {
   riskThreshold: "low" | "medium" | "high";
   reportFormat: "json" | "markdown" | "terminal";
   aiModel: "mistral-large-latest" | "mistral-medium-latest";
+  require2fa: boolean;
+  sessionTimeoutHours: number;
+  securityAlerts: boolean;
   webhookEnabled: boolean;
   webhookUrl: string;
   webhookEvents: string[];
   retentionDays: number;
-  shareDashboard: boolean;
-  allowInvites: boolean;
 };
 
 type RepoVisibility = {
@@ -65,12 +66,32 @@ const defaultSettings: SettingsState = {
   riskThreshold: "medium",
   reportFormat: "markdown",
   aiModel: "mistral-large-latest",
+  require2fa: false,
+  sessionTimeoutHours: 12,
+  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
-  webhookEvents: ["repository.published", "review.created"],
+  webhookEvents: ["repository.published", "review.created", "scan.completed"],
   retentionDays: 30,
-  shareDashboard: false,
-  allowInvites: true,
+};
+
+type Team = {
+  id: string;
+  name: string;
+  slug: string;
+  owner_id: string;
+  role: string;
+};
+
+type TeamMember = {
+  id: string;
+  role: string;
+  user_id: string;
+  profiles?: {
+    full_name?: string | null;
+    username?: string | null;
+    avatar_url?: string | null;
+  };
 };
 
 function Toggle({
@@ -112,6 +133,13 @@ export default function SettingsClient() {
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [repos, setRepos] = useState<RepoVisibility[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState("");
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [teamStatus, setTeamStatus] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -153,6 +181,7 @@ export default function SettingsClient() {
       const data = await res.json();
       setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
       await loadRepos(accessToken);
+      await loadTeams(accessToken);
       setLoading(false);
     };
 
@@ -172,12 +201,49 @@ export default function SettingsClient() {
 
   const loadRepos = async (accessToken: string) => {
     setLoadingRepos(true);
-    const res = await fetch(`/api/repositories/mine?accessToken=${accessToken}`);
+    const res = await fetch(
+      `/api/repositories/mine?accessToken=${accessToken}`,
+    );
     if (res.ok) {
       const data = await res.json();
       setRepos((data?.repos ?? []) as RepoVisibility[]);
     }
     setLoadingRepos(false);
+  };
+
+  const loadTeams = async (accessToken: string) => {
+    setLoadingTeams(true);
+    setTeamStatus(null);
+    const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamStatus(data?.error ?? "Unable to load teams.");
+      setTeams([]);
+      setLoadingTeams(false);
+      return;
+    }
+    const data = await res.json();
+    const nextTeams = (data?.teams ?? []) as Team[];
+    setTeams(nextTeams);
+    if (!selectedTeamId && nextTeams.length > 0) {
+      setSelectedTeamId(nextTeams[0].id);
+      await loadTeamMembers(nextTeams[0].id, accessToken);
+    }
+    setLoadingTeams(false);
+  };
+
+  const loadTeamMembers = async (teamId: string, accessToken: string) => {
+    const res = await fetch(
+      `/api/teams/members?accessToken=${accessToken}&teamId=${teamId}`,
+    );
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamStatus(data?.error ?? "Unable to load team members.");
+      setTeamMembers([]);
+      return;
+    }
+    const data = await res.json();
+    setTeamMembers((data?.members ?? []) as TeamMember[]);
   };
 
   const updateRepoVisibility = async (repoId: string, isPublic: boolean) => {
@@ -204,7 +270,9 @@ export default function SettingsClient() {
     const data = await res.json();
     const updated = data?.repo as RepoVisibility | undefined;
     if (updated) {
-      setRepos((prev) => prev.map((repo) => (repo.id === updated.id ? updated : repo)));
+      setRepos((prev) =>
+        prev.map((repo) => (repo.id === updated.id ? updated : repo)),
+      );
     }
   };
 
@@ -272,6 +340,115 @@ export default function SettingsClient() {
     setTestingWebhook(false);
   };
 
+  const createTeam = async () => {
+    if (!supabase || !teamName.trim()) return;
+    setTeamStatus(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setTeamStatus("Please sign in to create a team.");
+      return;
+    }
+
+    const res = await fetch("/api/teams/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, name: teamName.trim() }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamStatus(data?.error ?? "Unable to create team.");
+      return;
+    }
+
+    setTeamName("");
+    await loadTeams(accessToken);
+  };
+
+  const addMember = async () => {
+    if (!supabase || !selectedTeamId || !inviteUsername.trim()) return;
+    setTeamStatus(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setTeamStatus("Please sign in to add members.");
+      return;
+    }
+
+    const res = await fetch("/api/teams/add-member", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        teamId: selectedTeamId,
+        username: inviteUsername.trim(),
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamStatus(data?.error ?? "Unable to add member.");
+      return;
+    }
+
+    setInviteUsername("");
+    await loadTeamMembers(selectedTeamId, accessToken);
+  };
+
+  const removeMember = async (memberId: string) => {
+    if (!supabase) return;
+    setTeamStatus(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setTeamStatus("Please sign in to manage members.");
+      return;
+    }
+
+    const res = await fetch("/api/teams/remove-member", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, memberId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamStatus(data?.error ?? "Unable to remove member.");
+      return;
+    }
+
+    if (selectedTeamId) {
+      await loadTeamMembers(selectedTeamId, accessToken);
+    }
+  };
+
+  const clearData = async (scope: "scan_history" | "notifications" | "all") => {
+    if (!supabase) return;
+    setStatus(null);
+    setError(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setError("Please sign in to clear data.");
+      return;
+    }
+
+    const res = await fetch("/api/settings/clear-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, scope }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error ?? "Unable to clear data.");
+      return;
+    }
+
+    setStatus("Data cleared.");
+  };
+
   const openBillingPortal = async () => {
     if (!supabase) return;
     setStatus(null);
@@ -294,6 +471,14 @@ export default function SettingsClient() {
     }
     const data = await res.json();
     window.location.href = data.url;
+  };
+
+  const signOutSessions = async () => {
+    if (!supabase) return;
+    setStatus(null);
+    setError(null);
+    await supabase.auth.signOut();
+    router.push("/auth");
   };
 
   if (loading) {
@@ -378,17 +563,37 @@ export default function SettingsClient() {
             <Toggle
               label="2FA required for admins"
               description="Protect admin accounts with extra verification."
-              checked
-              onChange={() => {}}
+              checked={settings.require2fa}
+              onChange={(value) => update("require2fa", value)}
             />
             <Toggle
               label="Session timeout"
               description="Force re-authentication after 12 hours."
-              checked
-              onChange={() => {}}
+              checked={settings.sessionTimeoutHours <= 12}
+              onChange={(value) =>
+                update("sessionTimeoutHours", value ? 12 : 24)
+              }
             />
-            <Button size="sm" variant="outline">
-              Sign out all sessions
+            <Toggle
+              label="Security alerts"
+              description="Notify on suspicious sign-in activity."
+              checked={settings.securityAlerts}
+              onChange={(value) => update("securityAlerts", value)}
+            />
+            <div className="space-y-2">
+              <Label>Session timeout (hours)</Label>
+              <Input
+                type="number"
+                min={4}
+                max={72}
+                value={settings.sessionTimeoutHours}
+                onChange={(event) =>
+                  update("sessionTimeoutHours", Number(event.target.value))
+                }
+              />
+            </div>
+            <Button size="sm" variant="outline" onClick={signOutSessions}>
+              Sign out
             </Button>
           </CardContent>
         </Card>
@@ -553,15 +758,21 @@ export default function SettingsClient() {
                 {[
                   { id: "repository.published", label: "Repository published" },
                   { id: "review.created", label: "Review created" },
+                  { id: "scan.completed", label: "Scan completed" },
                 ].map((event) => (
-                  <label key={event.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                  <label
+                    key={event.id}
+                    className="flex items-center gap-2 text-sm text-zinc-200"
+                  >
                     <input
                       type="checkbox"
                       checked={settings.webhookEvents.includes(event.id)}
                       onChange={(e) => {
                         const next = e.target.checked
                           ? [...settings.webhookEvents, event.id]
-                          : settings.webhookEvents.filter((item) => item !== event.id);
+                          : settings.webhookEvents.filter(
+                              (item) => item !== event.id,
+                            );
                         update("webhookEvents", next);
                       }}
                     />
@@ -589,7 +800,9 @@ export default function SettingsClient() {
             {loadingRepos ? (
               <p className="text-sm text-zinc-500">Loading repositories...</p>
             ) : repos.length === 0 ? (
-              <p className="text-sm text-zinc-500">No repositories submitted yet.</p>
+              <p className="text-sm text-zinc-500">
+                No repositories submitted yet.
+              </p>
             ) : (
               <div className="space-y-2">
                 {repos.map((repo) => (
@@ -604,7 +817,9 @@ export default function SettingsClient() {
                     <Button
                       size="sm"
                       variant={repo.is_public ? "default" : "outline"}
-                      onClick={() => updateRepoVisibility(repo.id, !repo.is_public)}
+                      onClick={() =>
+                        updateRepoVisibility(repo.id, !repo.is_public)
+                      }
                     >
                       {repo.is_public ? "Public" : "Private"}
                     </Button>
@@ -624,26 +839,161 @@ export default function SettingsClient() {
               <Label>Retention (days)</Label>
               <Input
                 type="number"
-                min={7}
-                max={365}
+                min={30}
+                max={30}
                 value={settings.retentionDays}
-                onChange={(event) =>
-                  update("retentionDays", Number(event.target.value))
-                }
+                readOnly
               />
+              <p className="text-xs text-zinc-500">
+                Scan data is automatically removed after 30 days.
+              </p>
             </div>
-            <Toggle
-              label="Share dashboard with team"
-              description="Allow org members to view scan metrics."
-              checked={settings.shareDashboard}
-              onChange={(value) => update("shareDashboard", value)}
-            />
-            <Toggle
-              label="Allow team invites"
-              description="Enable admins to invite new members."
-              checked={settings.allowInvites}
-              onChange={(value) => update("allowInvites", value)}
-            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => clearData("scan_history")}
+              >
+                Clear scan history
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => clearData("notifications")}
+              >
+                Clear notifications
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => clearData("all")}
+              >
+                Clear all data
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Teams</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Create team</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  placeholder="Team name"
+                  value={teamName}
+                  onChange={(event) => setTeamName(event.target.value)}
+                />
+                <Button
+                  size="sm"
+                  onClick={createTeam}
+                  disabled={!teamName.trim()}
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+
+            {teamStatus ? (
+              <p className="text-xs text-zinc-500">{teamStatus}</p>
+            ) : null}
+
+            {loadingTeams ? (
+              <p className="text-sm text-zinc-500">Loading teams...</p>
+            ) : teams.length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                No teams yet. Create one above.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {teams.map((team) => (
+                    <Button
+                      key={team.id}
+                      size="sm"
+                      variant={
+                        selectedTeamId === team.id ? "default" : "outline"
+                      }
+                      onClick={async () => {
+                        setSelectedTeamId(team.id);
+                        const { data: sessionData } =
+                          await supabase.auth.getSession();
+                        const accessToken = sessionData.session?.access_token;
+                        if (accessToken) {
+                          await loadTeamMembers(team.id, accessToken);
+                        }
+                      }}
+                    >
+                      {team.name}
+                    </Button>
+                  ))}
+                </div>
+
+                {selectedTeamId ? (
+                  <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+                    <div className="space-y-2">
+                      <Label>Add member by username</Label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          placeholder="username"
+                          value={inviteUsername}
+                          onChange={(event) =>
+                            setInviteUsername(event.target.value)
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          onClick={addMember}
+                          disabled={!inviteUsername.trim()}
+                        >
+                          Add member
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Members</Label>
+                      {teamMembers.length === 0 ? (
+                        <p className="text-xs text-zinc-500">No members yet.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {teamMembers.map((member) => (
+                            <div
+                              key={member.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 px-3 py-2"
+                            >
+                              <div>
+                                <p className="text-sm text-zinc-100">
+                                  {member.profiles?.full_name ??
+                                    member.profiles?.username ??
+                                    "Member"}
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                  {member.profiles?.username ?? member.user_id}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{member.role}</Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeMember(member.id)}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </CardContent>
         </Card>
 

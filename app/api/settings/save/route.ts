@@ -52,9 +52,14 @@ export async function POST(request: Request) {
       ...rest
     } = settings ?? {};
 
+    const normalized = {
+      ...rest,
+      retentionDays: 30,
+    };
+
     const settingsPayload = {
       user_id: userId,
-      data: rest ?? {},
+      data: normalized ?? {},
       updated_at: new Date().toISOString(),
     };
 
@@ -79,9 +84,9 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           user_id: userId,
-          email_alerts: rest.emailNotifications ?? true,
-          scan_depth: rest.scanDepth ?? 3,
-          ignored_paths: rest.ignoredPaths ?? "",
+          email_alerts: (normalized as any).emailNotifications ?? true,
+          scan_depth: (normalized as any).scanDepth ?? 3,
+          ignored_paths: (normalized as any).ignoredPaths ?? "",
           updated_at: new Date().toISOString(),
         }),
       });
@@ -96,33 +101,31 @@ export async function POST(request: Request) {
       savedData = savedRows?.[0] ?? null;
     }
 
-    if (webhookUrl || webhookEnabled) {
-      const webhookPayload = {
-        user_id: userId,
-        url: webhookUrl ?? "",
-        enabled: Boolean(webhookEnabled) && Boolean(webhookUrl),
-        events: Array.isArray(webhookEvents) && webhookEvents.length > 0
-          ? webhookEvents
-          : ["repository.published", "review.created"],
-        updated_at: new Date().toISOString(),
-      };
+    const webhookPayload = {
+      user_id: userId,
+      url: webhookUrl ?? "",
+      enabled: Boolean(webhookEnabled) && Boolean(webhookUrl),
+      events: Array.isArray(webhookEvents) && webhookEvents.length > 0
+        ? webhookEvents
+        : ["repository.published", "review.created", "scan.completed"],
+      updated_at: new Date().toISOString(),
+    };
 
-      const webhookRes = await supabaseFetch(env, "webhook_endpoints?on_conflict=user_id", {
-        method: "POST",
-        accessToken,
-        headers: {
-          Prefer: "resolution=merge-duplicates,return=representation",
-        },
-        body: JSON.stringify(webhookPayload),
-      });
+    const webhookRes = await supabaseFetch(env, "webhook_endpoints?on_conflict=user_id", {
+      method: "POST",
+      accessToken,
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify(webhookPayload),
+    });
 
-      if (!webhookRes.ok) {
-        const text = await webhookRes.text();
-        return NextResponse.json({ error: text }, { status: 500 });
-      }
+    if (!webhookRes.ok) {
+      const text = await webhookRes.text();
+      return NextResponse.json({ error: text }, { status: 500 });
     }
 
-    return NextResponse.json({ settings: savedData?.data ?? rest });
+    return NextResponse.json({ settings: savedData?.data ?? normalized });
   } catch (error) {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }

@@ -57,8 +57,8 @@ export async function POST(request: Request) {
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${siteUrl}/dashboard/billing?success=true`,
-      cancel_url: `${siteUrl}/dashboard/billing`,
+      success_url: `${siteUrl}/profile?tab=billing&success=true`,
+      cancel_url: `${siteUrl}/profile?tab=billing`,
     });
 
     return NextResponse.json({ url: session.url });

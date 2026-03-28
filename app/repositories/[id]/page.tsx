@@ -1,5 +1,10 @@
 import RepositoryDetailClient from "./RepositoryDetailClient";
 
-export default function RepositoryDetailPage({ params }: { params: { id: string } }) {
-  return <RepositoryDetailClient repoId={params.id} />;
+export default async function RepositoryDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <RepositoryDetailClient repoId={id} />;
 }

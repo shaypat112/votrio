@@ -1,0 +1,60 @@
+import { NextResponse } from "next/server";
+import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  try {
+    const { accessToken, teamId, username } = await request.json();
+
+    if (!accessToken || !teamId || !username) {
+      return NextResponse.json({ error: "Missing accessToken, teamId, or username." }, { status: 400 });
+    }
+
+    const userId = decodeUserId(accessToken);
+    if (!userId) {
+      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    }
+
+    const env = getSupabaseEnv();
+
+    const profileRes = await supabaseFetch(
+      env,
+      `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
+      { accessToken },
+    );
+
+    if (!profileRes.ok) {
+      const text = await profileRes.text();
+      return NextResponse.json({ error: text }, { status: 500 });
+    }
+
+    const profiles = await profileRes.json();
+    const profile = profiles?.[0];
+    if (!profile?.id) {
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    }
+
+    const memberRes = await supabaseFetch(env, "team_members", {
+      method: "POST",
+      accessToken,
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        team_id: teamId,
+        user_id: profile.id,
+        role: "member",
+        created_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!memberRes.ok) {
+      const text = await memberRes.text();
+      return NextResponse.json({ error: text }, { status: 500 });
+    }
+
+    const rows = await memberRes.json();
+    return NextResponse.json({ member: rows?.[0] ?? null });
+  } catch (error) {
+    return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
+  }
+}

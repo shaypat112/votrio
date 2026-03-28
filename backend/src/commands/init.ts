@@ -41,7 +41,8 @@ export default defineConfig({
 
 export async function initCommand(options: InitOptions) {
   const cwd = process.cwd();
-  const configPath = path.join(cwd, "votrio.config.ts");
+  const configPath = path.join(cwd, "votrio.config.mjs");
+  const legacyConfigPath = path.join(cwd, "votrio.config.ts");
   const votrioDir = path.join(cwd, ".votrio");
 
   console.log(`\n${chalk.bold("votrio")} ${chalk.dim("—")} initializing\n`);
@@ -60,13 +61,13 @@ export async function initCommand(options: InitOptions) {
   dirSpinner.succeed("Created .votrio/");
 
   // Write config
-  const configSpinner = ora("Writing votrio.config.ts...").start();
-  const exists = await fileExists(configPath);
+  const configSpinner = ora("Writing votrio.config.mjs...").start();
+  const exists = (await fileExists(configPath)) || (await fileExists(legacyConfigPath));
   if (exists) {
-    configSpinner.warn("votrio.config.ts already exists — skipping");
+    configSpinner.warn("votrio.config already exists — skipping");
   } else {
     await fs.writeFile(configPath, CONFIG_TEMPLATE, "utf-8");
-    configSpinner.succeed("Created votrio.config.ts");
+    configSpinner.succeed("Created votrio.config.mjs");
   }
 
   // Update .gitignore

@@ -46,7 +46,7 @@ export default function ProfileHeader({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => router.push("/dashboard/billing")}
+            onClick={() => router.push("/profile?tab=billing")}
           >
             Billing
           </Button>

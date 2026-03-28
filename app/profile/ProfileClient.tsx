@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/lib/supabase";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
@@ -15,6 +14,7 @@ import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 import ReviewQueue from "./components/ReviewQueue";
 import MyRepositories from "./components/MyRepositories";
+import BillingPanel from "./components/BillingPanel";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
@@ -35,6 +35,7 @@ export default function ProfileClient() {
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     let mounted = true;
@@ -106,6 +107,13 @@ export default function ProfileClient() {
       mounted = false;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab") as TabKey | null;
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const initials = name
     .split(" ")
@@ -320,7 +328,9 @@ export default function ProfileClient() {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-sm font-semibold text-zinc-100">Repositories left for review</p>
+              <p className="text-sm font-semibold text-zinc-100">
+                Repositories left for review
+              </p>
               <p className="text-xs text-zinc-500">
                 Review public repositories and help others improve their code.
               </p>
@@ -334,13 +344,21 @@ export default function ProfileClient() {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-1">
-              <p className="text-sm font-semibold text-zinc-100">My repositories</p>
+              <p className="text-sm font-semibold text-zinc-100">
+                My repositories
+              </p>
               <p className="text-xs text-zinc-500">
                 Submitted repositories appear here with review links.
               </p>
             </CardContent>
           </Card>
           <MyRepositories />
+        </div>
+      )}
+
+      {activeTab === "billing" && (
+        <div className="space-y-4">
+          <BillingPanel />
         </div>
       )}
     </div>

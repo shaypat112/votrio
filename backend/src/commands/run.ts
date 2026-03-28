@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getApiKey } from "../utils/config.js";
 import { extractTraces } from "../utils/trace-extractor.js";
 import stripAnsi from "strip-ansi";
+import { loadConfig } from "../config.js";
 
 interface RunOptions {
   ai: boolean;
@@ -12,10 +13,32 @@ interface RunOptions {
 }
 
 const HEADER = chalk.dim("●") + " " + chalk.bold("votrio");
+const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
 export async function runCommand(userCommand: string, options: RunOptions) {
+  const { config, warnings, source } = await loadConfig();
+  if (options.verbose && warnings.length) {
+    for (const warning of warnings) {
+      console.log(chalk.yellow(`\n${HEADER} ${warning}\n`));
+    }
+  }
+  if (options.verbose && source) {
+    console.log(chalk.dim(`${HEADER} using config ${source}\n`));
+  }
+
+  const traceConfig = config.traces ?? {};
+  const envModel =
+    process.env.VOTRIO_TRACE_MODEL ||
+    process.env.VOTRIO_MODEL ||
+    process.env.ANTHROPIC_MODEL;
+  const model =
+    options.model !== DEFAULT_MODEL
+      ? options.model
+      : envModel || config.model || DEFAULT_MODEL;
+
   const apiKey = await getApiKey();
-  const aiEnabled = options.ai && !!apiKey;
+  const tracesEnabled = traceConfig.enabled ?? true;
+  const aiEnabled = options.ai && tracesEnabled && !!apiKey;
 
   // Print banner
   console.log(
@@ -23,7 +46,13 @@ export async function runCommand(userCommand: string, options: RunOptions) {
   );
   if (aiEnabled) {
     console.log(
-      `${chalk.dim("●")} ${chalk.dim("AI trace analysis")} ${chalk.green("enabled")} ${chalk.dim(`(${options.model.split("-")[1]})\n`)}`
+      `${chalk.dim("●")} ${chalk.dim("AI trace analysis")} ${chalk.green("enabled")} ${chalk.dim(`(${model.split("-")[1] ?? model})\n`)}`
+    );
+  } else if (options.ai && !tracesEnabled) {
+    console.log(
+      chalk.yellow(
+        `${chalk.dim("●")} AI disabled — traces are disabled in config\n`
+      )
     );
   } else if (options.ai && !apiKey) {
     console.log(
@@ -61,7 +90,7 @@ export async function runCommand(userCommand: string, options: RunOptions) {
     if (traces.length > 0) {
       stderrBuffer = ""; // clear so we don't re-analyze
       for (const trace of traces) {
-        await analyzeTrace(trace, options.model, apiKey!);
+        await analyzeTrace(trace, model, apiKey!);
       }
     }
   });

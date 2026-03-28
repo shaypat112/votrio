@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import { getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { deliverWebhooks } from "@/app/lib/server/webhooks";
+import { logActivity } from "@/app/lib/server/activity";
+import { createNotification } from "@/app/lib/server/notifications";
+import { purgeUserData } from "@/app/lib/server/retention";
 
 export const runtime = "nodejs";
 
@@ -54,18 +59,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid access token" }, { status: 400 });
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const mistralKey = process.env.MISTRAL_API_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json({ error: "Supabase env vars are missing" }, { status: 500 });
-  }
   if (!mistralKey) {
     return NextResponse.json({ error: "MISTRAL_API_KEY is missing" }, { status: 500 });
   }
 
   try {
+    const supabaseEnv = getSupabaseEnv();
     const repo = await fetchJson(`https://api.github.com/repos/${repoFullName}`, providerToken);
     const branch = repo.default_branch;
 
@@ -157,14 +158,10 @@ export async function POST(request: Request) {
       created_at: now,
     };
 
-    const insertRes = await fetch(`${supabaseUrl}/rest/v1/scan_history`, {
+    const insertRes = await supabaseFetch(supabaseEnv, "scan_history", {
       method: "POST",
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
+      accessToken,
+      headers: { Prefer: "return=representation" },
       body: JSON.stringify(payload),
     });
 
@@ -175,17 +172,12 @@ export async function POST(request: Request) {
 
     const inserted = await insertRes.json();
 
-    const updateRepoRes = await fetch(
-      `${supabaseUrl}/rest/v1/connected_repos?user_id=eq.${userId}&full_name=eq.${encodeURIComponent(
-        repoFullName
-      )}`,
+    const updateRepoRes = await supabaseFetch(
+      supabaseEnv,
+      `connected_repos?user_id=eq.${userId}&full_name=eq.${encodeURIComponent(repoFullName)}`,
       {
         method: "PATCH",
-        headers: {
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+        accessToken,
         body: JSON.stringify({ last_scanned_at: now }),
       }
     );
@@ -194,6 +186,44 @@ export async function POST(request: Request) {
       const text = await updateRepoRes.text();
       return NextResponse.json({ error: `Failed to update repo: ${text}` }, { status: 500 });
     }
+
+    await logActivity(supabaseEnv, accessToken, {
+      actor_id: userId,
+      action: "scan.completed",
+      target_type: "repository",
+      target_id: null,
+      meta: { repo_url: repoFullName },
+    });
+
+    await deliverWebhooks(supabaseEnv, accessToken, {
+      userId,
+      event: "scan.completed",
+      payload: {
+        repo_url: repoFullName,
+        total_findings: issues,
+      },
+    });
+
+    await createNotification({
+      env: supabaseEnv,
+      accessToken,
+      userId,
+      type: "scan.completed",
+      data: {
+        repo_name: repoFullName,
+        repo_url: repoFullName,
+        severity,
+        issues,
+        score,
+      },
+    });
+
+    await purgeUserData({
+      env: supabaseEnv,
+      accessToken,
+      userId,
+      days: 30,
+    });
 
     return NextResponse.json({
       summary,

@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/app/lib/supabase";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
@@ -25,7 +27,17 @@ type PublicRepo = {
   created_at: string;
 };
 
+type ScanSummary = {
+  repo_id: string;
+  repo: string;
+  created_at: string;
+  severity: string;
+  issues: number;
+  score: number;
+};
+
 export default function RepositoriesClient() {
+  const supabase = useMemo(() => createClient(), []);
   const [repos, setRepos] = useState<PublicRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState("newest");
@@ -33,6 +45,8 @@ export default function RepositoriesClient() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("all");
   const [error, setError] = useState<string | null>(null);
+  const [scanSummaries, setScanSummaries] = useState<Record<string, ScanSummary>>({});
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const loadRepos = async (nextPage = 1, nextSort = sort, nextSearch = search, nextTag = tag) => {
     setLoading(true);
@@ -59,14 +73,46 @@ export default function RepositoriesClient() {
       return;
     }
     const data = await res.json();
-    setRepos((data?.repos ?? []) as PublicRepo[]);
+    const nextRepos = (data?.repos ?? []) as PublicRepo[];
+    setRepos(nextRepos);
     setPage(nextPage);
     setLoading(false);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (accessToken && nextRepos.length) {
+      await loadScanSummaries(nextRepos.map((repo) => repo.id), accessToken);
+    } else {
+      setScanSummaries({});
+    }
   };
 
   useEffect(() => {
     loadRepos(1, sort, search, tag);
   }, [sort, tag]);
+
+  const loadScanSummaries = async (repoIds: string[], accessToken: string) => {
+    setScanError(null);
+    const params = new URLSearchParams({
+      accessToken,
+      repoIds: repoIds.join(","),
+    });
+
+    const res = await fetch(`/api/reports/batch?${params.toString()}`);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setScanError(data?.error ?? "Unable to load scan summaries.");
+      return;
+    }
+
+    const data = await res.json();
+    const summaries = (data?.scans ?? []) as ScanSummary[];
+    const map: Record<string, ScanSummary> = {};
+    for (const item of summaries) {
+      map[item.repo_id] = item;
+    }
+    setScanSummaries(map);
+  };
 
   const availableTags = Array.from(
     new Set(repos.flatMap((repo) => repo.tags ?? [])),
@@ -136,6 +182,7 @@ export default function RepositoriesClient() {
       </div>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {scanError ? <p className="text-xs text-zinc-500">{scanError}</p> : null}
 
       {loading ? (
         <p className="text-sm text-zinc-500">Loading repositories...</p>
@@ -157,6 +204,18 @@ export default function RepositoriesClient() {
                   <span>{repo.review_count} reviews</span>
                   <span>Avg {repo.rating_avg ?? 0}</span>
                 </div>
+                {scanSummaries[repo.id] ? (
+                  <div className="rounded-lg border border-zinc-800 p-3 text-xs text-zinc-400">
+                    <div className="flex items-center justify-between">
+                      <span>Latest scan</span>
+                      <Badge variant="outline">{scanSummaries[repo.id].severity}</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span>Issues {scanSummaries[repo.id].issues}</span>
+                      <span>Score {scanSummaries[repo.id].score}</span>
+                    </div>
+                  </div>
+                ) : null}
                 {repo.tags?.length ? (
                   <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
                     {repo.tags.map((tagItem) => (

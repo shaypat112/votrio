@@ -62,7 +62,7 @@ create table if not exists public.webhook_endpoints (
   user_id uuid not null references public.profiles (id) on delete cascade,
   url text not null,
   enabled boolean not null default true,
-  events text[] not null default array['repository.published','review.created'],
+  events text[] not null default array['repository.published','review.created','scan.completed'],
   secret text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -114,6 +114,35 @@ create table if not exists public.billing_customers (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.teams (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.profiles (id) on delete cascade,
+  name text not null,
+  slug text not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.team_members (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null default 'member',
+  created_at timestamptz not null default now(),
+  constraint team_members_unique unique (team_id, user_id)
+);
+
+create table if not exists public.team_invites (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams (id) on delete cascade,
+  email text,
+  invited_by uuid references public.profiles (id) on delete set null,
+  status text not null default 'pending',
+  token text not null unique,
+  created_at timestamptz not null default now(),
+  accepted_at timestamptz
+);
+
 -- RLS
 alter table public.repositories enable row level security;
 alter table public.reviews enable row level security;
@@ -125,6 +154,14 @@ alter table public.activity_log enable row level security;
 alter table public.site_feedback enable row level security;
 alter table public.scan_history enable row level security;
 alter table public.billing_customers enable row level security;
+alter table public.teams enable row level security;
+alter table public.team_members enable row level security;
+alter table public.team_invites enable row level security;
+
+-- profiles table is managed by Supabase auth; ensure team features can resolve usernames
+create policy "Authenticated can read profiles"
+  on public.profiles for select
+  using (auth.uid() is not null);
 
 create policy "Public can read published repositories"
   on public.repositories for select
@@ -200,3 +237,35 @@ create policy "Users can update own billing"
 create policy "Users can insert own billing"
   on public.billing_customers for insert
   with check (auth.uid() = user_id);
+
+create policy "Team members can read teams"
+  on public.teams for select
+  using (
+    auth.uid() = owner_id or
+    auth.uid() in (select user_id from public.team_members where team_id = id)
+  );
+
+create policy "Owners can create teams"
+  on public.teams for insert
+  with check (auth.uid() = owner_id);
+
+create policy "Owners can update teams"
+  on public.teams for update
+  using (auth.uid() = owner_id);
+
+create policy "Members can read team members"
+  on public.team_members for select
+  using (
+    auth.uid() = user_id or
+    auth.uid() in (select owner_id from public.teams where id = team_id)
+  );
+
+create policy "Owners can manage team members"
+  on public.team_members for all
+  using (auth.uid() in (select owner_id from public.teams where id = team_id))
+  with check (auth.uid() in (select owner_id from public.teams where id = team_id));
+
+create policy "Owners can manage team invites"
+  on public.team_invites for all
+  using (auth.uid() in (select owner_id from public.teams where id = team_id))
+  with check (auth.uid() in (select owner_id from public.teams where id = team_id));

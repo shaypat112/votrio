@@ -5,6 +5,7 @@ import ora from "ora";
 import { glob } from "glob";
 
 import { analyzeCode } from "../lib/mistral";
+import { loadConfig } from "../config.js";
 
 type Severity = "low" | "medium" | "high" | "critical";
 
@@ -14,7 +15,7 @@ interface ScanOptions {
   ai?: boolean;
   aiModel?: string;
   failOn: Severity;
-  format: "text" | "json" | "markdown";
+  format: "text" | "json" | "markdown" | "sarif";
   ignore: string[];
   watch?: boolean;
   publish?: boolean;
@@ -39,6 +40,18 @@ interface PatternCheck {
   type: string;
   message: string;
   suggestion?: string;
+}
+
+interface RulesFile {
+  ignore?: string[];
+  patterns?: Array<{
+    pattern: string;
+    flags?: string;
+    severity: Severity;
+    type: string;
+    message: string;
+    suggestion?: string;
+  }>;
 }
 
 const SEVERITY_SCORE: Record<Severity, number> = {
@@ -90,6 +103,23 @@ export async function scanCommand(
   scanPath: string = ".",
   options: ScanOptions
 ) {
+  const { config, warnings } = await loadConfig();
+  if (warnings.length) {
+    for (const warning of warnings) {
+      console.log(chalk.yellow(`\n${warning}\n`));
+    }
+  }
+
+  const scanConfig = config.scan ?? {};
+  const rulesPath =
+    options.rules ||
+    scanConfig.rules ||
+    (await defaultRulesPath(process.cwd()));
+  const rules = await loadRules(rulesPath);
+  for (const warning of rules.warnings) {
+    console.log(chalk.yellow(`\n${warning}\n`));
+  }
+
   const resolved = path.resolve(process.cwd(), scanPath);
 
   console.log(`\n${chalk.bold("votrio")} ${chalk.dim("scan")}\n`);
@@ -101,18 +131,45 @@ export async function scanCommand(
     "dist/**",
     "build/**",
     "**/*.min.js",
+    ...(scanConfig.ignore ?? []),
+    ...(rules.ignore ?? []),
     ...(options.ignore ?? [])
   ];
 
+  const aiEnabled =
+    options.ai ||
+    scanConfig.ai ||
+    process.env.VOTRIO_SCAN_AI === "true";
+  const aiModel =
+    options.aiModel ||
+    scanConfig.aiModel ||
+    process.env.VOTRIO_SCAN_AI_MODEL ||
+    "mistral-large-latest";
+
+  const publishEnabled =
+    options.publish ||
+    scanConfig.publish ||
+    process.env.VOTRIO_PUBLISH === "true";
+
   const files = await discoverFiles(resolved, ignore);
 
-  const findings = await scanFiles(files, options);
+  const findings = await scanFiles(files, {
+    ...options,
+    ai: aiEnabled,
+    aiModel,
+    fix: options.fix || scanConfig.autoFix || false,
+    extraPatterns: rules.patterns,
+  });
 
   const deduped = dedupe(findings);
 
   outputResults(deduped, options);
 
   if (options.ci) handleCI(deduped, options);
+
+  if (publishEnabled) {
+    await publishScanSummary(deduped);
+  }
 }
 
 async function discoverFiles(root: string, ignore: string[]) {
@@ -129,10 +186,14 @@ async function discoverFiles(root: string, ignore: string[]) {
   return files;
 }
 
-async function scanFiles(files: string[], options: ScanOptions) {
+async function scanFiles(
+  files: string[],
+  options: ScanOptions & { extraPatterns?: PatternCheck[] }
+) {
   const spinner = ora("Scanning").start();
 
   const findings: Finding[] = [];
+  const checks = [...QUICK_PATTERNS, ...(options.extraPatterns ?? [])];
 
   let index = 0;
 
@@ -151,7 +212,7 @@ async function scanFiles(files: string[], options: ScanOptions) {
 
     const lines = content.split("\n");
 
-    for (const check of QUICK_PATTERNS) {
+    for (const check of checks) {
       const matches = [...content.matchAll(check.pattern)];
 
       for (const match of matches) {
@@ -213,6 +274,60 @@ ${code.slice(0, 6000)}
   }
 }
 
+async function defaultRulesPath(cwd: string): Promise<string | undefined> {
+  const p = path.join(cwd, ".votrio", "rules.json");
+  return (await exists(p)) ? p : undefined;
+}
+
+async function loadRules(rulesPath?: string) {
+  const warnings: string[] = [];
+  if (!rulesPath) {
+    return { patterns: [] as PatternCheck[], ignore: [] as string[], warnings };
+  }
+
+  const absolute = path.isAbsolute(rulesPath)
+    ? rulesPath
+    : path.join(process.cwd(), rulesPath);
+
+  if (!(await exists(absolute))) {
+    warnings.push(`Rules file not found: ${rulesPath}`);
+    return { patterns: [] as PatternCheck[], ignore: [] as string[], warnings };
+  }
+
+  try {
+    const raw = await fs.readFile(absolute, "utf8");
+    const data = JSON.parse(raw) as RulesFile;
+    const patterns: PatternCheck[] = [];
+
+    for (const rule of data.patterns ?? []) {
+      if (!rule.pattern || !rule.severity || !rule.type || !rule.message) {
+        warnings.push(`Invalid rule in ${rulesPath} — missing required fields.`);
+        continue;
+      }
+      try {
+        patterns.push({
+          pattern: new RegExp(rule.pattern, rule.flags),
+          severity: rule.severity,
+          type: rule.type,
+          message: rule.message,
+          suggestion: rule.suggestion,
+        });
+      } catch {
+        warnings.push(`Invalid regex in ${rulesPath}: ${rule.pattern}`);
+      }
+    }
+
+    return {
+      patterns,
+      ignore: data.ignore ?? [],
+      warnings,
+    };
+  } catch (err: any) {
+    warnings.push(`Failed to parse ${rulesPath}: ${err?.message ?? String(err)}`);
+    return { patterns: [] as PatternCheck[], ignore: [] as string[], warnings };
+  }
+}
+
 function dedupe(findings: Finding[]) {
   const map = new Map<string, Finding>();
 
@@ -244,6 +359,11 @@ function outputResults(findings: Finding[], options: ScanOptions) {
       );
     }
 
+    return;
+  }
+
+  if (options.format === "sarif") {
+    console.log(JSON.stringify(toSarif(findings), null, 2));
     return;
   }
 
@@ -279,10 +399,200 @@ function outputResults(findings: Finding[], options: ScanOptions) {
   console.log(`${findings.length} issue(s) detected\n`);
 }
 
+function toSarif(findings: Finding[]) {
+  const rules: Array<{
+    id: string;
+    name: string;
+    shortDescription: { text: string };
+    properties?: Record<string, unknown>;
+  }> = [];
+  const ruleIndex = new Map<string, number>();
+
+  for (const f of findings) {
+    if (ruleIndex.has(f.type)) continue;
+    ruleIndex.set(f.type, rules.length);
+    rules.push({
+      id: f.type,
+      name: f.type,
+      shortDescription: { text: f.message },
+      properties: { severity: f.severity, score: f.score },
+    });
+  }
+
+  const results = findings.map((f) => ({
+    ruleId: f.type,
+    level: sarifLevel(f.severity),
+    message: { text: f.message },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: f.file },
+          region: { startLine: Math.max(1, f.line) },
+        },
+      },
+    ],
+    properties: { severity: f.severity, score: f.score },
+  }));
+
+  return {
+    $schema:
+      "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "votrio",
+            informationUri: "https://votrio.dev",
+            rules,
+          },
+        },
+        results,
+      },
+    ],
+  };
+}
+
+function sarifLevel(severity: Severity) {
+  switch (severity) {
+    case "critical":
+    case "high":
+      return "error";
+    case "medium":
+      return "warning";
+    default:
+      return "note";
+  }
+}
+
 function handleCI(findings: Finding[], options: ScanOptions) {
   const threshold = SEVERITY_SCORE[options.failOn];
 
   const fail = findings.some(f => SEVERITY_SCORE[f.severity] >= threshold);
 
   if (fail) process.exit(1);
+}
+
+async function publishScanSummary(
+  findings: Finding[],
+  options?: { repoOverride?: string }
+) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+
+  if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+    console.log(
+      chalk.yellow(
+        "\nPublish skipped: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_ACCESS_TOKEN are required.\n"
+      )
+    );
+    return;
+  }
+
+  const repo = options?.repoOverride || (await inferRepoSlug(process.cwd()));
+  const { total, severity, avgScore } = summarizeFindings(findings);
+  const userId = decodeUserId(accessToken);
+
+  const payload: Record<string, unknown> = {
+    repo,
+    created_at: new Date().toISOString(),
+    severity,
+    issues: total,
+    score: avgScore,
+    findings: { list: findings },
+  };
+
+  if (userId) payload.user_id = userId;
+
+  const spinner = ora("Publishing scan summary...").start();
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/scan_history`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      spinner.fail(`Publish failed: ${text}`);
+      return;
+    }
+
+    spinner.succeed("Published scan summary");
+  } catch (err: any) {
+    spinner.fail(`Publish failed: ${err?.message ?? String(err)}`);
+  }
+}
+
+function summarizeFindings(findings: Finding[]) {
+  const total = findings.length;
+  const maxScore = findings.reduce((max, item) => Math.max(max, item.score), 0);
+  const severity =
+    findings.find((item) => item.score === maxScore)?.severity ?? "low";
+  const avgScore =
+    total > 0
+      ? Math.round(findings.reduce((sum, item) => sum + item.score, 0) / total)
+      : 0;
+  return { total, severity, avgScore };
+}
+
+function decodeUserId(token: string): string | null {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const json = Buffer.from(payload, "base64url").toString("utf8");
+    const data = JSON.parse(json) as { sub?: string; user_id?: string };
+    return data.sub ?? data.user_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function inferRepoSlug(cwd: string): Promise<string> {
+  const gitConfigPath = path.join(cwd, ".git", "config");
+  if (await exists(gitConfigPath)) {
+    try {
+      const content = await fs.readFile(gitConfigPath, "utf8");
+      const match = content.match(/\[remote "origin"\][^\[]*?url = (.+)/);
+      if (match?.[1]) {
+        const url = match[1].trim();
+        const slug = parseRepoSlug(url);
+        if (slug) return slug;
+      }
+    } catch {
+      // ignore parsing errors
+    }
+  }
+  return path.basename(cwd);
+}
+
+function parseRepoSlug(remoteUrl: string): string | null {
+  if (remoteUrl.startsWith("git@")) {
+    const match = remoteUrl.match(/:(.+?)(\.git)?$/);
+    return match?.[1] ?? null;
+  }
+
+  try {
+    const url = new URL(remoteUrl);
+    const slug = url.pathname.replace(/^\/+/, "").replace(/\.git$/, "");
+    return slug || null;
+  } catch {
+    return null;
+  }
+}
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }

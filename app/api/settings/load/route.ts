@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { purgeUserData } from "@/app/lib/server/retention";
 
 export const runtime = "nodejs";
 
@@ -18,12 +19,13 @@ const DEFAULT_SETTINGS = {
   riskThreshold: "medium",
   reportFormat: "markdown",
   aiModel: "mistral-large-latest",
+  require2fa: false,
+  sessionTimeoutHours: 12,
+  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
-  webhookEvents: ["repository.published", "review.created"],
+  webhookEvents: ["repository.published", "review.created", "scan.completed"],
   retentionDays: 30,
-  shareDashboard: false,
-  allowInvites: true,
 };
 
 export async function POST(request: Request) {
@@ -106,7 +108,10 @@ export async function POST(request: Request) {
       webhookEnabled: webhook.enabled ?? storedSettings.webhookEnabled ?? DEFAULT_SETTINGS.webhookEnabled,
       webhookUrl: webhook.url ?? storedSettings.webhookUrl ?? DEFAULT_SETTINGS.webhookUrl,
       webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
+      retentionDays: 30,
     };
+
+    await purgeUserData({ env, accessToken, userId, days: 30 });
 
     return NextResponse.json({ settings });
   } catch (error) {

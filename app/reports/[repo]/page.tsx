@@ -1,5 +1,10 @@
 import ReportDetailClient from "./ReportDetailClient";
 
-export default function ReportDetailPage({ params }: { params: { repo: string } }) {
-  return <ReportDetailClient repoSlug={params.repo} />;
+export default async function ReportDetailPage({
+  params,
+}: {
+  params: Promise<{ repo: string }>;
+}) {
+  const { repo } = await params;
+  return <ReportDetailClient repoSlug={repo} />;
 }
