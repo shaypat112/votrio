@@ -1,12 +1,6 @@
 import { Button } from "@/components/ui/button";
 
-export type TabKey =
-  | "overview"
-  | "scans"
-  | "integrations"
-  | "repositories"
-  | "my-repos"
-  | "billing";
+export type TabKey = "scans" | "integrations" | "repositories" | "my-repos";
 
 export default function TabNav({
   active,
@@ -16,12 +10,10 @@ export default function TabNav({
   onChange: (value: TabKey) => void;
 }) {
   const tabs: Array<{ key: TabKey; label: string }> = [
-    { key: "overview", label: "Overview" },
     { key: "scans", label: "Scans" },
     { key: "integrations", label: "Integrations" },
     { key: "repositories", label: "Repositories left for review" },
     { key: "my-repos", label: "My repositories" },
-    { key: "billing", label: "Billing" },
   ];
 
   return (

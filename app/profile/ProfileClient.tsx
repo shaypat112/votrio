@@ -12,9 +12,8 @@ import TabNav, { type TabKey } from "./components/TabNav";
 
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
-import ReviewQueue from "./components/ReviewQueue";
+
 import MyRepositories from "./components/MyRepositories";
-import BillingPanel from "./components/BillingPanel";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
@@ -30,7 +29,7 @@ export default function ProfileClient() {
   const [ignoredPaths, setIgnoredPaths] = useState(
     "node_modules/**, dist/**, .next/**",
   );
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [activeTab, setActiveTab] = useState<TabKey>("scans");
   const [savingProfile, setSavingProfile] = useState(false);
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
@@ -288,22 +287,6 @@ export default function ProfileClient() {
         </CardContent>
       </Card>
 
-      {activeTab === "overview" && (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Mistral AI insight
-              </p>
-              <p className="text-sm text-zinc-100">
-                {scans[0]?.summary ??
-                  "Run a repository scan to generate AI security insights and refactoring tips."}
-              </p>
-            </CardContent>
-          </Card>
-          <ScanTable scans={scans} />
-        </div>
-      )}
       {activeTab === "scans" && <ScanTable scans={scans} />}
 
       {activeTab === "integrations" && (
@@ -336,7 +319,6 @@ export default function ProfileClient() {
               </p>
             </CardContent>
           </Card>
-          <ReviewQueue />
         </div>
       )}
 
@@ -353,12 +335,6 @@ export default function ProfileClient() {
             </CardContent>
           </Card>
           <MyRepositories />
-        </div>
-      )}
-
-      {activeTab === "billing" && (
-        <div className="space-y-4">
-          <BillingPanel />
         </div>
       )}
     </div>
