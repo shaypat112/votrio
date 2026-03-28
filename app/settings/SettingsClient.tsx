@@ -2,13 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import { cn } from "../lib/utils";
+import {
+  User,
+  Bell,
+  Shield,
+  Zap,
+  Webhook,
+  Eye,
+  Database,
+  Users,
+  CreditCard,
+  ChevronRight,
+  Check,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type SettingsState = {
   fullName: string;
@@ -94,6 +109,24 @@ type TeamMember = {
   };
 };
 
+// ─── Nav sections ─────────────────────────────────────────────────────────────
+
+const NAV_SECTIONS = [
+  { id: "account", label: "Account", icon: User },
+  { id: "security", label: "Security", icon: Shield },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "scanning", label: "Scanning", icon: Zap },
+  { id: "webhooks", label: "Webhooks", icon: Webhook },
+  { id: "repos", label: "Repositories", icon: Eye },
+  { id: "retention", label: "Data", icon: Database },
+  { id: "teams", label: "Teams", icon: Users },
+  { id: "plan", label: "Plan", icon: CreditCard },
+] as const;
+
+type SectionId = (typeof NAV_SECTIONS)[number]["id"];
+
+// ─── Primitives ───────────────────────────────────────────────────────────────
+
 function Toggle({
   label,
   description,
@@ -106,25 +139,148 @@ function Toggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-zinc-900 bg-zinc-950/40 px-3 py-2">
-      <input
-        type="checkbox"
-        className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-white"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span className="flex-1">
-        <span className="block text-sm text-zinc-100">{label}</span>
-        {description ? (
-          <span className="block text-xs text-zinc-500">{description}</span>
-        ) : null}
-      </span>
-    </label>
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors",
+        "border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]",
+      )}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-zinc-100">{label}</p>
+        {description && (
+          <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+            {description}
+          </p>
+        )}
+      </div>
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
+          "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
+          checked ? "bg-white" : "bg-zinc-700",
+        )}
+      >
+        <span
+          className={cn(
+            "pointer-events-none inline-block h-4 w-4 rounded-full shadow-sm",
+            "transform transition-transform duration-200",
+            checked ? "translate-x-4 bg-black" : "translate-x-0 bg-zinc-400",
+          )}
+        />
+      </button>
+    </div>
   );
 }
 
+function FieldGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium uppercase tracking-widest text-zinc-500">
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+function StyledInput(props: React.ComponentProps<typeof Input>) {
+  return (
+    <Input
+      {...props}
+      className={cn(
+        "h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-zinc-100",
+        "placeholder:text-zinc-600 focus:border-white/20 focus:bg-white/[0.05] focus:ring-0",
+        "transition-colors",
+        props.className,
+      )}
+    />
+  );
+}
+
+function StyledSelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "w-full h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-zinc-100",
+        "focus:border-white/20 focus:outline-none focus:ring-0 transition-colors",
+        "appearance-none cursor-pointer",
+      )}
+    >
+      {children}
+    </select>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+      <div className="border-b border-white/[0.06] px-6 py-4">
+        <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
+        {description && (
+          <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+        )}
+      </div>
+      <div className="p-6 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function DangerButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "rounded-lg border border-red-900/40 bg-red-950/20 px-3 py-1.5 text-xs font-medium text-red-400",
+        "hover:border-red-800/60 hover:bg-red-950/40 hover:text-red-300 transition-colors",
+        "disabled:opacity-40 disabled:cursor-not-allowed",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function SettingsClient() {
   const supabase = useMemo(() => createClient(), []);
+  const [activeSection, setActiveSection] = useState<SectionId>("account");
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -142,23 +298,27 @@ export default function SettingsClient() {
   const [teamStatus, setTeamStatus] = useState<string | null>(null);
   const router = useRouter();
 
+  const update = <K extends keyof SettingsState>(
+    key: K,
+    value: SettingsState[K],
+  ) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // ── Load ──────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     let mounted = true;
-
-    const loadSettings = async () => {
+    const load = async () => {
       if (!supabase) {
-        setError(
-          "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-        );
+        setError("Supabase not configured.");
         setLoading(false);
         return;
       }
-
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
-
       if (!accessToken) {
-        setError("Please sign in to manage settings.");
+        setError("Please sign in.");
         setLoading(false);
         return;
       }
@@ -168,36 +328,20 @@ export default function SettingsClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken }),
       });
-
       if (!mounted) return;
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Unable to load settings.");
-        setLoading(false);
-        return;
+      if (res.ok) {
+        const data = await res.json();
+        setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
       }
-
-      const data = await res.json();
-      setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
       await loadRepos(accessToken);
       await loadTeams(accessToken);
       setLoading(false);
     };
-
-    loadSettings();
-
+    load();
     return () => {
       mounted = false;
     };
   }, [supabase]);
-
-  const update = <K extends keyof SettingsState>(
-    key: K,
-    value: SettingsState[K],
-  ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  };
 
   const loadRepos = async (accessToken: string) => {
     setLoadingRepos(true);
@@ -206,28 +350,22 @@ export default function SettingsClient() {
     );
     if (res.ok) {
       const data = await res.json();
-      setRepos((data?.repos ?? []) as RepoVisibility[]);
+      setRepos(data?.repos ?? []);
     }
     setLoadingRepos(false);
   };
 
   const loadTeams = async (accessToken: string) => {
     setLoadingTeams(true);
-    setTeamStatus(null);
     const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setTeamStatus(data?.error ?? "Unable to load teams.");
-      setTeams([]);
-      setLoadingTeams(false);
-      return;
-    }
-    const data = await res.json();
-    const nextTeams = (data?.teams ?? []) as Team[];
-    setTeams(nextTeams);
-    if (!selectedTeamId && nextTeams.length > 0) {
-      setSelectedTeamId(nextTeams[0].id);
-      await loadTeamMembers(nextTeams[0].id, accessToken);
+    if (res.ok) {
+      const data = await res.json();
+      const nextTeams = (data?.teams ?? []) as Team[];
+      setTeams(nextTeams);
+      if (!selectedTeamId && nextTeams.length > 0) {
+        setSelectedTeamId(nextTeams[0].id);
+        await loadTeamMembers(nextTeams[0].id, accessToken);
+      }
     }
     setLoadingTeams(false);
   };
@@ -236,43 +374,29 @@ export default function SettingsClient() {
     const res = await fetch(
       `/api/teams/members?accessToken=${accessToken}&teamId=${teamId}`,
     );
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setTeamStatus(data?.error ?? "Unable to load team members.");
-      setTeamMembers([]);
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      setTeamMembers(data?.members ?? []);
     }
-    const data = await res.json();
-    setTeamMembers((data?.members ?? []) as TeamMember[]);
   };
 
   const updateRepoVisibility = async (repoId: string, isPublic: boolean) => {
     if (!supabase) return;
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setError("Please sign in to update repository visibility.");
-      return;
-    }
-
+    const at = sessionData.session?.access_token;
+    if (!at) return;
     const res = await fetch("/api/repositories/update-visibility", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, repoId, isPublic }),
+      body: JSON.stringify({ accessToken: at, repoId, isPublic }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Unable to update repository visibility.");
-      return;
-    }
-
-    const data = await res.json();
-    const updated = data?.repo as RepoVisibility | undefined;
-    if (updated) {
-      setRepos((prev) =>
-        prev.map((repo) => (repo.id === updated.id ? updated : repo)),
-      );
+    if (res.ok) {
+      const data = await res.json();
+      const updated = data?.repo as RepoVisibility | undefined;
+      if (updated)
+        setRepos((prev) =>
+          prev.map((r) => (r.id === updated.id ? updated : r)),
+        );
     }
   };
 
@@ -281,30 +405,23 @@ export default function SettingsClient() {
     setSaving(true);
     setStatus(null);
     setError(null);
-
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-
-    if (!accessToken) {
-      setError("Please sign in to save settings.");
+    const at = sessionData.session?.access_token;
+    if (!at) {
+      setError("Please sign in.");
       setSaving(false);
       return;
     }
-
     const res = await fetch("/api/settings/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, settings }),
+      body: JSON.stringify({ accessToken: at, settings }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Unable to save settings.");
-      setSaving(false);
-      return;
+    if (res.ok) setStatus("Changes saved.");
+    else {
+      const d = await res.json().catch(() => ({}));
+      setError(d?.error ?? "Unable to save.");
     }
-
-    setStatus("Settings updated.");
     setSaving(false);
   };
 
@@ -313,657 +430,695 @@ export default function SettingsClient() {
     setTestingWebhook(true);
     setStatus(null);
     setError(null);
-
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-
-    if (!accessToken) {
-      setError("Please sign in to test webhooks.");
+    const at = sessionData.session?.access_token;
+    if (!at) {
       setTestingWebhook(false);
       return;
     }
-
     const res = await fetch("/api/settings/test-webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, webhookUrl: settings.webhookUrl }),
+      body: JSON.stringify({
+        accessToken: at,
+        webhookUrl: settings.webhookUrl,
+      }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Webhook test failed.");
-      setTestingWebhook(false);
-      return;
+    if (res.ok) setStatus("Test event delivered.");
+    else {
+      const d = await res.json().catch(() => ({}));
+      setError(d?.error ?? "Webhook test failed.");
     }
-
-    setStatus("Webhook delivered.");
     setTestingWebhook(false);
   };
 
   const createTeam = async () => {
     if (!supabase || !teamName.trim()) return;
-    setTeamStatus(null);
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setTeamStatus("Please sign in to create a team.");
-      return;
-    }
-
+    const at = sessionData.session?.access_token;
+    if (!at) return;
     const res = await fetch("/api/teams/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, name: teamName.trim() }),
+      body: JSON.stringify({ accessToken: at, name: teamName.trim() }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setTeamStatus(data?.error ?? "Unable to create team.");
-      return;
+    if (res.ok) {
+      setTeamName("");
+      await loadTeams(at);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setTeamStatus(d?.error ?? "Unable to create.");
     }
-
-    setTeamName("");
-    await loadTeams(accessToken);
   };
 
   const addMember = async () => {
     if (!supabase || !selectedTeamId || !inviteUsername.trim()) return;
-    setTeamStatus(null);
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setTeamStatus("Please sign in to add members.");
-      return;
-    }
-
+    const at = sessionData.session?.access_token;
+    if (!at) return;
     const res = await fetch("/api/teams/add-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        accessToken,
+        accessToken: at,
         teamId: selectedTeamId,
         username: inviteUsername.trim(),
       }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setTeamStatus(data?.error ?? "Unable to add member.");
-      return;
+    if (res.ok) {
+      setInviteUsername("");
+      await loadTeamMembers(selectedTeamId, at);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setTeamStatus(d?.error ?? "Unable to add.");
     }
-
-    setInviteUsername("");
-    await loadTeamMembers(selectedTeamId, accessToken);
   };
 
   const removeMember = async (memberId: string) => {
     if (!supabase) return;
-    setTeamStatus(null);
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setTeamStatus("Please sign in to manage members.");
-      return;
-    }
-
+    const at = sessionData.session?.access_token;
+    if (!at || !selectedTeamId) return;
     const res = await fetch("/api/teams/remove-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, memberId }),
+      body: JSON.stringify({ accessToken: at, memberId }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setTeamStatus(data?.error ?? "Unable to remove member.");
-      return;
-    }
-
-    if (selectedTeamId) {
-      await loadTeamMembers(selectedTeamId, accessToken);
+    if (res.ok) await loadTeamMembers(selectedTeamId, at);
+    else {
+      const d = await res.json().catch(() => ({}));
+      setTeamStatus(d?.error ?? "Unable to remove.");
     }
   };
 
   const clearData = async (scope: "scan_history" | "notifications" | "all") => {
     if (!supabase) return;
-    setStatus(null);
-    setError(null);
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setError("Please sign in to clear data.");
-      return;
-    }
-
+    const at = sessionData.session?.access_token;
+    if (!at) return;
     const res = await fetch("/api/settings/clear-data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, scope }),
+      body: JSON.stringify({ accessToken: at, scope }),
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Unable to clear data.");
-      return;
+    if (res.ok) setStatus("Data cleared.");
+    else {
+      const d = await res.json().catch(() => ({}));
+      setError(d?.error ?? "Unable to clear.");
     }
-
-    setStatus("Data cleared.");
   };
 
   const openBillingPortal = async () => {
     if (!supabase) return;
-    setStatus(null);
-    setError(null);
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setError("Please sign in to manage billing.");
-      return;
-    }
+    const at = sessionData.session?.access_token;
+    if (!at) return;
     const res = await fetch("/api/billing/portal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken }),
+      body: JSON.stringify({ accessToken: at }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Unable to open billing portal.");
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      window.location.href = data.url;
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setError(d?.error ?? "Unable to open portal.");
     }
-    const data = await res.json();
-    window.location.href = data.url;
   };
 
-  const signOutSessions = async () => {
+  const signOut = async () => {
     if (!supabase) return;
-    setStatus(null);
-    setError(null);
     await supabase.auth.signOut();
     router.push("/auth");
   };
 
+  // ── States ────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl py-10 text-sm text-zinc-500">
-        Loading settings...
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
       </div>
     );
   }
 
-  if (error) {
+  if (error && loading) {
     return (
-      <div className="mx-auto max-w-5xl py-10">
-        <Alert>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+      <div className="flex min-h-screen items-center justify-center bg-black p-6">
+        <div className="flex items-center gap-3 rounded-xl border border-red-900/40 bg-red-950/20 px-5 py-4 text-sm text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
       </div>
     );
   }
-  const provideFeedback = () => {
-    router.push("/feedback");
-  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <Badge variant="subtle">Settings</Badge>
-          <h1 className="text-2xl font-semibold text-white">
-            Workspace controls
-          </h1>
-          <Button variant="ghost" onClick={provideFeedback}>
-            Provide FeedBack
-          </Button>
-        </div>
-        <Button onClick={saveSettings} disabled={saving}>
-          {saving ? "Saving..." : "Save changes"}
-        </Button>
-      </div>
-
-      {status ? (
-        <Alert>
-          <AlertDescription>{status}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label>Full name</Label>
-              <Input
-                value={settings.fullName}
-                onChange={(event) => update("fullName", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Username</Label>
-              <Input
-                value={settings.username}
-                onChange={(event) => update("username", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Avatar URL</Label>
-              <Input
-                value={settings.avatarUrl}
-                onChange={(event) => update("avatarUrl", event.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Security</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-zinc-400">
-            <Toggle
-              label="2FA required for admins"
-              description="Protect admin accounts with extra verification."
-              checked={settings.require2fa}
-              onChange={(value) => update("require2fa", value)}
-            />
-            <Toggle
-              label="Session timeout"
-              description="Force re-authentication after 12 hours."
-              checked={settings.sessionTimeoutHours <= 12}
-              onChange={(value) =>
-                update("sessionTimeoutHours", value ? 12 : 24)
-              }
-            />
-            <Toggle
-              label="Security alerts"
-              description="Notify on suspicious sign-in activity."
-              checked={settings.securityAlerts}
-              onChange={(value) => update("securityAlerts", value)}
-            />
-            <div className="space-y-2">
-              <Label>Session timeout (hours)</Label>
-              <Input
-                type="number"
-                min={4}
-                max={72}
-                value={settings.sessionTimeoutHours}
-                onChange={(event) =>
-                  update("sessionTimeoutHours", Number(event.target.value))
-                }
-              />
-            </div>
-            <Button size="sm" variant="outline" onClick={signOutSessions}>
-              Sign out
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Toggle
-              label="Email notifications"
-              description="Send scan alerts to your inbox."
-              checked={settings.emailNotifications}
-              onChange={(value) => update("emailNotifications", value)}
-            />
-            <Toggle
-              label="High severity alerts"
-              description="Fire immediately for critical issues."
-              checked={settings.notifyHigh}
-              onChange={(value) => update("notifyHigh", value)}
-            />
-            <Toggle
-              label="Medium severity alerts"
-              description="Notify when medium risks appear."
-              checked={settings.notifyMedium}
-              onChange={(value) => update("notifyMedium", value)}
-            />
-            <Toggle
-              label="Low severity alerts"
-              description="Bundle lower priority warnings."
-              checked={settings.notifyLow}
-              onChange={(value) => update("notifyLow", value)}
-            />
-            <Toggle
-              label="Weekly digest"
-              description="Summary of scans every Friday."
-              checked={settings.weeklyDigest}
-              onChange={(value) => update("weeklyDigest", value)}
-            />
-            <Toggle
-              label="Daily digest"
-              description="Daily summary of reviews and scans."
-              checked={settings.dailyDigest}
-              onChange={(value) => update("dailyDigest", value)}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Scan automation</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Toggle
-              label="Auto-scan on push"
-              description="Trigger scans for every commit."
-              checked={settings.scanOnPush}
-              onChange={(value) => update("scanOnPush", value)}
-            />
-            <Toggle
-              label="Auto-scan on pull request"
-              description="Gate merges with AI review."
-              checked={settings.scanOnPr}
-              onChange={(value) => update("scanOnPr", value)}
-            />
-            <Toggle
-              label="Fail build on high severity"
-              description="Stop the pipeline on critical issues."
-              checked={settings.failOnHigh}
-              onChange={(value) => update("failOnHigh", value)}
-            />
-            <Toggle
-              label="Fail build on medium severity"
-              description="Block merges for medium risks."
-              checked={settings.failOnMedium}
-              onChange={(value) => update("failOnMedium", value)}
-            />
-            <div className="space-y-2">
-              <Label>Ignored paths</Label>
-              <textarea
-                className="min-h-[96px] w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                value={settings.ignoredPaths}
-                onChange={(event) => update("ignoredPaths", event.target.value)}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Risk threshold</Label>
-                <select
-                  className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                  value={settings.riskThreshold}
-                  onChange={(event) =>
-                    update(
-                      "riskThreshold",
-                      event.target.value as SettingsState["riskThreshold"],
-                    )
-                  }
-                >
-                  <option value="low">Low and above</option>
-                  <option value="medium">Medium and above</option>
-                  <option value="high">High only</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Report format</Label>
-                <select
-                  className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                  value={settings.reportFormat}
-                  onChange={(event) =>
-                    update(
-                      "reportFormat",
-                      event.target.value as SettingsState["reportFormat"],
-                    )
-                  }
-                >
-                  <option value="markdown">Markdown</option>
-                  <option value="json">JSON</option>
-                  <option value="terminal">Terminal</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>AI model</Label>
-              <select
-                className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                value={settings.aiModel}
-                onChange={(event) =>
-                  update(
-                    "aiModel",
-                    event.target.value as SettingsState["aiModel"],
-                  )
-                }
-              >
-                <option value="mistral-large-latest">Mistral Large</option>
-                <option value="mistral-medium-latest">Mistral Medium</option>
-              </select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Webhooks</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Toggle
-              label="Enable webhook delivery"
-              description="Push scan events to your internal tooling."
-              checked={settings.webhookEnabled}
-              onChange={(value) => update("webhookEnabled", value)}
-            />
-            <div className="space-y-2">
-              <Label>Webhook URL</Label>
-              <Input
-                value={settings.webhookUrl}
-                onChange={(event) => update("webhookUrl", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Webhook events</Label>
-              <div className="grid gap-2">
-                {[
-                  { id: "repository.published", label: "Repository published" },
-                  { id: "review.created", label: "Review created" },
-                  { id: "scan.completed", label: "Scan completed" },
-                ].map((event) => (
-                  <label
-                    key={event.id}
-                    className="flex items-center gap-2 text-sm text-zinc-200"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={settings.webhookEvents.includes(event.id)}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...settings.webhookEvents, event.id]
-                          : settings.webhookEvents.filter(
-                              (item) => item !== event.id,
-                            );
-                        update("webhookEvents", next);
-                      }}
-                    />
-                    {event.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={testWebhook}
-              disabled={testingWebhook || !settings.webhookUrl}
+    <div
+      className="flex min-h-screen bg-black text-zinc-100"
+      style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
+    >
+      {/* ── Sidebar ── */}
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-white/[0.06] bg-black/80 backdrop-blur-xl mt-10">
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveSection(id)}
+              className={cn(
+                "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+                activeSection === id
+                  ? "bg-white/[0.08] text-white"
+                  : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
+              )}
             >
-              {testingWebhook ? "Testing..." : "Send test event"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Repository visibility</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loadingRepos ? (
-              <p className="text-sm text-zinc-500">Loading repositories...</p>
-            ) : repos.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                No repositories submitted yet.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {repos.map((repo) => (
-                  <div
-                    key={repo.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm text-zinc-100">{repo.name}</p>
-                      <p className="text-xs text-zinc-500">{repo.repo_url}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={repo.is_public ? "default" : "outline"}
-                      onClick={() =>
-                        updateRepoVisibility(repo.id, !repo.is_public)
-                      }
-                    >
-                      {repo.is_public ? "Public" : "Private"}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Data retention</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Label>Retention (days)</Label>
-              <Input
-                type="number"
-                min={30}
-                max={30}
-                value={settings.retentionDays}
-                readOnly
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-colors",
+                  activeSection === id
+                    ? "text-white"
+                    : "text-zinc-600 group-hover:text-zinc-400",
+                )}
               />
-              <p className="text-xs text-zinc-500">
-                Scan data is automatically removed after 30 days.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => clearData("scan_history")}
-              >
-                Clear scan history
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => clearData("notifications")}
-              >
-                Clear notifications
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => clearData("all")}
-              >
-                Clear all data
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {label}
+              {activeSection === id && (
+                <ChevronRight className="ml-auto h-3.5 w-3.5 text-zinc-600" />
+              )}
+            </button>
+          ))}
+        </nav>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Teams</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Create team</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  placeholder="Team name"
-                  value={teamName}
-                  onChange={(event) => setTeamName(event.target.value)}
-                />
-                <Button
-                  size="sm"
-                  onClick={createTeam}
-                  disabled={!teamName.trim()}
-                >
-                  Create
-                </Button>
-              </div>
-            </div>
-
-            {teamStatus ? (
-              <p className="text-xs text-zinc-500">{teamStatus}</p>
-            ) : null}
-
-            {loadingTeams ? (
-              <p className="text-sm text-zinc-500">Loading teams...</p>
-            ) : teams.length === 0 ? (
-              <p className="text-sm text-zinc-500">
-                No teams yet. Create one above.
-              </p>
+        {/* Save CTA */}
+        <div className="shrink-0 border-t border-white/[0.06] p-3">
+          <button
+            onClick={saveSettings}
+            disabled={saving}
+            className={cn(
+              "flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-sm font-medium text-black",
+              "transition-all hover:bg-zinc-100 active:scale-[0.98]",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+            )}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </>
             ) : (
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {teams.map((team) => (
-                    <Button
-                      key={team.id}
-                      size="sm"
-                      variant={
-                        selectedTeamId === team.id ? "default" : "outline"
-                      }
-                      onClick={async () => {
-                        setSelectedTeamId(team.id);
-                        const { data: sessionData } =
-                          await supabase.auth.getSession();
-                        const accessToken = sessionData.session?.access_token;
-                        if (accessToken) {
-                          await loadTeamMembers(team.id, accessToken);
-                        }
-                      }}
+              <>
+                <Check className="h-3.5 w-3.5" /> Save changes
+              </>
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Content ── */}
+      <main className="ml-56 flex-1 px-10 py-10">
+        <div className="mx-auto max-w-2xl space-y-6">
+          {/* Toast / banners */}
+          {status && (
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-900/40 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-400">
+              <Check className="h-4 w-4 shrink-0" /> {status}
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center gap-3 rounded-lg border border-red-900/40 bg-red-950/20 px-4 py-3 text-sm text-red-400">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+            </div>
+          )}
+
+          {/* ── Account ── */}
+          {activeSection === "account" && (
+            <SectionCard
+              title="Account"
+              description="Your personal profile information."
+            >
+              <FieldGroup label="Full name">
+                <StyledInput
+                  value={settings.fullName}
+                  onChange={(e) => update("fullName", e.target.value)}
+                  placeholder="Jane Smith"
+                />
+              </FieldGroup>
+              <FieldGroup label="Username">
+                <StyledInput
+                  value={settings.username}
+                  onChange={(e) => update("username", e.target.value)}
+                  placeholder="janesmith"
+                />
+              </FieldGroup>
+              <FieldGroup label="Avatar URL">
+                <StyledInput
+                  value={settings.avatarUrl}
+                  onChange={(e) => update("avatarUrl", e.target.value)}
+                  placeholder="https://…"
+                />
+              </FieldGroup>
+              <div className="pt-2">
+                <button
+                  onClick={() => router.push("/feedback")}
+                  className="text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline transition-colors"
+                >
+                  Submit feedback →
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── Security ── */}
+          {activeSection === "security" && (
+            <SectionCard
+              title="Security"
+              description="Authentication and session controls."
+            >
+              <Toggle
+                label="Require 2FA for admins"
+                description="Protect admin accounts with an additional verification step."
+                checked={settings.require2fa}
+                onChange={(v) => update("require2fa", v)}
+              />
+              <Toggle
+                label="Session timeout at 12 h"
+                description="Force re-authentication after 12 hours of inactivity."
+                checked={settings.sessionTimeoutHours <= 12}
+                onChange={(v) => update("sessionTimeoutHours", v ? 12 : 24)}
+              />
+              <Toggle
+                label="Security alerts"
+                description="Receive notifications on suspicious sign-in activity."
+                checked={settings.securityAlerts}
+                onChange={(v) => update("securityAlerts", v)}
+              />
+              <FieldGroup label="Session timeout (hours)">
+                <StyledInput
+                  type="number"
+                  min={4}
+                  max={72}
+                  value={settings.sessionTimeoutHours}
+                  onChange={(e) =>
+                    update("sessionTimeoutHours", Number(e.target.value))
+                  }
+                />
+              </FieldGroup>
+              <div className="pt-2">
+                <DangerButton onClick={signOut}>
+                  Sign out all sessions
+                </DangerButton>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── Notifications ── */}
+          {activeSection === "notifications" && (
+            <SectionCard
+              title="Notifications"
+              description="Control how and when you're alerted."
+            >
+              <Toggle
+                label="Email notifications"
+                description="Deliver scan alerts to your inbox."
+                checked={settings.emailNotifications}
+                onChange={(v) => update("emailNotifications", v)}
+              />
+              <Toggle
+                label="High severity alerts"
+                description="Fire immediately for critical findings."
+                checked={settings.notifyHigh}
+                onChange={(v) => update("notifyHigh", v)}
+              />
+              <Toggle
+                label="Medium severity alerts"
+                description="Notify when medium-risk issues appear."
+                checked={settings.notifyMedium}
+                onChange={(v) => update("notifyMedium", v)}
+              />
+              <Toggle
+                label="Low severity alerts"
+                description="Bundle lower-priority warnings into digests."
+                checked={settings.notifyLow}
+                onChange={(v) => update("notifyLow", v)}
+              />
+              <Toggle
+                label="Weekly digest"
+                description="Summary of scans every Friday morning."
+                checked={settings.weeklyDigest}
+                onChange={(v) => update("weeklyDigest", v)}
+              />
+              <Toggle
+                label="Daily digest"
+                description="Daily rollup of reviews and completed scans."
+                checked={settings.dailyDigest}
+                onChange={(v) => update("dailyDigest", v)}
+              />
+            </SectionCard>
+          )}
+
+          {/* ── Scanning ── */}
+          {activeSection === "scanning" && (
+            <SectionCard
+              title="Scan automation"
+              description="Configure automated scan triggers and thresholds."
+            >
+              <Toggle
+                label="Auto-scan on push"
+                description="Trigger a scan for every commit pushed."
+                checked={settings.scanOnPush}
+                onChange={(v) => update("scanOnPush", v)}
+              />
+              <Toggle
+                label="Auto-scan on pull request"
+                description="Gate merges with an AI code review."
+                checked={settings.scanOnPr}
+                onChange={(v) => update("scanOnPr", v)}
+              />
+              <Toggle
+                label="Fail build on high severity"
+                description="Block the pipeline when critical issues are found."
+                checked={settings.failOnHigh}
+                onChange={(v) => update("failOnHigh", v)}
+              />
+              <Toggle
+                label="Fail build on medium severity"
+                description="Block merges for medium-risk findings."
+                checked={settings.failOnMedium}
+                onChange={(v) => update("failOnMedium", v)}
+              />
+
+              <FieldGroup label="Ignored paths">
+                <textarea
+                  className="min-h-[88px] w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-white/20 focus:outline-none resize-none transition-colors"
+                  value={settings.ignoredPaths}
+                  onChange={(e) => update("ignoredPaths", e.target.value)}
+                />
+              </FieldGroup>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldGroup label="Risk threshold">
+                  <StyledSelect
+                    value={settings.riskThreshold}
+                    onChange={(v) =>
+                      update(
+                        "riskThreshold",
+                        v as SettingsState["riskThreshold"],
+                      )
+                    }
+                  >
+                    <option value="low">Low and above</option>
+                    <option value="medium">Medium and above</option>
+                    <option value="high">High only</option>
+                  </StyledSelect>
+                </FieldGroup>
+                <FieldGroup label="Report format">
+                  <StyledSelect
+                    value={settings.reportFormat}
+                    onChange={(v) =>
+                      update("reportFormat", v as SettingsState["reportFormat"])
+                    }
+                  >
+                    <option value="markdown">Markdown</option>
+                    <option value="json">JSON</option>
+                    <option value="terminal">Terminal</option>
+                  </StyledSelect>
+                </FieldGroup>
+              </div>
+
+              <FieldGroup label="AI model">
+                <StyledSelect
+                  value={settings.aiModel}
+                  onChange={(v) =>
+                    update("aiModel", v as SettingsState["aiModel"])
+                  }
+                >
+                  <option value="mistral-large-latest">Mistral Large</option>
+                  <option value="mistral-medium-latest">Mistral Medium</option>
+                </StyledSelect>
+              </FieldGroup>
+            </SectionCard>
+          )}
+
+          {/* ── Webhooks ── */}
+          {activeSection === "webhooks" && (
+            <SectionCard
+              title="Webhooks"
+              description="Push scan events to your own infrastructure."
+            >
+              <Toggle
+                label="Enable webhook delivery"
+                description="Start sending events to your endpoint."
+                checked={settings.webhookEnabled}
+                onChange={(v) => update("webhookEnabled", v)}
+              />
+              <FieldGroup label="Webhook URL">
+                <StyledInput
+                  value={settings.webhookUrl}
+                  onChange={(e) => update("webhookUrl", e.target.value)}
+                  placeholder="https://your-server.com/webhook"
+                />
+              </FieldGroup>
+
+              <FieldGroup label="Events">
+                <div className="space-y-2">
+                  {[
+                    {
+                      id: "repository.published",
+                      label: "Repository published",
+                    },
+                    { id: "review.created", label: "Review created" },
+                    { id: "scan.completed", label: "Scan completed" },
+                  ].map((evt) => (
+                    <label
+                      key={evt.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-colors hover:bg-white/[0.04]"
                     >
-                      {team.name}
-                    </Button>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 accent-white"
+                        checked={settings.webhookEvents.includes(evt.id)}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...settings.webhookEvents, evt.id]
+                            : settings.webhookEvents.filter(
+                                (x) => x !== evt.id,
+                              );
+                          update("webhookEvents", next);
+                        }}
+                      />
+                      <span className="text-sm text-zinc-200">{evt.label}</span>
+                    </label>
                   ))}
                 </div>
+              </FieldGroup>
 
-                {selectedTeamId ? (
-                  <div className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                    <div className="space-y-2">
-                      <Label>Add member by username</Label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          placeholder="username"
-                          value={inviteUsername}
-                          onChange={(event) =>
-                            setInviteUsername(event.target.value)
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          onClick={addMember}
-                          disabled={!inviteUsername.trim()}
-                        >
-                          Add member
-                        </Button>
+              <div className="pt-2">
+                <button
+                  onClick={testWebhook}
+                  disabled={testingWebhook || !settings.webhookUrl}
+                  className={cn(
+                    "rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm font-medium text-zinc-300",
+                    "hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white transition-colors",
+                    "disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2",
+                  )}
+                >
+                  {testingWebhook && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  )}
+                  {testingWebhook ? "Sending…" : "Send test event"}
+                </button>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── Repos ── */}
+          {activeSection === "repos" && (
+            <SectionCard
+              title="Repository visibility"
+              description="Control which of your repos are public."
+            >
+              {loadingRepos ? (
+                <div className="flex items-center gap-2 py-4 text-sm text-zinc-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading
+                  repositories…
+                </div>
+              ) : repos.length === 0 ? (
+                <p className="py-4 text-sm text-zinc-500">
+                  No repositories submitted yet.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {repos.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-zinc-100">
+                          {repo.name}
+                        </p>
+                        <p className="truncate text-xs text-zinc-600">
+                          {repo.repo_url}
+                        </p>
                       </div>
+                      <button
+                        onClick={() =>
+                          updateRepoVisibility(repo.id, !repo.is_public)
+                        }
+                        className={cn(
+                          "shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                          repo.is_public
+                            ? "bg-white text-black hover:bg-zinc-200"
+                            : "border border-white/[0.1] text-zinc-400 hover:border-white/20 hover:text-zinc-200",
+                        )}
+                      >
+                        {repo.is_public ? "Public" : "Private"}
+                      </button>
                     </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
-                    <div className="space-y-2">
-                      <Label>Members</Label>
-                      {teamMembers.length === 0 ? (
-                        <p className="text-xs text-zinc-500">No members yet.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {teamMembers.map((member) => (
+          {/* ── Data retention ── */}
+          {activeSection === "retention" && (
+            <SectionCard
+              title="Data retention"
+              description="Manage how long scan data is kept."
+            >
+              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-100">
+                      Retention window
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Scan data is automatically removed after 30 days.
+                    </p>
+                  </div>
+                  <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs font-mono text-zinc-300">
+                    30 days
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <p className="mb-3 text-xs font-medium uppercase tracking-widest text-zinc-500">
+                  Danger zone
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <DangerButton onClick={() => clearData("scan_history")}>
+                    Clear scan history
+                  </DangerButton>
+                  <DangerButton onClick={() => clearData("notifications")}>
+                    Clear notifications
+                  </DangerButton>
+                  <DangerButton onClick={() => clearData("all")}>
+                    Clear all data
+                  </DangerButton>
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ── Teams ── */}
+          {activeSection === "teams" && (
+            <SectionCard
+              title="Teams"
+              description="Create and manage team access."
+            >
+              <FieldGroup label="New team">
+                <div className="flex gap-2">
+                  <StyledInput
+                    placeholder="Team name"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <button
+                    onClick={createTeam}
+                    disabled={!teamName.trim()}
+                    className={cn(
+                      "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
+                      "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
+                      "disabled:opacity-40 disabled:cursor-not-allowed",
+                    )}
+                  >
+                    Create
+                  </button>
+                </div>
+              </FieldGroup>
+
+              {teamStatus && (
+                <p className="text-xs text-red-400">{teamStatus}</p>
+              )}
+
+              {loadingTeams ? (
+                <div className="flex items-center gap-2 py-2 text-sm text-zinc-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                </div>
+              ) : teams.length === 0 ? (
+                <p className="text-sm text-zinc-500">No teams yet.</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {teams.map((team) => (
+                      <button
+                        key={team.id}
+                        onClick={async () => {
+                          setSelectedTeamId(team.id);
+                          const { data: s } = await supabase.auth.getSession();
+                          const at = s.session?.access_token;
+                          if (at) await loadTeamMembers(team.id, at);
+                        }}
+                        className={cn(
+                          "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors",
+                          selectedTeamId === team.id
+                            ? "bg-white text-black"
+                            : "border border-white/[0.08] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200",
+                        )}
+                      >
+                        {team.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedTeamId && (
+                    <div className="space-y-4 rounded-lg border border-white/[0.07] bg-white/[0.02] p-4">
+                      <FieldGroup label="Add member">
+                        <div className="flex gap-2">
+                          <StyledInput
+                            placeholder="username"
+                            value={inviteUsername}
+                            onChange={(e) => setInviteUsername(e.target.value)}
+                            className="flex-1"
+                          />
+                          <button
+                            onClick={addMember}
+                            disabled={!inviteUsername.trim()}
+                            className={cn(
+                              "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
+                              "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
+                              "disabled:opacity-40 disabled:cursor-not-allowed",
+                            )}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </FieldGroup>
+
+                      <div className="space-y-2">
+                        {teamMembers.length === 0 ? (
+                          <p className="text-xs text-zinc-500">
+                            No members yet.
+                          </p>
+                        ) : (
+                          teamMembers.map((member) => (
                             <div
                               key={member.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 px-3 py-2"
+                              className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] px-3 py-2"
                             >
                               <div>
                                 <p className="text-sm text-zinc-100">
@@ -971,45 +1126,66 @@ export default function SettingsClient() {
                                     member.profiles?.username ??
                                     "Member"}
                                 </p>
-                                <p className="text-xs text-zinc-500">
+                                <p className="text-xs text-zinc-600">
                                   {member.profiles?.username ?? member.user_id}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Badge variant="outline">{member.role}</Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
+                                <span className="rounded-md border border-white/[0.07] px-2 py-0.5 text-xs text-zinc-400">
+                                  {member.role}
+                                </span>
+                                <DangerButton
                                   onClick={() => removeMember(member.id)}
                                 >
                                   Remove
-                                </Button>
+                                </DangerButton>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  )}
+                </>
+              )}
+            </SectionCard>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Plan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-zinc-400">
-            <p className="text-zinc-100">Pro trial</p>
-            <p>Unlimited scans, AI refactors, CI/CD gating.</p>
-            <Button size="sm" variant="outline" onClick={openBillingPortal}>
-              Manage billing
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          {/* ── Plan ── */}
+          {activeSection === "plan" && (
+            <SectionCard title="Plan" description="Your current subscription.">
+              <div className="rounded-lg border border-white/[0.07] bg-gradient-to-br from-white/[0.04] to-transparent p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold text-white">
+                        Pro trial
+                      </p>
+                      <span className="rounded-full border border-emerald-900/50 bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                        Active
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Unlimited scans · AI refactors · CI/CD gating
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <button
+                  onClick={openBillingPortal}
+                  className={cn(
+                    "rounded-lg border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-300",
+                    "hover:border-white/[0.18] hover:bg-white/[0.08] hover:text-white transition-colors",
+                  )}
+                >
+                  Manage billing →
+                </button>
+              </div>
+            </SectionCard>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
