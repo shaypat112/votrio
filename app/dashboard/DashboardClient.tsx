@@ -137,7 +137,7 @@ export default function DashboardPage() {
             variant="outline"
             onClick={() => router.push("/reports")}
           >
-            View Scan reports
+            View Scan =reports
           </Button>
         </div>
       </div>

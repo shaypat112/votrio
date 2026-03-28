@@ -1,87 +1,115 @@
 import { NextResponse } from "next/server";
+import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 
-function decodeUserId(token: string): string | null {
-  try {
-    const payload = JSON.parse(
-      Buffer.from(token.split(".")[1], "base64").toString("utf-8")
-    );
-    return payload?.sub ?? null;
-  } catch {
-    return null;
-  }
-}
+export const runtime = "nodejs";
+
+const DEFAULT_SETTINGS = {
+  emailNotifications: true,
+  notifyHigh: true,
+  notifyMedium: true,
+  notifyLow: false,
+  dailyDigest: false,
+  weeklyDigest: true,
+  scanOnPush: true,
+  scanOnPr: true,
+  failOnHigh: true,
+  failOnMedium: false,
+  ignoredPaths: "node_modules/**, dist/**, .next/**",
+  riskThreshold: "medium",
+  reportFormat: "markdown",
+  aiModel: "mistral-large-latest",
+  webhookEnabled: false,
+  webhookUrl: "",
+  webhookEvents: ["repository.published", "review.created"],
+  retentionDays: 30,
+  shareDashboard: false,
+  allowInvites: true,
+};
 
 export async function POST(request: Request) {
   try {
     const { accessToken } = await request.json();
 
     if (!accessToken) {
-      return NextResponse.json(
-        { error: "Missing accessToken." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
     }
 
     const userId = decodeUserId(accessToken);
-
     if (!userId) {
-      return NextResponse.json(
-        { error: "Invalid access token." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const env = getSupabaseEnv();
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: "Supabase environment variables missing." },
-        { status: 500 }
-      );
+    const [profileRes, settingsRes, webhookRes] = await Promise.all([
+      supabaseFetch(env, `profiles?id=eq.${userId}&select=full_name,username,avatar_url`, {
+        accessToken,
+      }),
+      supabaseFetch(env, `user_settings?user_id=eq.${userId}&select=data`, {
+        accessToken,
+      }),
+      supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events`, {
+        accessToken,
+      }),
+    ]);
+
+    if (!profileRes.ok) {
+      const details = {
+        profile: await profileRes.text(),
+      };
+      return NextResponse.json({ error: "Database request failed", details }, { status: 500 });
     }
 
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/user_settings?user_id=eq.${userId}&select=*`,
-      {
-        headers: {
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
+    const profileRows = await profileRes.json();
+    let settingsRows: any[] = [];
+    let webhookRows: any[] = [];
+
+    if (settingsRes.ok) {
+      settingsRows = await settingsRes.json();
+    } else {
+      const legacyRes = await supabaseFetch(
+        env,
+        `user_settings?user_id=eq.${userId}&select=email_alerts,scan_depth,ignored_paths`,
+        { accessToken },
+      );
+      if (legacyRes.ok) {
+        const legacyRows = await legacyRes.json();
+        settingsRows = [
+          {
+            data: {
+              emailNotifications: legacyRows?.[0]?.email_alerts ?? true,
+              ignoredPaths: legacyRows?.[0]?.ignored_paths ?? "",
+              scanDepth: legacyRows?.[0]?.scan_depth ?? 3,
+            },
+          },
+        ];
+      } else {
+        const details = { settings: await settingsRes.text() };
+        return NextResponse.json({ error: "Database request failed", details }, { status: 500 });
       }
-    );
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json(
-        { error: "Database request failed", details: text },
-        { status: 500 }
-      );
     }
 
-    const rows = await res.json();
-
-    if (!rows || rows.length === 0) {
-      return NextResponse.json({
-        settings: {},
-      });
+    if (webhookRes.ok) {
+      webhookRows = await webhookRes.json();
     }
 
-    const row = rows[0];
+    const profile = profileRows?.[0] ?? {};
+    const storedSettings = settingsRows?.[0]?.data ?? {};
+    const webhook = webhookRows?.[0] ?? {};
 
     const settings = {
-      emailNotifications: row.email_alerts ?? true,
-      scanDepth: row.scan_depth ?? 3,
-      ignoredPaths: row.ignored_paths ?? "",
+      ...DEFAULT_SETTINGS,
+      ...storedSettings,
+      fullName: profile.full_name ?? "",
+      username: profile.username ?? "",
+      avatarUrl: profile.avatar_url ?? "",
+      webhookEnabled: webhook.enabled ?? storedSettings.webhookEnabled ?? DEFAULT_SETTINGS.webhookEnabled,
+      webhookUrl: webhook.url ?? storedSettings.webhookUrl ?? DEFAULT_SETTINGS.webhookUrl,
+      webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
     };
 
     return NextResponse.json({ settings });
-
   } catch (error) {
-    return NextResponse.json(
-      { error: "Unexpected server error." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

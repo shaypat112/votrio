@@ -60,16 +60,28 @@ export function FeedBackForm() {
     setErrorMsg("");
 
     const supabase = createClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
 
-    const { error } = await supabase.from("repo_reviews").insert({
-      repo_url: form.repoUrl.trim(),
-      description: form.description.trim() || null,
-      status: "pending",
-      submitted_at: new Date().toISOString(),
+    if (!accessToken) {
+      setErrorMsg("Please sign in to send feedback.");
+      setStatus("error");
+      return;
+    }
+
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        message: form.repoUrl.trim(),
+        details: form.description.trim() || null,
+      }),
     });
 
-    if (error) {
-      setErrorMsg(error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorMsg(data?.error ?? "Unable to submit feedback.");
       setStatus("error");
       return;
     }

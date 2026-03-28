@@ -1,0 +1,78 @@
+export type SupabaseEnv = {
+  url: string;
+  anonKey: string;
+};
+
+export function getSupabaseEnv(): SupabaseEnv {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Supabase environment variables missing.");
+  }
+  return { url, anonKey };
+}
+
+export function decodeUserId(token: string): string | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+        "utf-8",
+      ),
+    );
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function buildSupabaseHeaders(
+  anonKey: string,
+  accessToken?: string,
+  extra?: Record<string, string>,
+): Record<string, string> {
+  return {
+    apikey: anonKey,
+    "Content-Type": "application/json",
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    ...(extra ?? {}),
+  };
+}
+
+export async function supabaseFetch(
+  env: SupabaseEnv,
+  path: string,
+  options: RequestInit & { accessToken?: string } = {},
+) {
+  const { accessToken, headers, ...rest } = options;
+  const mergedHeaders = buildSupabaseHeaders(
+    env.anonKey,
+    accessToken,
+    headers as Record<string, string> | undefined,
+  );
+
+  return fetch(`${env.url}/rest/v1/${path}`, {
+    ...rest,
+    headers: mergedHeaders,
+  });
+}
+
+export function parsePagination(searchParams: URLSearchParams, defaults = { page: 1, pageSize: 10 }) {
+  const page = Math.max(1, Number(searchParams.get("page") ?? defaults.page));
+  const pageSize = Math.min(
+    50,
+    Math.max(1, Number(searchParams.get("pageSize") ?? defaults.pageSize)),
+  );
+  const offset = (page - 1) * pageSize;
+  return { page, pageSize, offset };
+}
+
+export function isValidHttpsUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}

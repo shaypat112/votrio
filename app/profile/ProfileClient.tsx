@@ -13,6 +13,8 @@ import TabNav, { type TabKey } from "./components/TabNav";
 
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
+import ReviewQueue from "./components/ReviewQueue";
+import MyRepositories from "./components/MyRepositories";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
@@ -305,6 +307,34 @@ export default function ProfileClient() {
             onScan={runRepoScan}
             scanningRepo={scanningRepo}
           />
+        </div>
+      )}
+
+      {activeTab === "repositories" && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-1">
+              <p className="text-sm font-semibold text-zinc-100">Repositories left for review</p>
+              <p className="text-xs text-zinc-500">
+                Review public repositories and help others improve their code.
+              </p>
+            </CardContent>
+          </Card>
+          <ReviewQueue />
+        </div>
+      )}
+
+      {activeTab === "my-repos" && (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-1">
+              <p className="text-sm font-semibold text-zinc-100">My repositories</p>
+              <p className="text-xs text-zinc-500">
+                Submitted repositories appear here with review links.
+              </p>
+            </CardContent>
+          </Card>
+          <MyRepositories />
         </div>
       )}
     </div>

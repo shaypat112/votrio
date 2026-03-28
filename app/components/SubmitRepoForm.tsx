@@ -93,17 +93,29 @@ export function SubmitRepoForm() {
     setErrorMsg("");
 
     const supabase = createClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
 
-    const { error } = await supabase.from("repo_reviews").insert({
-      repo_url: form.repoUrl.trim(),
-      description: form.description.trim() || null,
-      scan_type: form.scanType,
-      status: "pending",
-      submitted_at: new Date().toISOString(),
+    if (!accessToken) {
+      setErrorMsg("Please sign in to submit a repository.");
+      setStatus("error");
+      return;
+    }
+
+    const res = await fetch("/api/repositories/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        repoUrl: form.repoUrl.trim(),
+        description: form.description.trim() || null,
+        scanType: form.scanType,
+      }),
     });
 
-    if (error) {
-      setErrorMsg(error.message);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorMsg(data?.error ?? "Unable to submit repository.");
       setStatus("error");
       return;
     }
@@ -227,7 +239,6 @@ export function SubmitRepoForm() {
       </CardContent>
 
       <CardFooter className="flex items-center justify-between gap-3 pt-2">
-        <p className="text-xs text-muted-foreground">Results in ~2 min.</p>
         <Button
           onClick={handleSubmit}
           disabled={!form.repoUrl.trim() || status === "loading"}

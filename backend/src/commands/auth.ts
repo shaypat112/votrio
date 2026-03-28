@@ -25,10 +25,11 @@ export async function authCommand(options: AuthOptions) {
     return;
   }
 
-  console.log(`\n${chalk.bold("votrio")} ${chalk.dim("— authenticate")}\n`);
+  console.log(`\n${chalk.bold("votrio")} ${chalk.dim("— Enable AI Logic ")}\n`);
   console.log(
-    chalk.dim("  Your key is stored locally and never transmitted to votrio servers.\n")
+    chalk.dim("  Your key is stored locally and never accesed publicly.\n")
   );
+
 
   const { apiKey } = await inquirer.prompt([
     {

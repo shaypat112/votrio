@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 
-export type TabKey = "overview" | "scans" | "integrations" | "repositories";
+export type TabKey = "overview" | "scans" | "integrations" | "repositories" | "my-repos";
 
 export default function TabNav({
   active,
@@ -13,7 +13,8 @@ export default function TabNav({
     { key: "overview", label: "Overview" },
     { key: "scans", label: "Scans" },
     { key: "integrations", label: "Integrations" },
-    { key: "repositories", label: "Github Repos Reviewed" },
+    { key: "repositories", label: "Repositories left for review" },
+    { key: "my-repos", label: "My repositories" },
   ];
 
   return (

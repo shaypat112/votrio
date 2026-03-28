@@ -31,9 +31,21 @@ type SettingsState = {
   aiModel: "mistral-large-latest" | "mistral-medium-latest";
   webhookEnabled: boolean;
   webhookUrl: string;
+  webhookEvents: string[];
   retentionDays: number;
   shareDashboard: boolean;
   allowInvites: boolean;
+};
+
+type RepoVisibility = {
+  id: string;
+  repo_url: string;
+  name: string;
+  description: string | null;
+  is_public: boolean;
+  status: string;
+  review_count: number;
+  rating_avg: number;
 };
 
 const defaultSettings: SettingsState = {
@@ -56,6 +68,7 @@ const defaultSettings: SettingsState = {
   aiModel: "mistral-large-latest",
   webhookEnabled: false,
   webhookUrl: "",
+  webhookEvents: ["repository.published", "review.created"],
   retentionDays: 30,
   shareDashboard: false,
   allowInvites: true,
@@ -98,6 +111,8 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [testingWebhook, setTestingWebhook] = useState(false);
+  const [repos, setRepos] = useState<RepoVisibility[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -138,6 +153,7 @@ export default function SettingsClient() {
 
       const data = await res.json();
       setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
+      await loadRepos(accessToken);
       setLoading(false);
     };
 
@@ -153,6 +169,44 @@ export default function SettingsClient() {
     value: SettingsState[K],
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const loadRepos = async (accessToken: string) => {
+    setLoadingRepos(true);
+    const res = await fetch(`/api/repositories/mine?accessToken=${accessToken}`);
+    if (res.ok) {
+      const data = await res.json();
+      setRepos((data?.repos ?? []) as RepoVisibility[]);
+    }
+    setLoadingRepos(false);
+  };
+
+  const updateRepoVisibility = async (repoId: string, isPublic: boolean) => {
+    if (!supabase) return;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setError("Please sign in to update repository visibility.");
+      return;
+    }
+
+    const res = await fetch("/api/repositories/update-visibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, repoId, isPublic }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error ?? "Unable to update repository visibility.");
+      return;
+    }
+
+    const data = await res.json();
+    const updated = data?.repo as RepoVisibility | undefined;
+    if (updated) {
+      setRepos((prev) => prev.map((repo) => (repo.id === updated.id ? updated : repo)));
+    }
   };
 
   const saveSettings = async () => {
@@ -351,6 +405,12 @@ export default function SettingsClient() {
               checked={settings.weeklyDigest}
               onChange={(value) => update("weeklyDigest", value)}
             />
+            <Toggle
+              label="Daily digest"
+              description="Daily summary of reviews and scans."
+              checked={settings.dailyDigest}
+              onChange={(value) => update("dailyDigest", value)}
+            />
           </CardContent>
         </Card>
 
@@ -464,6 +524,29 @@ export default function SettingsClient() {
                 onChange={(event) => update("webhookUrl", event.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Webhook events</Label>
+              <div className="grid gap-2">
+                {[
+                  { id: "repository.published", label: "Repository published" },
+                  { id: "review.created", label: "Review created" },
+                ].map((event) => (
+                  <label key={event.id} className="flex items-center gap-2 text-sm text-zinc-200">
+                    <input
+                      type="checkbox"
+                      checked={settings.webhookEvents.includes(event.id)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...settings.webhookEvents, event.id]
+                          : settings.webhookEvents.filter((item) => item !== event.id);
+                        update("webhookEvents", next);
+                      }}
+                    />
+                    {event.label}
+                  </label>
+                ))}
+              </div>
+            </div>
             <Button
               size="sm"
               variant="outline"
@@ -472,6 +555,40 @@ export default function SettingsClient() {
             >
               {testingWebhook ? "Testing..." : "Send test event"}
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Repository visibility</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingRepos ? (
+              <p className="text-sm text-zinc-500">Loading repositories...</p>
+            ) : repos.length === 0 ? (
+              <p className="text-sm text-zinc-500">No repositories submitted yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {repos.map((repo) => (
+                  <div
+                    key={repo.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm text-zinc-100">{repo.name}</p>
+                      <p className="text-xs text-zinc-500">{repo.repo_url}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={repo.is_public ? "default" : "outline"}
+                      onClick={() => updateRepoVisibility(repo.id, !repo.is_public)}
+                    >
+                      {repo.is_public ? "Public" : "Private"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

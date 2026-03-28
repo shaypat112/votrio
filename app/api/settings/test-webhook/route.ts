@@ -1,29 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  decodeUserId,
+  getSupabaseEnv,
+  isValidHttpsUrl,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
-function decodeUserId(token: string): string | null {
-  try {
-    const payload = JSON.parse(
-      Buffer.from(token.split(".")[1], "base64").toString("utf-8")
-    );
-    return payload?.sub ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function isValidWebhookUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-
-    if (parsed.protocol !== "https:") {
-      return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
@@ -32,28 +15,22 @@ export async function POST(request: Request) {
     if (!accessToken || !webhookUrl) {
       return NextResponse.json(
         { error: "Missing accessToken or webhookUrl." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const userId = decodeUserId(accessToken);
 
     if (!userId) {
-      return NextResponse.json(
-        { error: "Invalid access token." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
-    if (!isValidWebhookUrl(webhookUrl)) {
-      return NextResponse.json(
-        { error: "Invalid webhook URL." },
-        { status: 400 }
-      );
+    if (!isValidHttpsUrl(webhookUrl)) {
+      return NextResponse.json({ error: "Invalid webhook URL." }, { status: 400 });
     }
 
     const payload = {
-      event: "scan.test",
+      event: "webhook.test",
       user_id: userId,
       status: "ok",
       message: "Votrio webhook test delivery",
@@ -71,18 +48,25 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const text = await res.text();
-      return NextResponse.json(
-        { error: "Webhook request failed", details: text },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Webhook request failed", details: text }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    const env = getSupabaseEnv();
+    await supabaseFetch(env, "activity_log", {
+      method: "POST",
+      accessToken,
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        actor_id: userId,
+        action: "webhook.test",
+        target_type: "webhook",
+        meta: { url: webhookUrl },
+        created_at: new Date().toISOString(),
+      }),
+    });
 
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: "Unexpected server error." },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
