@@ -147,7 +147,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-6 py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-3">
-              <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-zinc-400 mt-4">
+              <Link
+                href="/"
+                className="text-sm font-semibold text-white tracking-wide"
+              >
+                votrio
+              </Link>
+              <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-zinc-400">
+                <Link
+                  href="/profile"
+                  className="hover:text-zinc-100 transition-colors"
+                >
+                  Profile
+                </Link>
                 <Link
                   href="/dashboard"
                   className="hover:text-zinc-100 transition-colors"
@@ -159,12 +171,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   className="hover:text-zinc-100 transition-colors"
                 >
                   Repositories
-                </Link>
-                <Link
-                  href="/submit-repo"
-                  className="hover:text-zinc-100 transition-colors"
-                >
-                  Submit repo
                 </Link>
                 <Link
                   href="/documentation"

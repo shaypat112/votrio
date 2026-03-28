@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={cn("dark font-sans", geist.variable)}>
-      <body>
+      <body className="bg-[#0a0a0a] text-zinc-200">
         <AppShell>{children}</AppShell>
       </body>
     </html>

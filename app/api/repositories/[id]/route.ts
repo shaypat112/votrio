@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const env = getSupabaseEnv();
-    const repoId = params.id;
+    const { id } = await context.params;
+    const repoId = id;
 
     const res = await supabaseFetch(
       env,

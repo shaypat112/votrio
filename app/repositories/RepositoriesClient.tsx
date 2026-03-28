@@ -82,6 +82,11 @@ export default function RepositoriesClient() {
             Browse published repositories, see ratings, and leave your own feedback.
           </p>
         </div>
+        <Button asChild size="sm">
+          <Link href="/submit-repo">Submit repo</Link>
+        </Button>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           <Input
             placeholder="Search repositories"
