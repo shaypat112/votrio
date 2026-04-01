@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import {
   User,
@@ -40,7 +41,7 @@ function Sidebar({
   const { save, saving } = useSettings();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-white/[0.06] bg-black/80 backdrop-blur-xl">
+    <aside className="hidden sm:flex w-56 flex-shrink-0 flex-col border-r border-white/[0.06] bg-black/80 backdrop-blur-xl">
       <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-5">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white">
           <div className="h-2.5 w-2.5 rounded-sm bg-black" />
@@ -123,8 +124,15 @@ function Banners() {
 }
 
 function SettingsInner({ children }: { children: React.ReactNode }) {
-  const [active, setActive] = useState<SectionId>("account");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { loading } = useSettings();
+
+  const active = (searchParams?.get("section") as SectionId) ?? "account";
+  const onSelect = (id: SectionId) => {
+    // navigate while preserving pathname; set ?section=<id>
+    router.push(`?section=${id}`);
+  };
 
   if (loading) {
     return (
@@ -139,9 +147,9 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
       className="flex min-h-screen bg-black text-zinc-100"
       style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
-      <Sidebar active={active} onSelect={setActive} />
+      <Sidebar active={active} onSelect={onSelect} />
 
-      <main className="ml-56 flex-1 px-10 py-10">
+      <main className="flex-1 px-6 sm:px-10 py-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <Banners />
           {children}

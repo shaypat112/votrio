@@ -3,6 +3,7 @@
 import { useSettings } from "./context";
 import { SectionCard } from "./primitives";
 import { cn } from "@/app/lib/utils";
+import StripeBuyButton from "@/app/components/StripeBuyButton";
 
 export function PlanSection() {
   const { accessToken, setError } = useSettings();
@@ -54,6 +55,16 @@ export function PlanSection() {
         >
           Manage billing →
         </button>
+      </div>
+
+      <div className="pt-4">
+        <p className="text-sm text-zinc-400 mb-2">Purchase a plan</p>
+        <div>
+          <StripeBuyButton
+            buyButtonId="buy_btn_1THOTu2VC9y0vPGPsXBw9w8c"
+            publishableKey="pk_test_51TFxCe2VC9y0vPGPTQuhNVNg3R470rNNC4uDkIt7Cq5fUhknqHYLejX6ZNI2yaMseGqgwQFN96Iz9RkqaVfgyytO00bOAHVE3b"
+          />
+        </div>
       </div>
     </SectionCard>
   );

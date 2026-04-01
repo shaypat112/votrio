@@ -1,6 +1,7 @@
 "use client";
 
-import { useSettings } from "./profile/context";
+import { useSearchParams } from "next/navigation";
+
 import { AccountSection } from "./profile/account";
 import { SecuritySection } from "./profile/security";
 import { NotificationsSection } from "./profile/notifications";
@@ -24,9 +25,11 @@ const SECTION_MAP: any = {
 } as const;
 
 export default function SettingsPage() {
-  const active = "account";
+  const searchParams = useSearchParams();
+  const active =
+    (searchParams?.get("section") as keyof typeof SECTION_MAP) ?? "account";
 
-  const Component = SECTION_MAP[active];
+  const Component = SECTION_MAP[active as string];
 
   return <Component />;
 }
