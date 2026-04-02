@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
-  const postAuthPath = "/dashboard";
+  const postAuthPath = "/access-code";
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

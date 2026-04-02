@@ -63,6 +63,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }>
   >([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [demoAccessVerified, setDemoAccessVerified] = useState(false);
+  const [demoAccessChecked, setDemoAccessChecked] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -117,6 +119,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
 
     loadNotifications();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user, supabase]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadDemoAccess = async () => {
+      if (!user) {
+        if (mounted) {
+          setDemoAccessVerified(false);
+          setDemoAccessChecked(true);
+        }
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        if (mounted) {
+          setDemoAccessVerified(false);
+          setDemoAccessChecked(true);
+        }
+        return;
+      }
+
+      const res = await fetch(
+        `/api/demo-access?accessToken=${encodeURIComponent(accessToken)}`,
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!mounted) return;
+
+      setDemoAccessVerified(Boolean(data?.status?.verified));
+      setDemoAccessChecked(true);
+    };
+
+    void loadDemoAccess();
 
     return () => {
       mounted = false;
@@ -195,7 +236,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isMarketingRoute =
     pathname === "/" ||
     pathname?.startsWith("/landing-page") ||
-    pathname?.startsWith("/auth");
+    pathname?.startsWith("/auth") ||
+    pathname?.startsWith("/access-code");
   const isPublicRoute =
     isMarketingRoute ||
     pathname?.startsWith("/documentation") ||
@@ -247,6 +289,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/auth");
   }, [isPublicRoute, loading, router, user]);
 
+  useEffect(() => {
+    if (loading || !user || !demoAccessChecked) return;
+    if (!demoAccessVerified && pathname !== "/access-code") {
+      router.replace("/access-code");
+      return;
+    }
+    if (demoAccessVerified && pathname === "/access-code") {
+      router.replace("/dashboard");
+    }
+  }, [demoAccessChecked, demoAccessVerified, loading, pathname, router, user]);
+
   if (isMarketingRoute) {
     return (
       <div className="min-h-screen bg-background text-foreground transition-colors">
@@ -260,6 +313,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!user && !isPublicRoute) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (user && !demoAccessChecked && !isPublicRoute) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (user && !demoAccessVerified && pathname !== "/access-code") {
     return <div className="min-h-screen bg-background" />;
   }
 
