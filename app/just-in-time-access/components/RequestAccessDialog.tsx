@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,9 @@ import type {
   DurationOption,
   ResourceOption,
 } from "../types";
+import RepositorySelect from "./RepositorySelect";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@/app/lib/supabase";
 
 const resourceOptions: ResourceOption[] = ["Database", "Admin Panel", "API"];
 const accessOptions: AccessLevel[] = ["Read", "Write", "Admin"];
@@ -49,6 +52,28 @@ export function RequestAccessDialog({
   onSubmit: (values: AccessRequestForm) => void;
 }) {
   const [form, setForm] = useState<AccessRequestForm>(defaultForm);
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!open) return;
+    (async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token ?? null;
+        if (mounted) setAccessToken(token);
+      } catch (err) {
+        if (mounted) setAccessToken(null);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [open, supabase]);
 
   const resourceName = useMemo(() => {
     switch (form.resourceType) {
@@ -62,8 +87,13 @@ export function RequestAccessDialog({
   }, [form.resourceType]);
 
   const handleSubmit = () => {
-    onSubmit(form);
+    const payload: AccessRequestForm = {
+      ...form,
+      repoId: selectedRepo ?? null,
+    };
+    onSubmit(payload);
     setForm(defaultForm);
+    setSelectedRepo(null);
     onOpenChange(false);
   };
 
@@ -79,7 +109,9 @@ export function RequestAccessDialog({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Resource</label>
+            <label className="text-sm font-medium text-foreground">
+              Resource
+            </label>
             <Select
               value={form.resourceType}
               onValueChange={(value) =>
@@ -100,6 +132,15 @@ export function RequestAccessDialog({
                 ))}
               </SelectContent>
             </Select>
+
+            <div className="grid gap-2">
+              <Label>Associate with repository (optional)</Label>
+              <RepositorySelect
+                accessToken={accessToken}
+                value={selectedRepo}
+                onChange={(val) => setSelectedRepo(val)}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">{resourceName}</p>
           </div>
 
@@ -130,7 +171,9 @@ export function RequestAccessDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Duration</label>
+            <label className="text-sm font-medium text-foreground">
+              Duration
+            </label>
             <Select
               value={String(form.durationMinutes)}
               onValueChange={(value) =>

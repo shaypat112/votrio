@@ -19,4 +19,5 @@ export type AccessRequestForm = {
   accessType: AccessLevel;
   durationMinutes: DurationOption;
   reason: string;
+  repoId?: string | null;
 };
