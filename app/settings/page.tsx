@@ -12,6 +12,7 @@ import { ReposSection } from "./profile/repos";
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
 import { PlanSection } from "./profile/plan";
+import { Suspense } from "react";
 
 const SECTION_MAP = {
   account: AccountSection,
@@ -29,9 +30,14 @@ const SECTION_MAP = {
 type SectionKey = keyof typeof SECTION_MAP;
 
 export default function SettingsPage() {
+  <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+    <SettingsContent />
+  </Suspense>;
+}
+
+function SettingsContent() {
   const searchParams = useSearchParams();
-  const active =
-    (searchParams?.get("section") as SectionKey) ?? "account";
+  const active = (searchParams?.get("section") as SectionKey) ?? "account";
 
   const Component = SECTION_MAP[active] ?? AccountSection;
 

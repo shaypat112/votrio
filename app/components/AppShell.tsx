@@ -132,6 +132,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
 
+  const getNotificationLabel = (item: (typeof notifications)[number]) => {
+    const repoName = item.data?.["repo_name"];
+    const repoUrl = item.data?.["repo_url"];
+
+    if (typeof repoName === "string" && repoName.length > 0) return repoName;
+    if (typeof repoUrl === "string" && repoUrl.length > 0) return repoUrl;
+    return "Activity update";
+  };
+  const getNotificationSeverity = (item: (typeof notifications)[number]) => {
+    const sev = item.data?.["severity"];
+    if (typeof sev === "string" && sev.length > 0) return sev;
+    return "unknown";
+  };
+
+  const getNotificationIssues = (item: (typeof notifications)[number]) => {
+    const issues = item.data?.["issues"];
+    if (typeof issues === "number") return issues;
+    if (typeof issues === "string") {
+      const n = parseInt(issues, 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
+
   const markAllRead = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
@@ -243,14 +267,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                               {formatNotificationTitle(item.type)}
                             </div>
                             <div className="text-muted-foreground">
-                              {item.data?.repo_name ??
-                                item.data?.repo_url ??
-                                "Activity update"}
+                              {getNotificationLabel(item)}
                             </div>
                             {item.type === "scan.completed" ? (
                               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                                {item.data?.severity ?? "unknown"} severity ·{" "}
-                                {item.data?.issues ?? 0} issues
+                                {getNotificationSeverity(item)} severity ·{" "}
+                                {getNotificationIssues(item)} issues
                               </div>
                             ) : null}
                             <div className="text-[10px] text-muted-foreground">

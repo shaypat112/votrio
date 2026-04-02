@@ -1,4 +1,5 @@
 "use client";
+import React, { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import {
@@ -106,7 +107,6 @@ function Sidebar({
 
 function Banners() {
   const { status, error } = useSettings();
-
   return (
     <div className="space-y-2">
       {status && (
@@ -166,7 +166,15 @@ export default function SettingsLayout({
 }) {
   return (
     <SettingsProvider>
-      <SettingsInner>{children}</SettingsInner>
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-background">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <SettingsInner>{children}</SettingsInner>
+      </Suspense>
     </SettingsProvider>
   );
 }
