@@ -1,6 +1,7 @@
 "use client";
 import React, { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import {
   User,
@@ -33,22 +34,16 @@ const NAV_SECTIONS = [
 
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
 
-function Sidebar({
-  active,
-  onSelect,
-}: {
-  active: SectionId;
-  onSelect: (id: SectionId) => void;
-}) {
+function Sidebar({ active }: { active: SectionId }) {
   const { save, saving } = useSettings();
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
-          <button
+          <Link
             key={id}
-            onClick={() => onSelect(id)}
+            href={`/settings?section=${id}`}
             className={cn(
               "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
               active === id
@@ -68,7 +63,7 @@ function Sidebar({
             {active === id && (
               <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
             )}
-          </button>
+          </Link>
         ))}
       </nav>
 
@@ -116,16 +111,11 @@ function Banners() {
 }
 
 function SettingsInner({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { loading } = useSettings();
   const { theme } = useTheme();
 
   const active = (searchParams?.get("section") as SectionId) ?? "account";
-  const onSelect = (id: SectionId) => {
-    // navigate while preserving pathname; set ?section=<id>
-    router.push(`?section=${id}`);
-  };
 
   if (loading) {
     return (
@@ -144,7 +134,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
         ...(theme === "dark" ? { ["--background"]: "#000" } : {}),
       }}
     >
-      <Sidebar active={active} onSelect={onSelect} />
+      <Sidebar active={active} />
 
       <main className="flex-1 bg-background px-6 py-10 sm:px-10">
         <div className="mx-auto max-w-2xl space-y-6">
