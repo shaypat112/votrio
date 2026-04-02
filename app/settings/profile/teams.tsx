@@ -182,8 +182,8 @@ export function TeamsSection() {
                 className={cn(
                   "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors",
                   selectedTeamId === team.id
-                    ? "bg-white text-black"
-                    : "border border-white/[0.08] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200",
+                    ? "bg-card text-foreground"
+                    : "border border-border text-zinc-400 hover:border-border hover:text-zinc-200",
                 )}
               >
                 {team.name}

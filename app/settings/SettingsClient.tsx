@@ -167,7 +167,9 @@ function Toggle({
           className={cn(
             "pointer-events-none inline-block h-4 w-4 rounded-full shadow-sm",
             "transform transition-transform duration-200",
-            checked ? "translate-x-4 bg-black" : "translate-x-0 bg-zinc-400",
+            checked
+              ? "translate-x-4 bg-foreground"
+              : "translate-x-0 bg-zinc-400",
           )}
         />
       </button>
@@ -557,7 +559,7 @@ export default function SettingsClient() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
       </div>
     );
@@ -565,7 +567,7 @@ export default function SettingsClient() {
 
   if (error && loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black p-6">
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="flex items-center gap-3 rounded-xl border border-red-900/40 bg-red-950/20 px-5 py-4 text-sm text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
@@ -578,11 +580,11 @@ export default function SettingsClient() {
 
   return (
     <div
-      className="flex min-h-screen bg-black text-zinc-100"
+      className="flex min-h-screen bg-background text-foreground"
       style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
       {/* ── Sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-white/[0.06] bg-black/80 backdrop-blur-xl mt-10">
+      <aside className="fixed inset-y-0 left-0 z-20 flex w-56 flex-col border-r border-border bg-background/80 backdrop-blur-xl mt-10">
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
           {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
@@ -618,7 +620,7 @@ export default function SettingsClient() {
             onClick={saveSettings}
             disabled={saving}
             className={cn(
-              "flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-sm font-medium text-black",
+              "flex w-full items-center justify-center gap-2 rounded-lg bg-card py-2 text-sm font-medium text-foreground",
               "transition-all hover:bg-zinc-100 active:scale-[0.98]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
@@ -963,7 +965,7 @@ export default function SettingsClient() {
                         className={cn(
                           "shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors",
                           repo.is_public
-                            ? "bg-white text-black hover:bg-zinc-200"
+                            ? "bg-card text-foreground hover:bg-muted"
                             : "border border-white/[0.1] text-zinc-400 hover:border-white/20 hover:text-zinc-200",
                         )}
                       >
@@ -1070,7 +1072,7 @@ export default function SettingsClient() {
                         className={cn(
                           "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors",
                           selectedTeamId === team.id
-                            ? "bg-white text-black"
+                            ? "bg-card text-foreground"
                             : "border border-white/[0.08] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200",
                         )}
                       >

@@ -94,8 +94,8 @@ export function ReposSection() {
                 className={cn(
                   "shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors",
                   repo.is_public
-                    ? "bg-white text-black hover:bg-zinc-200"
-                    : "border border-white/[0.1] text-zinc-400 hover:border-white/20 hover:text-zinc-200",
+                    ? "bg-card text-foreground hover:bg-muted"
+                    : "border border-border text-zinc-400 hover:border-border hover:text-zinc-200",
                 )}
               >
                 {repo.is_public ? "Public" : "Private"}

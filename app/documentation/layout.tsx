@@ -49,6 +49,54 @@ export default function DocsLayout({
                     Quick Start
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    href="/documentation/commands"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    CLI Reference
+                  </Link>
+                </li>
+                {/* Inline command summary so commands are visible in the docs sidebar */}
+                <li className="pt-2">
+                  <h5 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                    Commands
+                  </h5>
+                  <ul className="mt-2 space-y-2 text-xs text-zinc-500">
+                    <li>
+                      <Link
+                        href="/documentation/commands"
+                        className="hover:text-foreground"
+                      >
+                        votrio init — setup project
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/documentation/commands"
+                        className="hover:text-foreground"
+                      >
+                        votrio run — wrap a process
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/documentation/commands"
+                        className="hover:text-foreground"
+                      >
+                        votrio scan — security scan
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/documentation/commands"
+                        className="hover:text-foreground"
+                      >
+                        votrio auth — configure API key
+                      </Link>
+                    </li>
+                  </ul>
+                </li>
               </ul>
             </div>
           </div>

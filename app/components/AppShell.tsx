@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Moon, SunMedium } from "lucide-react";
+import { Bell, Moon, SunMedium, ChevronDown } from "lucide-react";
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -268,6 +268,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   Settings
                 </Link>
+                {/* Teams dropdown (moved from header right) */}
+                {user ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground hover:bg-muted">
+                        <span className="text-xs text-muted-foreground">
+                          Teams
+                        </span>
+                        <span className="font-medium text-sm">
+                          {teams.find((t) => t.id === selectedTeamId)?.name ??
+                            "Configure"}
+                        </span>
+                        <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="bg-card text-foreground"
+                    >
+                      <DropdownMenuLabel>Teams</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {teams.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No teams yet
+                        </div>
+                      ) : (
+                        teams.map((t) => (
+                          <DropdownMenuItem
+                            key={t.id}
+                            onClick={() => onSelectTeam(t.id)}
+                          >
+                            {t.name}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <a href="/settings?section=teams">Manage teams</a>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
               </nav>
             </div>
 
@@ -309,7 +351,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       ) : null}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-72 bg-card text-foreground"
+                  >
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {notifLoading ? (
@@ -353,46 +398,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Teams selector */}
-                {user ? (
-                  <div className="ml-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="hidden sm:flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1 text-sm text-foreground hover:bg-muted">
-                          <span className="text-xs text-muted-foreground">
-                            Teams
-                          </span>
-                          <span className="font-medium text-sm">
-                            {teams.find((t) => t.id === selectedTeamId)?.name ??
-                              ""}
-                          </span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuSeparator />
-                        {teams.length === 0 ? (
-                          <div className="px-3 py-2 text-xs text-muted-foreground">
-                            No teams yet
-                          </div>
-                        ) : (
-                          teams.map((t) => (
-                            <DropdownMenuItem
-                              key={t.id}
-                              onClick={() => onSelectTeam(t.id)}
-                            >
-                              {t.name}
-                            </DropdownMenuItem>
-                          ))
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <a href="/settings?section=teams">Manage teams</a>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {selectedTeamId ? <div></div> : null}
-                  </div>
-                ) : null}
+                {/* Teams selector removed from header right - it's available in the left nav */}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -411,9 +417,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <span className="hidden sm:inline text-xs font-medium text-muted-foreground">
                         {displayName}
                       </span>
+                      <ChevronDown className="hidden sm:inline h-3 w-3 text-muted-foreground ml-1" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-card text-foreground"
+                  >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
 
                     <DropdownMenuItem onClick={signOut}>

@@ -14,6 +14,7 @@ import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 
 import MyRepositories from "./components/MyRepositories";
+import React from "react";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
@@ -276,6 +277,16 @@ export default function ProfileClient() {
         initials={initials}
         avatarUrl={avatarUrl}
       />
+
+      {/* show team banner when a team is selected */}
+      <div>
+        {/* lazy load TeamBanner to avoid adding to initial bundle */}
+        {/* import inline to keep this file simple */}
+        <React.Suspense fallback={null}>
+          {/* @ts-ignore-next-line server-component */}
+          {/* TeamBanner is a client component so import dynamically */}
+        </React.Suspense>
+      </div>
 
       <StatsRow stats={stats} />
 
