@@ -1,15 +1,14 @@
 import SessionClient from "./SessionClient";
 
-export default function SessionPage({
+export default async function SessionPage({
   params,
 }: {
-  params: { session: string };
+  params: Promise<{ session: string }>;
 }) {
-  const { session } = params;
+  const { session } = await params;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Session {session}</h1>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <SessionClient sessionId={session} />
     </div>
   );

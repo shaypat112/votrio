@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, Clock3, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowUpRight, Clock3, Github, ShieldCheck, UserRound } from "lucide-react";
 
 import type { AccessSession } from "../types";
 
@@ -14,6 +14,9 @@ function formatStarted(minutes: number) {
 }
 
 function formatExpiration(session: AccessSession) {
+  if (session.status === "revoked") {
+    return "Revoked";
+  }
   if (session.status === "expired" || session.expiresInMinutes <= 0) {
     return "Expired";
   }
@@ -31,7 +34,7 @@ export function AccessSessionCard({
   onExtend: (sessionId: string) => void;
   onRevoke: (sessionId: string) => void;
 }) {
-  const isExpired = session.status === "expired";
+  const isExpired = session.status !== "active";
 
   return (
     <Card className="h-full border-border bg-card shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
@@ -50,12 +53,18 @@ export function AccessSessionCard({
           </div>
           <Badge
             className={
-              isExpired
+              session.status === "revoked"
+                ? "border-border bg-muted text-muted-foreground"
+                : isExpired
                 ? "border-border bg-muted text-muted-foreground"
                 : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
             }
           >
-            {isExpired ? "Expired" : "Active"}
+            {session.status === "revoked"
+              ? "Revoked"
+              : isExpired
+                ? "Expired"
+                : "Active"}
           </Badge>
         </div>
       </CardHeader>
@@ -82,12 +91,23 @@ export function AccessSessionCard({
           </div>
         </div>
 
+        <div className="rounded-xl border border-border bg-muted/30 p-3">
+          <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Github className="h-3.5 w-3.5" />
+            Repository
+          </p>
+          <p className="mt-2 font-medium text-foreground">{session.repoName}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {session.environmentName} · {session.environmentRegion}
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => onOpen(session.id)} disabled={isExpired}>
+          <Button onClick={() => onOpen(session.id)}>
             Open Session
             <ArrowUpRight className="h-4 w-4" />
           </Button>
-          <Button variant="secondary" onClick={() => onExtend(session.id)}>
+          <Button variant="secondary" onClick={() => onExtend(session.id)} disabled={session.status === "revoked"}>
             Extend
           </Button>
           <Button variant="destructive" onClick={() => onRevoke(session.id)}>

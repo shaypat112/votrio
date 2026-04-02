@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "../lib/supabase";
-import { Github, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Github, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
+  const postAuthPath = "/dashboard";
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +42,7 @@ export default function AuthPage() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/documentation/installation`,
+        redirectTo: `${window.location.origin}${postAuthPath}`,
       },
     });
 
@@ -66,7 +68,7 @@ export default function AuthPage() {
         password,
       });
       if (signInError) setError(signInError.message);
-      else window.location.href = "/documentation/installation";
+      else window.location.href = postAuthPath;
       setLoading(false);
       return;
     }
@@ -87,6 +89,14 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md border border-zinc-800 shadow-xl">
         <CardHeader className="space-y-2 text-center">
+          <div className="flex justify-start">
+            <Button asChild variant="ghost" size="sm" className="px-2">
+              <Link href="/" className="inline-flex items-center gap-2">
+                <ArrowLeft size={14} />
+                Back home
+              </Link>
+            </Button>
+          </div>
           <CardTitle className="text-2xl text-white font-semibold"></CardTitle>
           <CardDescription className="text-zinc-400 text-sm">
             Connect your account to link your repositories and start scanning

@@ -8,6 +8,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { RepositorySummary } from "../types";
+
+type RepositoryApiRecord = {
+  id: string;
+  name?: string | null;
+  repo_url: string;
+};
 
 export default function RepositorySelect({
   accessToken,
@@ -16,17 +23,14 @@ export default function RepositorySelect({
 }: {
   accessToken?: string | null;
   value?: string | null;
-  onChange: (id: string | null) => void;
+  onChange: (repo: RepositorySummary | null) => void;
 }) {
-  const [repos, setRepos] = useState<
-    Array<{ id: string; name: string; repo_url: string }>
-  >([]);
-  const [loading, setLoading] = useState(false);
+  const [repos, setRepos] = useState<RepositorySummary[]>([]);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
     let mounted = true;
-    setLoading(true);
     fetch(
       `/api/repositories/mine?accessToken=${encodeURIComponent(accessToken)}`,
     )
@@ -34,10 +38,10 @@ export default function RepositorySelect({
       .then((data) => {
         if (!mounted) return;
         setRepos(
-          (data?.repos ?? []).map((r: any) => ({
+          ((data?.repos ?? []) as RepositoryApiRecord[]).map((r) => ({
             id: r.id,
             name: r.name || r.repo_url,
-            repo_url: r.repo_url,
+            repoUrl: r.repo_url,
           })),
         );
       })
@@ -45,12 +49,14 @@ export default function RepositorySelect({
         if (!mounted) return;
         setRepos([]);
       })
-      .finally(() => mounted && setLoading(false));
+      .finally(() => mounted && setHasFetched(true));
 
     return () => {
       mounted = false;
     };
   }, [accessToken]);
+
+  const loading = Boolean(accessToken) && !hasFetched;
 
   return (
     <div>
@@ -61,7 +67,9 @@ export default function RepositorySelect({
           requires a non-empty value. Map the sentinel back to null for callers. */}
       <Select
         value={value ?? "__none"}
-        onValueChange={(v) => onChange(v === "__none" ? null : v)}
+        onValueChange={(v) =>
+          onChange(v === "__none" ? null : repos.find((repo) => repo.id === v) ?? null)
+        }
       >
         <SelectTrigger className="h-10 w-full bg-background">
           <SelectValue
@@ -82,7 +90,7 @@ export default function RepositorySelect({
         </SelectContent>
       </Select>
       <p className="mt-1 text-xs text-muted-foreground">
-        Optional: tie this access request to one of your repositories.
+        Select the GitHub repository this sandbox session should be tied to.
       </p>
     </div>
   );

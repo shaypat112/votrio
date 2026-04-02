@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/app/lib/supabase";
 import { useTheme } from "@/app/components/theme-provider";
@@ -14,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Moon, SunMedium, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown } from "lucide-react";
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -42,6 +43,8 @@ function formatNotificationTitle(type: string) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -189,6 +192,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
+  const isMarketingRoute =
+    pathname === "/" ||
+    pathname?.startsWith("/landing-page") ||
+    pathname?.startsWith("/auth");
+  const isPublicRoute =
+    isMarketingRoute ||
+    pathname?.startsWith("/documentation") ||
+    pathname?.startsWith("/demo");
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
@@ -230,6 +241,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       })),
     );
   };
+
+  useEffect(() => {
+    if (loading || user || isPublicRoute) return;
+    router.replace("/auth");
+  }, [isPublicRoute, loading, router, user]);
+
+  if (isMarketingRoute) {
+    return (
+      <div className="min-h-screen bg-background text-foreground transition-colors">
+        <main>{children}</main>
+      </div>
+    );
+  }
+
+  if (loading && !isPublicRoute) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!user && !isPublicRoute) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors mt-4 ">
@@ -315,31 +347,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
             {!loading && user ? (
               <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={toggleTheme}
-                  className="rounded-full"
-                  aria-label={
-                    mounted
-                      ? theme === "dark"
-                        ? "Switch to light mode"
-                        : "Switch to dark mode"
-                      : "Toggle theme"
-                  }
-                >
-                  {mounted ? (
-                    theme === "dark" ? (
-                      <SunMedium className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )
-                  ) : (
-                    <SunMedium className="h-4 w-4" />
-                  )}
-                </Button>
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted">
@@ -434,30 +441,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  onClick={toggleTheme}
-                  className="rounded-full"
-                  aria-label={
-                    mounted
-                      ? theme === "dark"
-                        ? "Switch to light mode"
-                        : "Switch to dark mode"
-                      : "Toggle theme"
-                  }
-                >
-                  {mounted ? (
-                    theme === "dark" ? (
-                      <SunMedium className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )
-                  ) : (
-                    <SunMedium className="h-4 w-4" />
-                  )}
-                </Button>
                 <Button asChild size="sm" variant="outline">
                   <Link href="/auth">Sign in</Link>
                 </Button>

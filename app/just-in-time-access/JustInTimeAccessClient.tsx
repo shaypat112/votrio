@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Clock3, ShieldCheck, TimerReset } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { mockAccessSessions } from "./data";
+import { createClient } from "@/app/lib/supabase";
 import { AccessSessionCard } from "./components/AccessSessionCard";
 import { EmptySessionsState } from "./components/EmptySessionsState";
 import { RequestAccessDialog } from "./components/RequestAccessDialog";
@@ -20,67 +21,140 @@ function sortSessions(a: AccessSession, b: AccessSession) {
 }
 
 export default function JustInTimeAccessClient() {
-  const [sessions, setSessions] = useState<AccessSession[]>(mockAccessSessions);
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const [sessions, setSessions] = useState<AccessSession[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const sortedSessions = useMemo(
     () => [...sessions].sort(sortSessions),
     [sessions],
   );
 
-  const handleRequestAccess = (values: AccessRequestForm) => {
-    const resourceName =
-      values.resourceType === "Database"
-        ? "Production Database"
-        : values.resourceType === "Admin Panel"
-          ? "Admin Panel"
-          : "Staging API";
+  const loadSessions = async (token: string) => {
+    setLoading(true);
+    setError(null);
+    const res = await fetch(
+      `/api/jit?accessToken=${encodeURIComponent(token)}`,
+    );
+    const data = await res.json().catch(() => ({}));
 
-    const nextSession: AccessSession = {
-      id: `session-${Date.now()}`,
-      resourceName,
-      resourceType: values.resourceType,
-      accessType: values.accessType,
-      status: "active",
-      grantedTo: "you@company.com",
-      startedMinutesAgo: 0,
-      expiresInMinutes: values.durationMinutes,
+    if (!res.ok) {
+      setError(data?.error ?? "Unable to load access sessions.");
+      setSessions([]);
+      setLoading(false);
+      return;
+    }
+
+    setSessions((data?.sessions ?? []) as AccessSession[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const nextToken = sessionData.session?.access_token ?? null;
+      if (!mounted) return;
+
+      setAccessToken(nextToken);
+      if (!nextToken) {
+        setSessions([]);
+        setLoading(false);
+        return;
+      }
+
+      await loadSessions(nextToken);
     };
 
-    setSessions((prev) => [nextSession, ...prev]);
+    init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        const nextToken = session?.access_token ?? null;
+        setAccessToken(nextToken);
+        if (!nextToken) {
+          setSessions([]);
+          setLoading(false);
+          return;
+        }
+        void loadSessions(nextToken);
+      },
+    );
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const handleRequestAccess = async (values: AccessRequestForm) => {
+    if (!accessToken) {
+      return "Sign in again to create a JIT session.";
+    }
+
+    const res = await fetch("/api/jit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        repoId: values.repoId,
+        resourceType: values.resourceType,
+        accessType: values.accessType,
+        durationMinutes: values.durationMinutes,
+        reason: values.reason,
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return data?.error ?? "Unable to create access session.";
+    }
+
+    if (data?.session?.id) {
+      await loadSessions(accessToken);
+      router.push(`/just-in-time-access/${data.session.id}`);
+    }
+
+    return null;
   };
 
   const handleOpenSession = (sessionId: string) => {
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.id === sessionId && session.status === "expired"
-          ? { ...session, status: "active", expiresInMinutes: 15 }
-          : session,
-      ),
-    );
+    router.push(`/just-in-time-access/${sessionId}`);
   };
 
-  const handleExtendSession = (sessionId: string) => {
-    setSessions((prev) =>
-      prev.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              status: "active",
-              expiresInMinutes:
-                (session.expiresInMinutes > 0 ? session.expiresInMinutes : 0) + 30,
-            }
-          : session,
-      ),
-    );
+  const handleExtendSession = async (sessionId: string) => {
+    if (!accessToken) return;
+
+    await fetch(`/api/jit/${sessionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, action: "extend", minutes: 30 }),
+    });
+    await loadSessions(accessToken);
   };
 
-  const handleRevokeSession = (sessionId: string) => {
-    setSessions((prev) => prev.filter((session) => session.id !== sessionId));
+  const handleRevokeSession = async (sessionId: string) => {
+    if (!accessToken) return;
+
+    await fetch(`/api/jit/${sessionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, action: "revoke" }),
+    });
+    await loadSessions(accessToken);
   };
 
-  const activeSessions = sortedSessions.filter((session) => session.status === "active");
-  const expiredSessions = sortedSessions.length - activeSessions.length;
+  const activeSessions = sortedSessions.filter(
+    (session) => session.status === "active",
+  );
+  const expiredSessions = sortedSessions.filter(
+    (session) => session.status === "expired" || session.status === "revoked",
+  ).length;
   const totalRemainingMinutes = activeSessions.reduce(
     (total, session) => total + session.expiresInMinutes,
     0,
@@ -103,7 +177,10 @@ export default function JustInTimeAccessClient() {
                   Temporary, secure access sessions with automatic expiration
                 </p>
               </div>
-              <Button onClick={() => setIsDialogOpen(true)} className="sm:w-fit">
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                className="sm:w-fit"
+              >
                 Request Access
               </Button>
             </div>
@@ -157,21 +234,13 @@ export default function JustInTimeAccessClient() {
             </Card>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                Access Sessions
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Review currently granted access and act before sessions expire.
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
-              New Request
-            </Button>
-          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-          {sortedSessions.length === 0 ? (
+          {loading ? (
+            <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+              Loading JIT sessions...
+            </div>
+          ) : sortedSessions.length === 0 ? (
             <EmptySessionsState onRequestAccess={() => setIsDialogOpen(true)} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

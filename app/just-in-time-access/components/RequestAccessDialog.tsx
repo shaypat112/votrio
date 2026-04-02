@@ -25,6 +25,7 @@ import type {
   AccessLevel,
   AccessRequestForm,
   DurationOption,
+  RepositorySummary,
   ResourceOption,
 } from "../types";
 import RepositorySelect from "./RepositorySelect";
@@ -40,6 +41,9 @@ const defaultForm: AccessRequestForm = {
   accessType: "Read",
   durationMinutes: 30,
   reason: "",
+  repoId: "",
+  repoName: "",
+  repoUrl: "",
 };
 
 export function RequestAccessDialog({
@@ -49,11 +53,14 @@ export function RequestAccessDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: AccessRequestForm) => void;
+  onSubmit: (values: AccessRequestForm) => Promise<string | null>;
 }) {
   const [form, setForm] = useState<AccessRequestForm>(defaultForm);
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<RepositorySummary | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -65,7 +72,7 @@ export function RequestAccessDialog({
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token ?? null;
         if (mounted) setAccessToken(token);
-      } catch (err) {
+      } catch {
         if (mounted) setAccessToken(null);
       }
     })();
@@ -86,14 +93,32 @@ export function RequestAccessDialog({
     }
   }, [form.resourceType]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!selectedRepo) {
+      setRepoError("Choose a GitHub repository for this sandbox session.");
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
     const payload: AccessRequestForm = {
       ...form,
-      repoId: selectedRepo ?? null,
+      repoId: selectedRepo.id,
+      repoName: selectedRepo.name,
+      repoUrl: selectedRepo.repoUrl,
     };
-    onSubmit(payload);
+    const nextError = await onSubmit(payload);
+    setSubmitting(false);
+
+    if (nextError) {
+      setSubmitError(nextError);
+      return;
+    }
+
     setForm(defaultForm);
     setSelectedRepo(null);
+    setRepoError(null);
+    setSubmitError(null);
     onOpenChange(false);
   };
 
@@ -134,13 +159,22 @@ export function RequestAccessDialog({
             </Select>
 
             <div className="grid gap-2">
-              <Label>Associate with repository (optional)</Label>
+              <Label>Repository</Label>
               <RepositorySelect
                 accessToken={accessToken}
-                value={selectedRepo}
-                onChange={(val) => setSelectedRepo(val)}
+                value={selectedRepo?.id ?? null}
+                onChange={(repo) => {
+                  setSelectedRepo(repo);
+                  setRepoError(null);
+                }}
               />
             </div>
+            {repoError ? (
+              <p className="text-xs text-destructive">{repoError}</p>
+            ) : null}
+            {submitError ? (
+              <p className="text-xs text-destructive">{submitError}</p>
+            ) : null}
             <p className="text-xs text-muted-foreground">{resourceName}</p>
           </div>
 
@@ -215,6 +249,9 @@ export function RequestAccessDialog({
               {form.accessType} access to {resourceName}
             </p>
             <p className="mt-1 text-muted-foreground">
+              Repository: {selectedRepo?.name ?? "Select a GitHub repository"}
+            </p>
+            <p className="mt-1 text-muted-foreground">
               Session duration: {form.durationMinutes} min
             </p>
           </div>
@@ -222,9 +259,11 @@ export function RequestAccessDialog({
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" disabled={submitting}>Cancel</Button>
           </DialogClose>
-          <Button onClick={handleSubmit}>Request Access</Button>
+          <Button onClick={() => void handleSubmit()} disabled={submitting}>
+            {submitting ? "Creating..." : "Request Access"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
