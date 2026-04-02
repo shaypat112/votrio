@@ -36,17 +36,29 @@ export async function getAccessibleTeamIds(accessToken: string, userId: string) 
       accessToken,
     }),
   ]);
-
   if (!ownedRes.ok) {
     throw new Error(await ownedRes.text());
   }
 
-  if (!memberRes.ok) {
-    throw new Error(await memberRes.text());
-  }
-
   const owned = (await ownedRes.json()) as TeamRow[];
-  const members = (await memberRes.json()) as TeamMemberRow[];
+
+  // If team_members table doesn't exist (schema not applied) we fallback to owned teams only.
+  let members: TeamMemberRow[] = [];
+  if (memberRes.ok) {
+    try {
+      members = (await memberRes.json()) as TeamMemberRow[];
+    } catch {
+      members = [];
+    }
+  } else {
+    const text = await memberRes.text().catch(() => "");
+    if (!/PGRST|could not find table|column .* does not exist/i.test(text)) {
+      // Unexpected error - surface it.
+      throw new Error(text || "Failed to fetch team members");
+    }
+    // otherwise ignore and continue
+    members = [];
+  }
 
   return Array.from(
     new Set([

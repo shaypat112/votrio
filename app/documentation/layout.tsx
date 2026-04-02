@@ -7,9 +7,9 @@ export default function DocsLayout({
 }) {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-card md:block">
+      <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-background md:block">
         <div className="space-y-8 p-6">
-          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+          <div className="rounded-2xl border border-border bg-background p-4">
             <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
               Documentation
             </p>

@@ -30,9 +30,11 @@ const SECTION_MAP = {
 type SectionKey = keyof typeof SECTION_MAP;
 
 export default function SettingsPage() {
-  <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
-    <SettingsContent />
-  </Suspense>;
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+      <SettingsContent />
+    </Suspense>
+  );
 }
 
 function SettingsContent() {

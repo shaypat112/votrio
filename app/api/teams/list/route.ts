@@ -53,30 +53,59 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    // Owned teams must succeed
     if (!ownedRes.ok) {
       const text = await ownedRes.text();
       return NextResponse.json({ error: text }, { status: 500 });
     }
 
-    if (!memberRes.ok) {
-      const text = await memberRes.text();
-      return NextResponse.json({ error: text }, { status: 500 });
-    }
-
-    if (!repoRes.ok) {
-      const text = await repoRes.text();
-      return NextResponse.json({ error: text }, { status: 500 });
-    }
-
-    if (!environmentRes.ok) {
-      const text = await environmentRes.text();
-      return NextResponse.json({ error: text }, { status: 500 });
-    }
-
     const owned = (await ownedRes.json()) as TeamRow[];
-    const memberRows = (await memberRes.json()) as TeamMemberRow[];
-    const repoRows = (await repoRes.json()) as CountRow[];
-    const environmentRows = (await environmentRes.json()) as CountRow[];
+
+    // memberRes, repoRes, environmentRes are optional depending on DB schema.
+    // If the underlying column/table is missing (e.g. during incremental migrations),
+    // fall back to empty results instead of failing the whole endpoint.
+    let memberRows: TeamMemberRow[] = [];
+    try {
+      if (memberRes.ok) {
+        memberRows = (await memberRes.json()) as TeamMemberRow[];
+      } else {
+        const text = await memberRes.text();
+        // If it's a schema error from PostgREST, ignore and continue with no members.
+        if (!/PGRST|could not find table|column .* does not exist/i.test(text)) {
+          return NextResponse.json({ error: text }, { status: 500 });
+        }
+      }
+    } catch {
+      memberRows = [];
+    }
+
+    let repoRows: CountRow[] = [];
+    try {
+      if (repoRes.ok) {
+        repoRows = (await repoRes.json()) as CountRow[];
+      } else {
+        const text = await repoRes.text();
+        if (!/PGRST|could not find table|column .* does not exist/i.test(text)) {
+          return NextResponse.json({ error: text }, { status: 500 });
+        }
+      }
+    } catch {
+      repoRows = [];
+    }
+
+    let environmentRows: CountRow[] = [];
+    try {
+      if (environmentRes.ok) {
+        environmentRows = (await environmentRes.json()) as CountRow[];
+      } else {
+        const text = await environmentRes.text();
+        if (!/PGRST|could not find table|column .* does not exist/i.test(text)) {
+          return NextResponse.json({ error: text }, { status: 500 });
+        }
+      }
+    } catch {
+      environmentRows = [];
+    }
 
     const repoCounts = repoRows.reduce<Record<string, number>>((acc, row) => {
       acc[row.team_id] = (acc[row.team_id] ?? 0) + 1;

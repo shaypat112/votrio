@@ -50,12 +50,16 @@ export default function Home() {
         <section className="pb-16 pt-16 sm:pb-20 sm:pt-24">
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div className="space-y-6">
-              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+              <Badge
+                variant="outline"
+                className="rounded-full px-3 py-1 text-xs"
+              >
                 Security scanning, AI triage, and cleaner debugging
               </Badge>
               <div className="space-y-4">
                 <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
-                  A sharper landing zone for security reviews and AI debugging.
+                  Votrio | AI for faster triage and debugging of security
+                  findings
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                   Votrio watches your command output, pulls signal out of noisy
@@ -104,7 +108,9 @@ export default function Home() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div className="rounded-2xl border border-border bg-muted/30 p-4 font-mono text-xs text-muted-foreground">
-                  <div className="text-foreground">$ votrio scan --repo acme/payments</div>
+                  <div className="text-foreground">
+                    $ votrio scan --repo acme/payments
+                  </div>
                   <div>Analyzing 1,204 files and recent traces...</div>
                   <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
                     [high] HARDCODED_SECRET · src/api/auth.ts:42
@@ -119,19 +125,25 @@ export default function Home() {
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       Risk
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">High</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      High
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-border bg-muted/40 p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       Findings
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">17</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      17
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-border bg-muted/40 p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                       Confidence
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-foreground">92%</p>
+                    <p className="mt-2 text-2xl font-semibold text-foreground">
+                      92%
+                    </p>
                   </div>
                 </div>
               </CardContent>

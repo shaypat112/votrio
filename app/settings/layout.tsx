@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
+import { useTheme } from "@/app/components/theme-provider";
 
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
@@ -42,16 +43,7 @@ function Sidebar({
   const { save, saving } = useSettings();
 
   return (
-    <aside className="hidden w-56 flex-shrink-0 flex-col border-r border-border bg-card/80 backdrop-blur-xl sm:flex">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground">
-          <div className="h-2.5 w-2.5 rounded-sm bg-background" />
-        </div>
-        <span className="text-sm font-semibold tracking-tight text-foreground">
-          Settings
-        </span>
-      </div>
-
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
           <button
@@ -127,6 +119,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading } = useSettings();
+  const { theme } = useTheme();
 
   const active = (searchParams?.get("section") as SectionId) ?? "account";
   const onSelect = (id: SectionId) => {
@@ -145,11 +138,15 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="flex min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
+      style={{
+        fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
+        // override the background CSS variable locally so settings area is true black in dark mode
+        ...(theme === "dark" ? { ["--background"]: "#000" } : {}),
+      }}
     >
       <Sidebar active={active} onSelect={onSelect} />
 
-      <main className="flex-1 bg-gradient-to-br from-background via-muted/20 to-background px-6 py-10 sm:px-10">
+      <main className="flex-1 bg-background px-6 py-10 sm:px-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <Banners />
           {children}

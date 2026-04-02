@@ -43,8 +43,13 @@ function formatNotificationTitle(type: string) {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<
+    Array<{ id: string; name: string; slug: string; role?: string }>
+  >([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
@@ -115,6 +120,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, supabase]);
 
+  useEffect(() => {
+    // mark client-mounted so we can avoid rendering theme-dependent UI on the server
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // load selected team from localStorage
+    try {
+      const v = window.localStorage.getItem("votrio-selected-team");
+      if (v) setSelectedTeamId(v);
+    } catch {}
+  }, []);
+
   const displayName = user ? getDisplayName(user) : "";
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
@@ -128,6 +146,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+  };
+
+  // Teams dropdown: fetch teams for the current user and expose a selector in the header
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!user) return;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) return;
+      try {
+        const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
+        if (!mounted) return;
+        if (!res.ok) return;
+        const json = await res.json();
+        const items = json?.teams ?? [];
+        setTeams(items);
+        // if no selected team yet, pick first
+        if (!selectedTeamId && items.length > 0) {
+          setSelectedTeamId(items[0].id);
+          try {
+            window.localStorage.setItem("votrio-selected-team", items[0].id);
+          } catch {}
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [user, supabase, selectedTeamId]);
+
+  const onSelectTeam = (teamId: string) => {
+    setSelectedTeamId(teamId);
+    try {
+      window.localStorage.setItem("votrio-selected-team", teamId);
+    } catch {}
   };
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
@@ -222,15 +280,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={toggleTheme}
                   className="rounded-full"
                   aria-label={
-                    theme === "dark"
-                      ? "Switch to light mode"
-                      : "Switch to dark mode"
+                    mounted
+                      ? theme === "dark"
+                        ? "Switch to light mode"
+                        : "Switch to dark mode"
+                      : "Toggle theme"
                   }
                 >
-                  {theme === "dark" ? (
-                    <SunMedium className="h-4 w-4" />
+                  {mounted ? (
+                    theme === "dark" ? (
+                      <SunMedium className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )
                   ) : (
-                    <Moon className="h-4 w-4" />
+                    <SunMedium className="h-4 w-4" />
                   )}
                 </Button>
 
@@ -289,6 +353,47 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Teams selector */}
+                {user ? (
+                  <div className="ml-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="hidden sm:flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1 text-sm text-foreground hover:bg-muted">
+                          <span className="text-xs text-muted-foreground">
+                            Teams
+                          </span>
+                          <span className="font-medium text-sm">
+                            {teams.find((t) => t.id === selectedTeamId)?.name ??
+                              ""}
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuSeparator />
+                        {teams.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground">
+                            No teams yet
+                          </div>
+                        ) : (
+                          teams.map((t) => (
+                            <DropdownMenuItem
+                              key={t.id}
+                              onClick={() => onSelectTeam(t.id)}
+                            >
+                              {t.name}
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <a href="/settings?section=teams">Manage teams</a>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {selectedTeamId ? <div></div> : null}
+                  </div>
+                ) : null}
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1.5 text-sm text-foreground transition hover:bg-muted">
@@ -326,15 +431,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={toggleTheme}
                   className="rounded-full"
                   aria-label={
-                    theme === "dark"
-                      ? "Switch to light mode"
-                      : "Switch to dark mode"
+                    mounted
+                      ? theme === "dark"
+                        ? "Switch to light mode"
+                        : "Switch to dark mode"
+                      : "Toggle theme"
                   }
                 >
-                  {theme === "dark" ? (
-                    <SunMedium className="h-4 w-4" />
+                  {mounted ? (
+                    theme === "dark" ? (
+                      <SunMedium className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )
                   ) : (
-                    <Moon className="h-4 w-4" />
+                    <SunMedium className="h-4 w-4" />
                   )}
                 </Button>
                 <Button asChild size="sm" variant="outline">

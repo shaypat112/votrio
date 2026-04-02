@@ -2,6 +2,7 @@ import "./globals.css";
 
 import AppShell from "./components/AppShell";
 import { ThemeProvider } from "./components/theme-provider";
+import { SettingsProvider } from "./settings/profile/context";
 import { Geist } from "next/font/google";
 import { cn } from "./lib/utils";
 
@@ -13,14 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={cn("dark font-sans", geist.variable)}
-    >
+    <html lang="en" suppressHydrationWarning className={cn(geist.variable)}>
       <body className="bg-background text-foreground antialiased">
         <ThemeProvider defaultTheme="dark">
-          <AppShell>{children}</AppShell>
+          <SettingsProvider>
+            <AppShell>{children}</AppShell>
+          </SettingsProvider>
         </ThemeProvider>
       </body>
     </html>
