@@ -8,9 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  ArrowUpRight,
+  Bot,
+  MessageSquareText,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -85,6 +91,35 @@ const SEVERITY_ORDER: Record<string, number> = {
   unknown: 0,
 };
 
+const SEVERITY_TONE: Record<string, string> = {
+  critical:
+    "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+  high: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  medium: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  low: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  unknown: "border-border bg-muted text-muted-foreground",
+};
+
+function StatCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-muted/35 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+    </div>
+  );
+}
+
 export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [repo, setRepo] = useState<RepoDetail | null>(null);
@@ -99,6 +134,7 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
   const [form, setForm] = useState({ rating: "5", title: "", body: "" });
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [runningScan, setRunningScan] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -266,7 +302,6 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data?.error ?? "Unable to report review.");
-      return;
     }
   };
 
@@ -278,13 +313,12 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       .sort(
         (a, b) =>
           new Date(a.created_at).getTime() -
-          new Date(b.created_at).getTime()
+          new Date(b.created_at).getTime(),
       )
       .map((scan) => ({
         date: new Date(scan.created_at).toLocaleDateString(),
         score: scan.score,
         issues: scan.issues,
-        severity: scan.severity,
       }));
   }, [scans]);
 
@@ -306,7 +340,7 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       .slice(0, 5)
       .map(([file, count]) => ({ file, count }));
 
-    return { severityCounts, topFiles, total: findings.length };
+    return { severityCounts, topFiles };
   }, [latestScan]);
 
   const filteredFindings = useMemo(() => {
@@ -338,34 +372,58 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       if (findingSort === "file") {
         return (a.file ?? "").localeCompare(b.file ?? "");
       }
-      if (findingSort === "severity") {
-        return (
-          (SEVERITY_ORDER[b.severity ?? "unknown"] ?? 0) -
-          (SEVERITY_ORDER[a.severity ?? "unknown"] ?? 0)
-        );
-      }
-      return 0;
+      return (
+        (SEVERITY_ORDER[b.severity ?? "unknown"] ?? 0) -
+        (SEVERITY_ORDER[a.severity ?? "unknown"] ?? 0)
+      );
     });
 
     return result;
   }, [latestScan, findingQuery, findingSeverity, findingSort]);
 
   const repoSlug = repo?.repo_url ? parseRepoSlug(repo.repo_url) : null;
+  const scoreDelta =
+    latestScan && previousScan ? latestScan.score - previousScan.score : 0;
+  const issuesDelta =
+    latestScan && previousScan ? latestScan.issues - previousScan.issues : 0;
 
-  if (loading) {
-    return <p className="text-sm text-zinc-500">Loading repository...</p>;
-  }
+  const runRepositoryScan = async () => {
+    if (!repo || !repoSlug || runningScan) return;
 
-  if (error && !repo) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-red-400">{error}</p>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/repositories">Back to repositories</Link>
-        </Button>
-      </div>
-    );
-  }
+    setScanError(null);
+    setRunningScan(true);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const providerToken = sessionData.session?.provider_token;
+
+    if (!accessToken) {
+      setScanError("Please sign in to scan this repository.");
+      setRunningScan(false);
+      return;
+    }
+
+    const res = await fetch("/api/github/repo-scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken,
+        providerToken: providerToken ?? null,
+        repo: repoSlug,
+        repoId,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setScanError(data?.error ?? "Unable to scan repository.");
+      setRunningScan(false);
+      return;
+    }
+
+    await loadScans(accessToken);
+    setRunningScan(false);
+  };
 
   const sendChat = async () => {
     const message = chatInput.trim();
@@ -425,82 +483,162 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
     setChatLoading(false);
   };
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Repository</p>
-          <h1 className="text-2xl font-semibold text-white">{repo?.name}</h1>
-          <p className="text-sm text-zinc-400">{repo?.repo_url}</p>
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="rounded-3xl border border-border bg-card p-6">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="mt-4 h-10 w-64" />
+          <Skeleton className="mt-3 h-4 w-full max-w-2xl" />
+          <div className="mt-5 flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-28 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {repoSlug ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/reports/${encodeURIComponent(repoSlug)}`}>Scan report</Link>
-            </Button>
-          ) : null}
-          <Button asChild size="sm" variant="outline">
-            <Link href="/repositories">All repositories</Link>
-          </Button>
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <Skeleton className="h-64 rounded-3xl" />
+          <div className="grid gap-3">
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <p className="text-sm text-zinc-300">{repo?.description ?? "No description yet."}</p>
-          <div className="flex items-center gap-4 text-xs text-zinc-500">
-            <span>{repo?.review_count ?? 0} reviews</span>
-            <span>Avg rating {repo?.rating_avg ?? 0}</span>
-          </div>
-          {repo?.tags?.length ? (
-            <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
-              {repo.tags.map((tagItem) => (
-                <span key={tagItem} className="rounded-full border border-zinc-800 px-2 py-0.5">
+  if (error && !repo) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-red-500">{error}</p>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/repositories">Back to repositories</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="overflow-hidden rounded-3xl border border-border bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%),linear-gradient(to_bottom_right,color-mix(in_oklab,var(--background)_86%,var(--muted)),var(--background))] p-6 shadow-xl">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Repository
+            </p>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+                {repo?.name}
+              </h1>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                {repo?.description ?? "No description yet."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5">
+                {repo?.review_count ?? 0} reviews
+              </span>
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1.5">
+                Avg rating {repo?.rating_avg ?? 0}
+              </span>
+              {repo?.tags?.map((tagItem) => (
+                <span
+                  key={tagItem}
+                  className="rounded-full border border-border bg-background/80 px-3 py-1.5"
+                >
                   {tagItem}
                 </span>
               ))}
             </div>
-          ) : null}
-          {repo?.last_review_excerpt ? (
-            <p className="text-xs text-zinc-400">“{repo.last_review_excerpt}”</p>
-          ) : null}
-        </CardContent>
-      </Card>
+            <p className="text-sm text-muted-foreground">{repo?.repo_url}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={runRepositoryScan}
+              disabled={runningScan || !repoSlug}
+              className="rounded-full"
+            >
+              {runningScan ? "Scanning..." : "Scan now"}
+            </Button>
+            {repoSlug ? (
+              <Button asChild size="sm" variant="outline" className="rounded-full">
+                <Link href={`/reports/${encodeURIComponent(repoSlug)}`}>
+                  Scan report
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild size="sm" variant="outline" className="rounded-full">
+              <Link href="/repositories">All repositories</Link>
+            </Button>
+          </div>
+        </div>
+
+        {repo?.last_review_excerpt ? (
+          <div className="mt-5 rounded-2xl border border-border bg-background/70 p-4 text-sm text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Latest community note
+            </span>
+            <p className="mt-2 text-foreground">“{repo.last_review_excerpt}”</p>
+          </div>
+        ) : null}
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-white">Scan insights</CardTitle>
+          <CardTitle className="text-base">Scan insights</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {scanLoading ? (
-            <p className="text-sm text-zinc-500">Loading scans...</p>
+            <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <Skeleton className="h-56 rounded-3xl" />
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+              </div>
+            </div>
           ) : scanError ? (
-            <p className="text-sm text-red-400">{scanError}</p>
+            <p className="text-sm text-red-500">{scanError}</p>
           ) : !latestScan ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted-foreground">
               No scan history yet. Run a scan to see insights here.
             </p>
           ) : (
-            <>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border border-zinc-800 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-                  <p className="text-lg font-semibold text-white">{latestScan.severity}</p>
+            <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-border bg-[linear-gradient(to_bottom_right,color-mix(in_oklab,var(--background)_86%,var(--muted)),var(--background))] p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      AI summary
+                    </p>
+                    <h3 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+                      <Sparkles className="h-5 w-5" />
+                      Mistral analysis
+                    </h3>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
+                      SEVERITY_TONE[latestScan.severity] ?? SEVERITY_TONE.unknown
+                    }`}
+                  >
+                    {latestScan.severity}
+                  </span>
                 </div>
-                <div className="rounded-lg border border-zinc-800 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Issues</p>
-                  <p className="text-lg font-semibold text-white">{latestScan.issues}</p>
-                </div>
-                <div className="rounded-lg border border-zinc-800 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Score</p>
-                  <p className="text-lg font-semibold text-white">{latestScan.score}</p>
-                </div>
+                <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                  {latestScan.findings?.ai_summary ??
+                    "No AI summary available yet."}
+                </p>
               </div>
-              <Separator className="bg-zinc-800" />
-              <p className="text-sm text-zinc-400">
-                {latestScan.findings?.ai_summary ?? "No AI summary available yet."}
-              </p>
-            </>
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <StatCard label="Severity" value={latestScan.severity} />
+                <StatCard label="Issues" value={latestScan.issues} />
+                <StatCard label="Score" value={latestScan.score} />
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -508,34 +646,24 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       {latestScan && previousScan ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Latest vs previous</CardTitle>
+            <CardTitle className="text-base">Latest vs previous</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Score change</p>
-              <p className="text-lg font-semibold text-white">
-                {latestScan.score - previousScan.score >= 0 ? "+" : ""}
-                {latestScan.score - previousScan.score}
-              </p>
-              <p className="text-xs text-zinc-500">
-                Prev {previousScan.score} to Now {latestScan.score}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Issues change</p>
-              <p className="text-lg font-semibold text-white">
-                {latestScan.issues - previousScan.issues >= 0 ? "+" : ""}
-                {latestScan.issues - previousScan.issues}
-              </p>
-              <p className="text-xs text-zinc-500">
-                Prev {previousScan.issues} to Now {latestScan.issues}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-              <p className="text-lg font-semibold text-white">{latestScan.severity}</p>
-              <p className="text-xs text-zinc-500">Prev {previousScan.severity}</p>
-            </div>
+            <StatCard
+              label="Score change"
+              value={`${scoreDelta >= 0 ? "+" : ""}${scoreDelta}`}
+              hint={`Prev ${previousScan.score} to Now ${latestScan.score}`}
+            />
+            <StatCard
+              label="Issues change"
+              value={`${issuesDelta >= 0 ? "+" : ""}${issuesDelta}`}
+              hint={`Prev ${previousScan.issues} to Now ${latestScan.issues}`}
+            />
+            <StatCard
+              label="Severity"
+              value={latestScan.severity}
+              hint={`Prev ${previousScan.severity}`}
+            />
           </CardContent>
         </Card>
       ) : null}
@@ -543,34 +671,34 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       {latestScan ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Findings breakdown</CardTitle>
+            <CardTitle className="text-base">Findings breakdown</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-4">
               {Object.entries(breakdown.severityCounts).map(([sev, count]) => (
-                <div key={sev} className="rounded-lg border border-zinc-800 p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{sev}</p>
-                  <p className="text-lg font-semibold text-white">{count}</p>
-                </div>
+                <StatCard key={sev} label={sev} value={count} />
               ))}
             </div>
-            <Separator className="bg-zinc-800" />
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Top files</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Top files
+              </p>
               {breakdown.topFiles.length ? (
                 <div className="space-y-2">
                   {breakdown.topFiles.map((file) => (
                     <div
                       key={file.file}
-                      className="flex items-center justify-between text-xs text-zinc-400"
+                      className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
                     >
-                      <span className="truncate">{file.file}</span>
+                      <span className="truncate text-foreground">{file.file}</span>
                       <span>{file.count} issues</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-zinc-500">No file-level findings yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  No file-level findings yet.
+                </p>
               )}
             </div>
           </CardContent>
@@ -580,7 +708,7 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       {latestScan ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Findings table</CardTitle>
+            <CardTitle className="text-base">Findings table</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -620,31 +748,47 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
             </div>
 
             {filteredFindings.length === 0 ? (
-              <p className="text-sm text-zinc-500">No findings match these filters.</p>
+              <p className="text-sm text-muted-foreground">
+                No findings match these filters.
+              </p>
             ) : (
-              <div className="space-y-2 text-xs text-zinc-400">
+              <div className="space-y-2">
                 {filteredFindings.slice(0, 50).map((item, index) => (
                   <div
                     key={`${item.file ?? "file"}-${item.line ?? index}`}
-                    className="rounded-lg border border-zinc-800 p-3"
+                    className="rounded-2xl border border-border bg-muted/25 p-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-zinc-100">{item.type ?? "Issue"}</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {item.type ?? "Issue"}
+                      </span>
                       <div className="flex items-center gap-2">
-                        {item.severity ? <Badge variant="outline">{item.severity}</Badge> : null}
+                        {item.severity ? (
+                          <span
+                            className={`rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${
+                              SEVERITY_TONE[item.severity] ?? SEVERITY_TONE.unknown
+                            }`}
+                          >
+                            {item.severity}
+                          </span>
+                        ) : null}
                         {typeof item.score === "number" ? (
-                          <span className="text-xs text-zinc-500">Score {item.score}</span>
+                          <span className="text-xs text-muted-foreground">
+                            Score {item.score}
+                          </span>
                         ) : null}
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{item.message ?? "No message"}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {item.message ?? "No message"}
+                    </p>
                     {item.file ? (
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="mt-2 font-mono text-xs text-muted-foreground">
                         {item.file}:{item.line ?? "-"}
                       </p>
                     ) : null}
                     {item.source ? (
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                      <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                         {item.source}
                       </p>
                     ) : null}
@@ -659,37 +803,37 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       {latestScan ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Scan trends</CardTitle>
+            <CardTitle className="text-base">Scan trends</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="h-56">
+            <div className="h-56 text-muted-foreground">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                  <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(127,127,127,0.2)" />
+                  <XAxis dataKey="date" tick={{ fill: "currentColor", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "currentColor", fontSize: 12 }} />
                   <Tooltip
                     contentStyle={{
-                      background: "#0f0f0f",
-                      border: "1px solid #27272a",
-                      color: "#e4e4e7",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      color: "var(--foreground)",
                     }}
                   />
                   <Line type="monotone" dataKey="score" stroke="#22d3ee" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="h-56">
+            <div className="h-56 text-muted-foreground">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                  <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(127,127,127,0.2)" />
+                  <XAxis dataKey="date" tick={{ fill: "currentColor", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "currentColor", fontSize: 12 }} />
                   <Tooltip
                     contentStyle={{
-                      background: "#0f0f0f",
-                      border: "1px solid #27272a",
-                      color: "#e4e4e7",
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      color: "var(--foreground)",
                     }}
                   />
                   <Bar dataKey="issues" fill="#f97316" radius={[6, 6, 0, 0]} />
@@ -703,44 +847,76 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
       {latestScan ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Mini assistant</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="h-4 w-4" />
+              Mistral assistant
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="max-h-64 space-y-3 overflow-auto rounded-lg border border-zinc-800 p-3 text-sm">
-              {chatMessages.length === 0 ? (
-                <p className="text-zinc-500">
-                  Ask about this repo's scan results or how to fix issues.
-                </p>
-              ) : (
-                chatMessages.map((msg, index) => (
-                  <div
-                    key={`${msg.role}-${index}`}
-                    className={msg.role === "user" ? "text-white" : "text-zinc-300"}
-                  >
-                    <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                      {msg.role}
-                    </span>
-                    <p className="mt-1 whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                className="h-10 flex-1 rounded-md border border-zinc-800 bg-transparent px-3 text-sm text-zinc-100"
-                placeholder="Ask about the latest scan..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendChat();
-                  }
-                }}
-              />
-              <Button size="sm" onClick={sendChat} disabled={chatLoading}>
-                {chatLoading ? "Thinking..." : "Send"}
-              </Button>
+            <div className="rounded-3xl border border-border bg-[linear-gradient(to_bottom,var(--muted),transparent)] p-4">
+              <div className="mb-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                  Ask about findings, fixes, or blast radius
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  Grounded in the latest scan summary
+                </span>
+              </div>
+
+              <div className="max-h-72 space-y-3 overflow-auto rounded-2xl border border-border bg-background p-4 text-sm">
+                {chatMessages.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    Ask about this repo&apos;s scan results or how to fix issues.
+                  </p>
+                ) : (
+                  chatMessages.map((msg, index) => (
+                    <div
+                      key={`${msg.role}-${index}`}
+                      className={`rounded-2xl border px-4 py-3 ${
+                        msg.role === "user"
+                          ? "ml-auto max-w-[85%] border-foreground/10 bg-foreground text-background"
+                          : "max-w-[90%] border-border bg-muted/35 text-foreground"
+                      }`}
+                    >
+                      <span
+                        className={`text-xs uppercase tracking-[0.2em] ${
+                          msg.role === "user"
+                            ? "text-background/70"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {msg.role}
+                      </span>
+                      <p className="mt-1 whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="h-11 flex-1 rounded-2xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+                  placeholder="Ask about the latest scan..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendChat();
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={sendChat}
+                  disabled={chatLoading}
+                  className="h-11 rounded-2xl px-5"
+                >
+                  {chatLoading ? "Thinking..." : "Send"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -748,7 +924,7 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-white">Leave a review</CardTitle>
+          <CardTitle className="text-base">Leave a review</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -795,31 +971,33 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
               </Button>
             ) : null}
           </div>
-          {error ? <p className="text-xs text-red-400">{error}</p> : null}
+          {error ? <p className="text-xs text-red-500">{error}</p> : null}
         </CardContent>
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-white">Recent reviews</h2>
+        <h2 className="text-lg font-semibold text-foreground">Recent reviews</h2>
         {reviews.length === 0 ? (
-          <p className="text-sm text-zinc-500">No reviews yet.</p>
+          <p className="text-sm text-muted-foreground">No reviews yet.</p>
         ) : (
           reviews.map((review) => (
             <Card key={review.id}>
-              <CardContent className="p-4 space-y-2">
+              <CardContent className="space-y-2 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-100">
+                    <p className="text-sm font-semibold text-foreground">
                       {review.title ?? "Untitled review"}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-muted-foreground">
                       {review.profiles?.full_name ?? review.profiles?.username ?? "Reviewer"}
                     </p>
                   </div>
-                  <span className="text-xs text-zinc-400">Rating {review.rating}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Rating {review.rating}
+                  </span>
                 </div>
-                <p className="text-sm text-zinc-300">{review.body}</p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                <p className="text-sm text-muted-foreground">{review.body}</p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>{new Date(review.created_at).toLocaleDateString()}</span>
                   {review.edited_at ? <span>Edited</span> : null}
                 </div>

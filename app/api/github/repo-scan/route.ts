@@ -9,6 +9,15 @@ export const runtime = "nodejs";
 
 const ALLOWED_EXT = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".cs", ".php"];
 
+type ErrorWithStatus = Error & { status?: number };
+type GitHubRepo = { default_branch: string };
+type GitHubTreeItem = { path: string; type: string };
+type GitHubTreeResponse = { tree?: GitHubTreeItem[] };
+type GitHubContentResponse = { content?: string };
+type MistralResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
+};
+
 function decodeUserId(token: string): string | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
@@ -34,8 +43,8 @@ async function fetchJson(url: string, token?: string) {
   const res = await fetch(url, { headers });
   if (!res.ok) {
     const text = await res.text();
-    const error = new Error(text);
-    (error as any).status = res.status;
+    const error: ErrorWithStatus = new Error(text);
+    error.status = res.status;
     throw error;
   }
   return res.json();
@@ -46,6 +55,7 @@ export async function POST(request: Request) {
   const accessToken = body?.accessToken as string | undefined;
   const providerToken = (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
+  const repoId = body?.repoId as string | undefined;
 
   if (!accessToken || !repoFullName) {
     return NextResponse.json(
@@ -67,25 +77,32 @@ export async function POST(request: Request) {
 
   try {
     const supabaseEnv = getSupabaseEnv();
-    const repo = await fetchJson(`https://api.github.com/repos/${repoFullName}`, providerToken);
+    const repo = (await fetchJson(
+      `https://api.github.com/repos/${repoFullName}`,
+      providerToken,
+    )) as GitHubRepo;
     const branch = repo.default_branch;
 
-    const tree = await fetchJson(
+    const tree = (await fetchJson(
       `https://api.github.com/repos/${repoFullName}/git/trees/${branch}?recursive=1`,
-      providerToken
-    );
+      providerToken,
+    )) as GitHubTreeResponse;
 
     const candidates = (tree.tree ?? [])
-      .filter((item: any) => item.type === "blob" && ALLOWED_EXT.some((ext) => item.path.endsWith(ext)))
+      .filter(
+        (item) =>
+          item.type === "blob" &&
+          ALLOWED_EXT.some((ext) => item.path.endsWith(ext)),
+      )
       .slice(0, 6);
 
     const files: Array<{ path: string; content: string }> = [];
 
     for (const item of candidates) {
-      const file = await fetchJson(
+      const file = (await fetchJson(
         `https://api.github.com/repos/${repoFullName}/contents/${item.path}`,
-        providerToken
-      );
+        providerToken,
+      )) as GitHubContentResponse;
       if (file?.content) {
         const decoded = Buffer.from(file.content, "base64").toString("utf-8");
         files.push({ path: item.path, content: decoded.slice(0, 2000) });
@@ -118,7 +135,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Mistral API error: ${text}` }, { status: 500 });
     }
 
-    const mistralJson = await mistralRes.json();
+    const mistralJson = (await mistralRes.json()) as MistralResponse;
     const content = mistralJson?.choices?.[0]?.message?.content as string | undefined;
     let summary = "AI scan completed.";
     let severity = "medium";
@@ -147,6 +164,7 @@ export async function POST(request: Request) {
 
     const payload = {
       user_id: userId,
+      repo_id: repoId ?? null,
       repo: repoFullName,
       severity,
       issues,
@@ -230,11 +248,13 @@ export async function POST(request: Request) {
       severity,
       score,
       issues,
+      repoId: repoId ?? null,
       scan: inserted?.[0] ?? null,
     });
-  } catch (err: any) {
-    const status = Number(err?.status ?? 0);
-    const message = String(err?.message ?? "Scan failed.");
+  } catch (err: unknown) {
+    const error = err as ErrorWithStatus;
+    const status = Number(error?.status ?? 0);
+    const message = String(error?.message ?? "Scan failed.");
     if (status === 409 && message.includes("Repository is empty")) {
       return NextResponse.json(
         { error: "GitHub repository is empty. Add at least one commit to scan." },

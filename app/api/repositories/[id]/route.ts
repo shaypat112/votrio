@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
     const res = await supabaseFetch(
       env,
-      `repositories?id=eq.${repoId}&select=id,repo_url,name,description,tags,is_public,status,review_count,rating_avg,last_review_excerpt,last_review_at,created_at,owner_id`,
+      `repositories?id=eq.${repoId}&select=id,repo_url,name,description,tags,is_public,status,review_count,rating_avg,last_review_excerpt,last_review_at,created_at,owner_id,team_id`,
       { accessToken: undefined },
     );
 
@@ -28,7 +28,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     }
 
     return NextResponse.json({ repo });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

@@ -12,7 +12,6 @@ export default function TabNav({
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: "scans", label: "Scans" },
     { key: "integrations", label: "Integrations" },
-    { key: "repositories", label: "Repositories left for review" },
     { key: "my-repos", label: "My repositories" },
   ];
 

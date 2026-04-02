@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { isTeamOwner } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,11 @@ export async function POST(request: Request) {
     const userId = decodeUserId(accessToken);
     if (!userId) {
       return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    }
+
+    const canManageTeam = await isTeamOwner(accessToken, userId, String(teamId));
+    if (!canManageTeam) {
+      return NextResponse.json({ error: "Only team owners can add members." }, { status: 403 });
     }
 
     const env = getSupabaseEnv();
@@ -35,6 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
+    if (profile.id === userId) {
+      return NextResponse.json({ error: "You are already on this team." }, { status: 400 });
+    }
+
     const memberRes = await supabaseFetch(env, "team_members", {
       method: "POST",
       accessToken,
@@ -54,7 +64,7 @@ export async function POST(request: Request) {
 
     const rows = await memberRes.json();
     return NextResponse.json({ member: rows?.[0] ?? null });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

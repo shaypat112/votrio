@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/app/lib/supabase";
+import { useTheme } from "@/app/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell } from "lucide-react";
+import { Bell, Moon, SunMedium } from "lucide-react";
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -41,13 +42,14 @@ function formatNotificationTitle(type: string) {
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
       type: string;
-      data: Record<string, any>;
+      data: Record<string, unknown>;
       read_at: string | null;
       created_at: string;
     }>
@@ -58,13 +60,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
-    if (!supabase) {
-      setLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
 
     const init = async () => {
       const { data } = await supabase.auth.getUser();
@@ -124,7 +119,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
     .split(" ")
-    .filter((part: any) => part.length > 0)
+    .filter((part: string) => part.length > 0)
     .map((part: string) => part[0])
     .slice(0, 2)
     .join("")
@@ -155,39 +150,69 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200">
-      <header className="border-b border-zinc-800/70">
+    <div className="min-h-screen bg-background text-foreground transition-colors mt-4 ">
+      <header className="border-b border-border/70 bg-background/85 backdrop-blur">
         <div className="px-6 py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-3">
-              <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-zinc-400">
+              <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 <Link
                   href="/profile"
-                  className="hover:text-zinc-100 transition-colors"
+                  className="transition-colors hover:text-foreground"
                 >
                   Profile
                 </Link>
                 <Link
                   href="/repositories"
-                  className="hover:text-zinc-100 transition-colors"
+                  className="transition-colors hover:text-foreground"
                 >
                   Repositories
                 </Link>
                 <Link
+                  href="/just-in-time-access"
+                  className="transition-colors hover:text-foreground"
+                >
+                  JIT Access
+                </Link>
+                <Link
                   href="/documentation"
-                  className="hover:text-zinc-100 transition-colors"
+                  className="transition-colors hover:text-foreground"
                 >
                   Docs
                 </Link>
-                <Link href="/settings"> Settings</Link>
+                <Link
+                  href="/settings"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Settings
+                </Link>
               </nav>
             </div>
 
             {!loading && user ? (
               <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={toggleTheme}
+                  className="rounded-full"
+                  aria-label={
+                    theme === "dark"
+                      ? "Switch to light mode"
+                      : "Switch to dark mode"
+                  }
+                >
+                  {theme === "dark" ? (
+                    <SunMedium className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800/70 bg-zinc-950 text-zinc-200 hover:border-zinc-700 hover:bg-zinc-900">
+                    <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted">
                       <Bell size={16} />
                       {unreadCount > 0 ? (
                         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">
@@ -200,11 +225,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {notifLoading ? (
-                      <div className="px-3 py-2 text-xs text-zinc-500">
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
                         Loading...
                       </div>
                     ) : notifications.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-zinc-500">
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
                         No notifications yet.
                       </div>
                     ) : (
@@ -212,23 +237,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         {notifications.map((item) => (
                           <div
                             key={item.id}
-                            className="px-3 py-2 text-xs text-zinc-200"
+                            className="px-3 py-2 text-xs text-foreground"
                           >
                             <div className="font-medium">
                               {formatNotificationTitle(item.type)}
                             </div>
-                            <div className="text-zinc-400">
+                            <div className="text-muted-foreground">
                               {item.data?.repo_name ??
                                 item.data?.repo_url ??
                                 "Activity update"}
                             </div>
                             {item.type === "scan.completed" ? (
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                                 {item.data?.severity ?? "unknown"} severity ·{" "}
                                 {item.data?.issues ?? 0} issues
                               </div>
                             ) : null}
-                            <div className="text-[10px] text-zinc-500">
+                            <div className="text-[10px] text-muted-foreground">
                               {new Date(item.created_at).toLocaleString()}
                             </div>
                           </div>
@@ -244,7 +269,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-3 rounded-full border border-zinc-800/70 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-200 hover:border-zinc-700 hover:bg-zinc-900">
+                    <button className="flex items-center gap-3 rounded-full border border-border bg-card px-2 py-1.5 text-sm text-foreground transition hover:bg-muted">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -252,11 +277,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           className="h-7 w-7 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 text-[11px] font-semibold text-zinc-200">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">
                           {initials || "U"}
                         </span>
                       )}
-                      <span className="hidden sm:inline text-xs font-medium text-zinc-300">
+                      <span className="hidden sm:inline text-xs font-medium text-muted-foreground">
                         {displayName}
                       </span>
                     </button>
@@ -271,14 +296,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </DropdownMenu>
               </div>
             ) : (
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="border-zinc-700/70 text-zinc-200 hover:bg-zinc-800"
-              >
-                <Link href="/auth">Sign in</Link>
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={toggleTheme}
+                  className="rounded-full"
+                  aria-label={
+                    theme === "dark"
+                      ? "Switch to light mode"
+                      : "Switch to dark mode"
+                  }
+                >
+                  {theme === "dark" ? (
+                    <SunMedium className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/auth">Sign in</Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>

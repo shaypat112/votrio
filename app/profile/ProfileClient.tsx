@@ -26,9 +26,7 @@ export default function ProfileClient() {
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [ignoredPaths, setIgnoredPaths] = useState(
-    "node_modules/**, dist/**, .next/**",
-  );
+
   const [activeTab, setActiveTab] = useState<TabKey>("scans");
   const [savingProfile, setSavingProfile] = useState(false);
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
@@ -304,21 +302,6 @@ export default function ProfileClient() {
             onScan={runRepoScan}
             scanningRepo={scanningRepo}
           />
-        </div>
-      )}
-
-      {activeTab === "repositories" && (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <p className="text-sm font-semibold text-zinc-100">
-                Repositories left for review
-              </p>
-              <p className="text-xs text-zinc-500">
-                Review public repositories and help others improve their code.
-              </p>
-            </CardContent>
-          </Card>
         </div>
       )}
 

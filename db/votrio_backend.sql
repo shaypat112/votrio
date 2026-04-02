@@ -3,6 +3,7 @@ create extension if not exists "pgcrypto";
 create table if not exists public.repositories (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid references public.profiles (id) on delete set null,
+  team_id uuid,
   repo_url text not null unique,
   name text not null,
   description text,
@@ -143,6 +144,35 @@ create table if not exists public.team_invites (
   accepted_at timestamptz
 );
 
+create table if not exists public.team_environments (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams (id) on delete cascade,
+  repo_id uuid references public.repositories (id) on delete set null,
+  name text not null,
+  slug text not null,
+  provider text not null default 'github',
+  github_owner text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint team_environments_unique unique (team_id, slug)
+);
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'repositories_team_id_fkey'
+  ) then
+    alter table public.repositories
+      add constraint repositories_team_id_fkey
+      foreign key (team_id) references public.teams (id) on delete set null;
+  end if;
+end $$;
+
+create index if not exists repositories_team_idx on public.repositories (team_id, created_at desc);
+
 -- RLS
 alter table public.repositories enable row level security;
 alter table public.reviews enable row level security;
@@ -157,6 +187,7 @@ alter table public.billing_customers enable row level security;
 alter table public.teams enable row level security;
 alter table public.team_members enable row level security;
 alter table public.team_invites enable row level security;
+alter table public.team_environments enable row level security;
 
 -- profiles table is managed by Supabase auth; ensure team features can resolve usernames
 create policy "Authenticated can read profiles"
@@ -169,8 +200,21 @@ create policy "Public can read published repositories"
 
 create policy "Owners can manage repositories"
   on public.repositories for all
-  using (auth.uid() = owner_id)
-  with check (auth.uid() = owner_id);
+  using (
+    auth.uid() = owner_id or
+    auth.uid() in (select owner_id from public.teams where id = team_id)
+  )
+  with check (
+    auth.uid() = owner_id or
+    auth.uid() in (select owner_id from public.teams where id = team_id)
+  );
+
+create policy "Team members can read team repositories"
+  on public.repositories for select
+  using (
+    team_id is not null and
+    auth.uid() in (select user_id from public.team_members where team_id = repositories.team_id)
+  );
 
 create policy "Public can read non-deleted reviews"
   on public.reviews for select
@@ -267,5 +311,17 @@ create policy "Owners can manage team members"
 
 create policy "Owners can manage team invites"
   on public.team_invites for all
+  using (auth.uid() in (select owner_id from public.teams where id = team_id))
+  with check (auth.uid() in (select owner_id from public.teams where id = team_id));
+
+create policy "Team members can read team environments"
+  on public.team_environments for select
+  using (
+    auth.uid() in (select owner_id from public.teams where id = team_id) or
+    auth.uid() in (select user_id from public.team_members where team_id = public.team_environments.team_id)
+  );
+
+create policy "Team owners can manage team environments"
+  on public.team_environments for all
   using (auth.uid() in (select owner_id from public.teams where id = team_id))
   with check (auth.uid() in (select owner_id from public.teams where id = team_id));

@@ -19,13 +19,13 @@ export function Toggle({
     <div
       className={cn(
         "flex items-center justify-between gap-4 rounded-lg px-4 py-3 transition-colors",
-        "border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]",
+        "border border-border bg-card hover:bg-muted/60",
       )}
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium text-zinc-100">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
         {description && (
-          <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
             {description}
           </p>
         )}
@@ -36,15 +36,17 @@ export function Toggle({
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent",
-          "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
-          checked ? "bg-white" : "bg-zinc-700",
+          "transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          checked ? "bg-foreground" : "bg-muted-foreground/40",
         )}
       >
         <span
           className={cn(
             "pointer-events-none inline-block h-4 w-4 rounded-full shadow-sm",
             "transform transition-transform duration-200",
-            checked ? "translate-x-4 bg-black" : "translate-x-0 bg-zinc-400",
+            checked
+              ? "translate-x-4 bg-background"
+              : "translate-x-0 bg-background/90",
           )}
         />
       </button>
@@ -63,7 +65,7 @@ export function FieldGroup({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium uppercase tracking-widest text-zinc-500">
+      <Label className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </Label>
       {children}
@@ -78,8 +80,8 @@ export function StyledInput(props: React.ComponentProps<typeof Input>) {
     <Input
       {...props}
       className={cn(
-        "h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-zinc-100",
-        "placeholder:text-zinc-600 focus:border-white/20 focus:bg-white/[0.05] focus:ring-0",
+        "h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground",
+        "placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-0",
         "transition-colors",
         props.className,
       )}
@@ -103,8 +105,8 @@ export function StyledSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "w-full h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-sm text-zinc-100",
-        "focus:border-white/20 focus:outline-none focus:ring-0 transition-colors appearance-none cursor-pointer",
+        "h-9 w-full cursor-pointer appearance-none rounded-lg border border-border bg-background px-3 text-sm text-foreground",
+        "focus:border-ring focus:outline-none focus:ring-0 transition-colors",
       )}
     >
       {children}
@@ -124,11 +126,11 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
-      <div className="border-b border-white/[0.06] px-6 py-4">
-        <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-6 py-4">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description && (
-          <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         )}
       </div>
       <div className="p-6 space-y-4">{children}</div>
@@ -152,8 +154,8 @@ export function DangerButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-lg border border-red-900/40 bg-red-950/20 px-3 py-1.5 text-xs font-medium text-red-400",
-        "hover:border-red-800/60 hover:bg-red-950/40 hover:text-red-300 transition-colors",
+        "rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors dark:text-red-400",
+        "hover:border-red-500/50 hover:bg-red-500/15",
         "disabled:opacity-40 disabled:cursor-not-allowed",
       )}
     >
@@ -180,9 +182,9 @@ export function GhostButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-lg border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-300",
-        "hover:border-white/[0.18] hover:bg-white/[0.08] hover:text-white transition-colors",
-        "disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2",
+        "flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        "disabled:cursor-not-allowed disabled:opacity-40",
         className,
       )}
     >

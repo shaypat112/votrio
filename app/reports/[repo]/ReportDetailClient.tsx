@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Bar,
   BarChart,
@@ -115,8 +122,7 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
     return [...scans]
       .sort(
         (a, b) =>
-          new Date(a.created_at).getTime() -
-          new Date(b.created_at).getTime()
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       )
       .map((scan) => ({
         date: new Date(scan.created_at).toLocaleDateString(),
@@ -247,7 +253,21 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
   };
 
   if (loading) {
-    return <p className="text-sm text-zinc-500">Loading scan report...</p>;
+    return (
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="space-y-3">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-72" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+        <Skeleton className="h-48 rounded-xl" />
+      </div>
+    );
   }
 
   if (error) {
@@ -264,7 +284,9 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
   if (!latest) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-zinc-500">No scan history for this repository yet.</p>
+        <p className="text-sm text-zinc-500">
+          No scan history for this repository yet.
+        </p>
         <Button asChild size="sm" variant="outline">
           <Link href="/profile">Back to profile</Link>
         </Button>
@@ -276,7 +298,9 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Scan report</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+            Scan report
+          </p>
           <h1 className="text-2xl font-semibold text-white">{latest.repo}</h1>
           <p className="text-sm text-zinc-400">
             Latest scan from {new Date(latest.created_at).toLocaleString()}
@@ -294,15 +318,25 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-              <p className="text-lg font-semibold text-white">{latest.severity}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Severity
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {latest.severity}
+              </p>
             </div>
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Issues</p>
-              <p className="text-lg font-semibold text-white">{latest.issues}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Issues
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {latest.issues}
+              </p>
             </div>
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Score</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Score
+              </p>
               <p className="text-lg font-semibold text-white">{latest.score}</p>
             </div>
           </div>
@@ -315,20 +349,26 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-white">Findings breakdown</CardTitle>
+          <CardTitle className="text-base text-white">
+            Findings breakdown
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
             {Object.entries(breakdown.severityCounts).map(([sev, count]) => (
               <div key={sev} className="rounded-lg border border-zinc-800 p-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{sev}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                  {sev}
+                </p>
                 <p className="text-lg font-semibold text-white">{count}</p>
               </div>
             ))}
           </div>
           <Separator className="bg-zinc-800" />
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Top files</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+              Top files
+            </p>
             {breakdown.topFiles.length ? (
               <div className="space-y-2">
                 {breakdown.topFiles.map((file) => (
@@ -342,7 +382,9 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">No file-level findings yet.</p>
+              <p className="text-sm text-zinc-500">
+                No file-level findings yet.
+              </p>
             )}
           </div>
         </CardContent>
@@ -351,11 +393,15 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
       {latest && previous ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Latest vs previous</CardTitle>
+            <CardTitle className="text-base text-white">
+              Latest vs previous
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Score change</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Score change
+              </p>
               <p className="text-lg font-semibold text-white">
                 {latest.score - previous.score >= 0 ? "+" : ""}
                 {latest.score - previous.score}
@@ -365,7 +411,9 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Issues change</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Issues change
+              </p>
               <p className="text-lg font-semibold text-white">
                 {latest.issues - previous.issues >= 0 ? "+" : ""}
                 {latest.issues - previous.issues}
@@ -375,8 +423,12 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-800 p-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Severity</p>
-              <p className="text-lg font-semibold text-white">{latest.severity}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Severity
+              </p>
+              <p className="text-lg font-semibold text-white">
+                {latest.severity}
+              </p>
               <p className="text-xs text-zinc-500">Prev {previous.severity}</p>
             </div>
           </CardContent>
@@ -386,7 +438,9 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
       {latest ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-white">Findings table</CardTitle>
+            <CardTitle className="text-base text-white">
+              Findings table
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -397,17 +451,32 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
                 className="h-9 text-sm"
               />
               <div className="w-full sm:w-44">
-                <Select value={findingSeverity} onValueChange={setFindingSeverity}>
+                <Select
+                  value={findingSeverity}
+                  onValueChange={setFindingSeverity}
+                >
                   <SelectTrigger className="h-9 text-sm">
                     <SelectValue placeholder="Severity" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className="text-sm">All</SelectItem>
-                    <SelectItem value="critical" className="text-sm">Critical</SelectItem>
-                    <SelectItem value="high" className="text-sm">High</SelectItem>
-                    <SelectItem value="medium" className="text-sm">Medium</SelectItem>
-                    <SelectItem value="low" className="text-sm">Low</SelectItem>
-                    <SelectItem value="unknown" className="text-sm">Unknown</SelectItem>
+                    <SelectItem value="all" className="text-sm">
+                      All
+                    </SelectItem>
+                    <SelectItem value="critical" className="text-sm">
+                      Critical
+                    </SelectItem>
+                    <SelectItem value="high" className="text-sm">
+                      High
+                    </SelectItem>
+                    <SelectItem value="medium" className="text-sm">
+                      Medium
+                    </SelectItem>
+                    <SelectItem value="low" className="text-sm">
+                      Low
+                    </SelectItem>
+                    <SelectItem value="unknown" className="text-sm">
+                      Unknown
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -417,16 +486,24 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
                     <SelectValue placeholder="Sort" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="severity" className="text-sm">Severity</SelectItem>
-                    <SelectItem value="score" className="text-sm">Score</SelectItem>
-                    <SelectItem value="file" className="text-sm">File</SelectItem>
+                    <SelectItem value="severity" className="text-sm">
+                      Severity
+                    </SelectItem>
+                    <SelectItem value="score" className="text-sm">
+                      Score
+                    </SelectItem>
+                    <SelectItem value="file" className="text-sm">
+                      File
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             {filteredFindings.length === 0 ? (
-              <p className="text-sm text-zinc-500">No findings match these filters.</p>
+              <p className="text-sm text-zinc-500">
+                No findings match these filters.
+              </p>
             ) : (
               <div className="space-y-2 text-xs text-zinc-400">
                 {filteredFindings.slice(0, 50).map((item, index) => (
@@ -435,15 +512,23 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
                     className="rounded-lg border border-zinc-800 p-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-zinc-100">{item.type ?? "Issue"}</span>
+                      <span className="text-zinc-100">
+                        {item.type ?? "Issue"}
+                      </span>
                       <div className="flex items-center gap-2">
-                        {item.severity ? <Badge variant="outline">{item.severity}</Badge> : null}
+                        {item.severity ? (
+                          <Badge variant="outline">{item.severity}</Badge>
+                        ) : null}
                         {typeof item.score === "number" ? (
-                          <span className="text-xs text-zinc-500">Score {item.score}</span>
+                          <span className="text-xs text-zinc-500">
+                            Score {item.score}
+                          </span>
                         ) : null}
                       </div>
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">{item.message ?? "No message"}</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {item.message ?? "No message"}
+                    </p>
                     {item.file ? (
                       <p className="mt-1 text-xs text-zinc-500">
                         {item.file}:{item.line ?? "-"}
@@ -471,7 +556,10 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#a1a1aa", fontSize: 12 }}
+                />
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{
@@ -480,7 +568,12 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
                     color: "#e4e4e7",
                   }}
                 />
-                <Line type="monotone" dataKey="score" stroke="#22d3ee" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#22d3ee"
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -488,7 +581,10 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#a1a1aa", fontSize: 12 }}
+                />
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{
@@ -501,36 +597,6 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base text-white">AI suggestions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-zinc-300">
-          {latest.findings?.list?.length ? (
-            <div className="space-y-3">
-              {latest.findings.list.slice(0, 10).map((item, index) => (
-                <div key={`${latest.repo}-${index}`} className="rounded-md border border-zinc-800 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-zinc-200">{item.type ?? "Issue"}</div>
-                    {item.severity ? (
-                      <Badge variant="outline">{item.severity}</Badge>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-zinc-500 mt-1">{item.message ?? "Review details"}</p>
-                  {item.file ? (
-                    <p className="text-xs text-zinc-500 mt-1">
-                      {item.file}:{item.line ?? "-"}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-500">No AI suggestions captured yet.</p>
-          )}
         </CardContent>
       </Card>
 
@@ -561,13 +627,15 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
           <div className="max-h-64 space-y-3 overflow-auto rounded-lg border border-zinc-800 p-3 text-sm">
             {chatMessages.length === 0 ? (
               <p className="text-zinc-500">
-                Ask about this repo's scan results or how to fix issues.
+                Ask about this repo&apos;s scan results or how to fix issues.
               </p>
             ) : (
               chatMessages.map((msg, index) => (
                 <div
                   key={`${msg.role}-${index}`}
-                  className={msg.role === "user" ? "text-white" : "text-zinc-300"}
+                  className={
+                    msg.role === "user" ? "text-white" : "text-zinc-300"
+                  }
                 >
                   <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">
                     {msg.role}

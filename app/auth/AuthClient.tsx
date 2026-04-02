@@ -84,17 +84,13 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 py-12">
-      <Card className="w-full max-w-md border border-zinc-800 bg-zinc-900 shadow-xl">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-md border border-zinc-800 shadow-xl">
         <CardHeader className="space-y-2 text-center">
-          <Badge variant="outline" className="px-3 py-1 text-sm">
-            Votrio Access
-          </Badge>
-          <CardTitle className="text-2xl text-white font-semibold">
-            {isLogin ? "Sign in" : "Create your account"}
-          </CardTitle>
+          <CardTitle className="text-2xl text-white font-semibold"></CardTitle>
           <CardDescription className="text-zinc-400 text-sm">
-            Connect your account to unlock AI-powered trace analysis.
+            Connect your account to link your repositories and start scanning
+            for vulnerabilities.
           </CardDescription>
         </CardHeader>
 
@@ -121,69 +117,6 @@ export default function AuthPage() {
               Continue with Google
             </Button>
           </div>
-
-          <div className="flex items-center gap-3 text-xs text-zinc-500">
-            <div className="flex-1 h-px bg-zinc-800" />
-            or use email
-            <div className="flex-1 h-px bg-zinc-800" />
-          </div>
-
-          {/* Email Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
-                  size={14}
-                />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-zinc-500 focus:border-zinc-500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600"
-                  size={14}
-                />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:ring-zinc-500 focus:border-zinc-500"
-                  required
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="rounded-md border border-red-600/40 bg-red-600/10 px-3 py-2 text-xs text-red-200">
-                {error}
-              </div>
-            )}
-
-            {notice && (
-              <div className="rounded-md border border-zinc-700/70 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-300">
-                {notice}
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Working..." : isLogin ? "Sign in" : "Create account"}
-            </Button>
-          </form>
 
           <Button
             variant="link"

@@ -35,18 +35,6 @@ export function NotificationsSection() {
         checked={settings.notifyLow}
         onChange={(v) => update("notifyLow", v)}
       />
-      <Toggle
-        label="Weekly digest"
-        description="Summary of scans every Friday morning."
-        checked={settings.weeklyDigest}
-        onChange={(v) => update("weeklyDigest", v)}
-      />
-      <Toggle
-        label="Daily digest"
-        description="Daily rollup of reviews and completed scans."
-        checked={settings.dailyDigest}
-        onChange={(v) => update("dailyDigest", v)}
-      />
     </SectionCard>
   );
 }

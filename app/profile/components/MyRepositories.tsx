@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/app/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type RepoRow = {
   id: string;
@@ -58,7 +59,13 @@ export default function MyRepositories() {
   }, [supabase]);
 
   if (loading) {
-    return <p className="text-sm text-zinc-500">Loading repositories...</p>;
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+      </div>
+    );
   }
 
   if (error) {

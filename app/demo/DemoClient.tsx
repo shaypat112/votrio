@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Terminal,
-  Play,
   RotateCcw,
   Copy,
   Check,
@@ -51,7 +49,7 @@ function getUser(id) {
 
 function colorize(line: string): React.ReactNode {
   if (line.startsWith("─")) {
-    return <span className="text-zinc-800">{line}</span>;
+    return <span className="text-zinc-600">{line}</span>;
   }
   if (line.startsWith("[CRITICAL]")) {
     const rest = line.slice(10);
@@ -59,8 +57,8 @@ function colorize(line: string): React.ReactNode {
     if (dash !== -1) {
       return (
         <span>
-          <span className="text-red-400 font-bold">[CRITICAL]</span>
-          <span className="text-white font-semibold">
+          <span className="font-bold text-white">[CRITICAL]</span>
+          <span className="font-semibold text-zinc-100">
             {rest.slice(0, dash)}
           </span>
           <span className="text-zinc-600"> — </span>
@@ -70,7 +68,7 @@ function colorize(line: string): React.ReactNode {
     }
     return (
       <span>
-        <span className="text-red-400 font-bold">[CRITICAL]</span>
+        <span className="font-bold text-white">[CRITICAL]</span>
         <span className="text-zinc-300">{rest}</span>
       </span>
     );
@@ -81,8 +79,8 @@ function colorize(line: string): React.ReactNode {
     if (dash !== -1) {
       return (
         <span>
-          <span className="text-orange-400 font-bold">[HIGH]</span>
-          <span className="text-white font-semibold">
+          <span className="font-bold text-zinc-200">[HIGH]</span>
+          <span className="font-semibold text-zinc-100">
             {rest.slice(0, dash)}
           </span>
           <span className="text-zinc-600"> — </span>
@@ -92,7 +90,7 @@ function colorize(line: string): React.ReactNode {
     }
     return (
       <span>
-        <span className="text-orange-400 font-bold">[HIGH]</span>
+        <span className="font-bold text-zinc-200">[HIGH]</span>
         <span className="text-zinc-300">{rest}</span>
       </span>
     );
@@ -103,8 +101,8 @@ function colorize(line: string): React.ReactNode {
     if (dash !== -1) {
       return (
         <span>
-          <span className="text-yellow-400 font-bold">[MEDIUM]</span>
-          <span className="text-white font-semibold">
+          <span className="font-bold text-zinc-300">[MEDIUM]</span>
+          <span className="font-semibold text-zinc-100">
             {rest.slice(0, dash)}
           </span>
           <span className="text-zinc-600"> — </span>
@@ -114,7 +112,7 @@ function colorize(line: string): React.ReactNode {
     }
     return (
       <span>
-        <span className="text-yellow-400 font-bold">[MEDIUM]</span>
+        <span className="font-bold text-zinc-300">[MEDIUM]</span>
         <span className="text-zinc-300">{rest}</span>
       </span>
     );
@@ -123,7 +121,7 @@ function colorize(line: string): React.ReactNode {
     const rest = line.slice(5);
     return (
       <span>
-        <span className="text-zinc-500 font-bold">[LOW]</span>
+        <span className="font-bold text-zinc-400">[LOW]</span>
         <span className="text-zinc-400">{rest}</span>
       </span>
     );
@@ -131,7 +129,7 @@ function colorize(line: string): React.ReactNode {
   if (line.startsWith("●")) {
     return (
       <span>
-        <span className="text-cyan-400">●</span>
+        <span className="text-zinc-300">●</span>
         <span className="text-zinc-400">{line.slice(1)}</span>
       </span>
     );
@@ -139,7 +137,7 @@ function colorize(line: string): React.ReactNode {
   if (line.startsWith("✓")) {
     return (
       <span>
-        <span className="text-cyan-400">✓</span>
+        <span className="text-zinc-300">✓</span>
         <span className="text-zinc-400">{line.slice(1)}</span>
       </span>
     );
@@ -148,7 +146,7 @@ function colorize(line: string): React.ReactNode {
     return (
       <span>
         <span className="text-zinc-600">Run: </span>
-        <span className="text-cyan-400 font-mono">{line.slice(5)}</span>
+        <span className="font-mono text-zinc-100">{line.slice(5)}</span>
       </span>
     );
   }
@@ -264,8 +262,9 @@ export default function DemoPage() {
           } catch {}
         }
       }
-    } catch (err: any) {
-      setOutput((prev) => [...prev, "", `error: ${err.message}`, ""]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Scan failed";
+      setOutput((prev) => [...prev, "", `error: ${message}`, ""]);
     } finally {
       setScanning(false);
       setOutput((prev) => [...prev, "", "$ _"]);
@@ -298,36 +297,22 @@ export default function DemoPage() {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        background: "#09090b",
+        background: "var(--background)",
         fontFamily: "'IBM Plex Mono', 'Fira Code', monospace",
       }}
     >
-      {/* Subtle scanline texture overlay */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)",
-        }}
-      />
-
       {/* Header */}
-      <header className="relative z-10 border-b border-zinc-900 px-5 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur-sm">
+      <header className="relative z-10 flex items-center justify-between border-b border-border bg-card px-5 py-3">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-7 h-7 rounded border border-cyan-500/40 bg-cyan-500/10 flex items-center justify-center">
-              <Shield size={13} className="text-cyan-400" />
-            </div>
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <div className="flex h-7 w-7 items-center justify-center rounded border border-border bg-background">
+            <Shield size={13} className="text-foreground" />
           </div>
-          <span className="text-white font-bold text-sm tracking-tight">
-            votrio
-          </span>
-          <span className="text-zinc-700 text-xs">/</span>
-          <span className="text-zinc-600 text-xs">demo</span>
+          <span className="text-sm font-bold tracking-tight text-foreground">votrio</span>
+          <span className="text-xs text-zinc-600">/</span>
+          <span className="text-xs text-muted-foreground">demo</span>
           <Badge
             variant="outline"
-            className="text-[10px] border-cyan-500/20 text-cyan-500/70 bg-cyan-500/5 px-1.5 py-0 ml-1"
+            className="ml-1 border-border bg-background px-1.5 py-0 text-[10px] text-muted-foreground"
           >
             LIVE
           </Badge>
@@ -337,12 +322,12 @@ export default function DemoPage() {
           variant="ghost"
           size="sm"
           onClick={copyInstall}
-          className="hidden sm:flex items-center gap-2 text-xs font-mono text-zinc-500 hover:text-white hover:bg-zinc-800 border border-transparent hover:border-zinc-700 h-7 px-3"
+          className="hidden h-7 items-center gap-2 border border-border px-3 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:flex"
         >
           {copiedInstall ? (
             <>
-              <Check size={11} className="text-cyan-400" />
-              <span className="text-cyan-400">copied</span>
+              <Check size={11} className="text-foreground" />
+              <span className="text-foreground">copied</span>
             </>
           ) : (
             <>
@@ -356,10 +341,10 @@ export default function DemoPage() {
       {/* Main grid */}
       <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden">
         {/* Left panel — editor */}
-        <div className="flex-1 flex flex-col border-r border-zinc-900 min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col border-r border-border">
           {/* Sample selector strip */}
-          <div className="px-4 py-3 border-b border-zinc-900 flex items-center gap-3 bg-zinc-950/40">
-            <span className="text-[10px] text-zinc-700 uppercase tracking-[0.15em] font-bold shrink-0">
+          <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               samples
             </span>
             <div className="flex gap-2 flex-wrap">
@@ -370,20 +355,13 @@ export default function DemoPage() {
                   className={cn(
                     "flex items-center gap-2 px-2.5 py-1 rounded border text-[11px] font-mono transition-all",
                     activeSample === s.id
-                      ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
-                      : "border-zinc-800 bg-zinc-900/40 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300",
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-muted-foreground hover:border-zinc-500 hover:text-foreground",
                   )}
                 >
                   <span>{s.label}</span>
                   <span className="text-zinc-700">·</span>
-                  <span
-                    className={cn(
-                      "text-[10px]",
-                      s.severity === "critical"
-                        ? "text-red-500"
-                        : "text-orange-500",
-                    )}
-                  >
+                  <span className="text-[10px] text-zinc-500">
                     {s.badge}
                   </span>
                 </button>
@@ -392,14 +370,14 @@ export default function DemoPage() {
           </div>
 
           {/* Editor chrome */}
-          <div className="px-4 py-2 border-b border-zinc-900 flex items-center justify-between bg-zinc-950/20">
+          <div className="flex items-center justify-between border-b border-border bg-background px-4 py-2">
             <div className="flex items-center gap-3">
               <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
-                <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
+                <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+                <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+                <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
               </div>
-              <span className="text-[10px] text-zinc-700 font-mono">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {activeSample
                   ? `${activeSample}.${language === "python" ? "py" : language === "tsx" ? "tsx" : "js"}`
                   : "untitled"}
@@ -408,7 +386,7 @@ export default function DemoPage() {
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="text-[10px] font-mono bg-transparent border border-zinc-800 text-zinc-600 rounded px-2 py-0.5 focus:outline-none focus:border-zinc-600 hover:border-zinc-700 transition-colors"
+              className="rounded border border-border bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:border-zinc-500 focus:border-zinc-500 focus:outline-none"
             >
               <option value="javascript">js</option>
               <option value="typescript">ts</option>
@@ -424,11 +402,11 @@ export default function DemoPage() {
             className="flex flex-1 overflow-hidden"
             style={{ minHeight: "340px" }}
           >
-            <div className="py-4 px-3 select-none border-r border-zinc-900/60 bg-zinc-950/30">
+            <div className="select-none border-r border-border bg-card/60 px-3 py-4">
               {Array.from({ length: lineCount }).map((_, i) => (
                 <div
                   key={i}
-                  className="text-[11px] leading-5 text-zinc-800 text-right"
+                  className="text-right text-[11px] leading-5 text-zinc-500"
                   style={{
                     width: "28px",
                     fontFamily: "'IBM Plex Mono', monospace",
@@ -446,30 +424,30 @@ export default function DemoPage() {
                 setRan(false);
               }}
               spellCheck={false}
-              className="flex-1 bg-transparent text-zinc-300 p-4 resize-none focus:outline-none overflow-auto text-[12.5px] leading-5"
+              className="flex-1 resize-none overflow-auto bg-background p-4 text-[12.5px] leading-5 text-foreground focus:outline-none"
               style={{
                 fontFamily: "'IBM Plex Mono', 'Fira Code', monospace",
-                caretColor: "#22d3ee",
+                caretColor: "currentColor",
                 tabSize: 2,
               }}
             />
           </div>
 
           {/* Action bar */}
-          <div className="px-4 py-3 border-t border-zinc-900 flex gap-2 bg-zinc-950/40">
+          <div className="flex gap-2 border-t border-border bg-card px-4 py-3">
             <Button
               onClick={runScan}
               disabled={scanning}
               className={cn(
                 "flex-1 h-9 text-xs font-mono font-bold gap-2 transition-all",
                 scanning
-                  ? "bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed"
-                  : "bg-cyan-500 hover:bg-cyan-400 text-black border-0",
+                  ? "cursor-not-allowed border border-border bg-muted text-muted-foreground"
+                  : "border-0 bg-foreground text-background hover:opacity-90",
               )}
             >
               {scanning ? (
                 <>
-                  <span className="w-3 h-3 border border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+                  <span className="h-3 w-3 animate-spin rounded-full border border-zinc-500 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-100" />
                   scanning...
                 </>
               ) : (
@@ -483,7 +461,7 @@ export default function DemoPage() {
               variant="outline"
               size="sm"
               onClick={reset}
-              className="h-9 w-9 p-0 border-zinc-800 bg-transparent hover:bg-zinc-900 text-zinc-600 hover:text-zinc-300"
+              className="h-9 w-9 border-border bg-background p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <RotateCcw size={13} />
             </Button>
@@ -491,25 +469,25 @@ export default function DemoPage() {
         </div>
 
         {/* Right panel — terminal */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-[380px] lg:min-h-0">
+        <div className="flex min-h-[380px] min-w-0 flex-1 flex-col lg:min-h-0">
           {/* Terminal chrome */}
-          <div className="px-4 py-2 border-b border-zinc-900 flex items-center gap-3 bg-zinc-950/40">
+          <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2">
             <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#3a1a1a]" />
-              <div className="w-2.5 h-2.5 rounded-full bg-[#2a2a1a]" />
-              <div className="w-2.5 h-2.5 rounded-full bg-[#1a2a1a]" />
+              <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
             </div>
-            <span className="text-[10px] text-zinc-700 font-mono mx-auto">
+            <span className="mx-auto font-mono text-[10px] text-muted-foreground">
               votrio — zsh — 80×24
             </span>
             <div
               className={cn(
-                "w-1.5 h-1.5 rounded-full transition-colors",
+                "h-1.5 w-1.5 rounded-full transition-colors",
                 scanning
-                  ? "bg-cyan-400 animate-pulse"
+                  ? "bg-foreground animate-pulse"
                   : ran
-                    ? "bg-zinc-600"
-                    : "bg-zinc-800",
+                    ? "bg-zinc-500"
+                    : "bg-zinc-300 dark:bg-zinc-700",
               )}
             />
           </div>
@@ -517,7 +495,7 @@ export default function DemoPage() {
           {/* Output */}
           <div
             ref={outputRef}
-            className="flex-1 p-4 overflow-y-auto bg-[#09090b]"
+            className="flex-1 overflow-y-auto bg-background p-4"
             style={{ minHeight: "340px" }}
           >
             {output.map((line, i) => (
@@ -550,34 +528,34 @@ export default function DemoPage() {
       </div>
 
       {/* Footer CTA */}
-      <footer className="relative z-10 border-t border-zinc-900 px-5 py-4 bg-zinc-950/60 backdrop-blur-sm">
-        <div className="max-w-none flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="relative z-10 border-t border-border bg-card px-5 py-4">
+        <div className="max-w-none flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-3">
-            <AlertTriangle size={14} className="text-yellow-500/60 shrink-0" />
+            <AlertTriangle size={14} className="shrink-0 text-zinc-500" />
             <div>
-              <p className="text-white text-xs font-semibold">
+              <p className="text-xs font-semibold text-foreground">
                 Protect your real codebase
               </p>
-              <p className="text-zinc-600 text-[11px] mt-0.5 font-mono">
+              <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                 install globally · scan any project · zero config
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-zinc-800 bg-zinc-900/60 font-mono text-xs text-zinc-400">
+            <div className="flex items-center gap-2 rounded border border-border bg-background px-3 py-1.5 font-mono text-xs text-muted-foreground">
               <span className="text-zinc-700">$</span>
               <span>npm install -g votrio</span>
             </div>
             <Button
               size="sm"
               onClick={copyInstall}
-              className="h-8 px-3 text-xs font-mono bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 hover:border-zinc-600 gap-1.5"
+              className="h-8 gap-1.5 border border-border bg-background px-3 font-mono text-xs text-foreground hover:bg-muted"
               variant="outline"
             >
               {copiedInstall ? (
                 <>
-                  <Check size={11} className="text-cyan-400" />
-                  <span className="text-cyan-400">copied</span>
+                  <Check size={11} className="text-foreground" />
+                  <span className="text-foreground">copied</span>
                 </>
               ) : (
                 <>

@@ -42,15 +42,6 @@ export default function ProfileHeader({
             <p className="text-xs text-zinc-400">{email ?? "no email"}</p>
           </div>
         </div>
-        <div className="flex gap-2 sm:ml-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => router.push("/profile?tab=billing")}
-          >
-            Billing
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

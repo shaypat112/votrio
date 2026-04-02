@@ -1,6 +1,4 @@
 "use client";
-
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import {
@@ -11,6 +9,7 @@ import {
   Webhook,
   Eye,
   Database,
+  Palette,
   Users,
   CreditCard,
 } from "lucide-react";
@@ -22,6 +21,7 @@ const NAV_SECTIONS = [
   { id: "security", label: "Security", icon: Shield },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "scanning", label: "Scanning", icon: Zap },
+  { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "repos", label: "Repositories", icon: Eye },
   { id: "retention", label: "Data", icon: Database },
@@ -41,12 +41,12 @@ function Sidebar({
   const { save, saving } = useSettings();
 
   return (
-    <aside className="hidden sm:flex w-56 flex-shrink-0 flex-col border-r border-white/[0.06] bg-black/80 backdrop-blur-xl">
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white">
-          <div className="h-2.5 w-2.5 rounded-sm bg-black" />
+    <aside className="hidden w-56 flex-shrink-0 flex-col border-r border-border bg-card/80 backdrop-blur-xl sm:flex">
+      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-5">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground">
+          <div className="h-2.5 w-2.5 rounded-sm bg-background" />
         </div>
-        <span className="text-sm font-semibold tracking-tight text-white">
+        <span className="text-sm font-semibold tracking-tight text-foreground">
           Settings
         </span>
       </div>
@@ -59,33 +59,33 @@ function Sidebar({
             className={cn(
               "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
               active === id
-                ? "bg-white/[0.08] text-white"
-                : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon
               className={cn(
                 "h-4 w-4 shrink-0 transition-colors",
                 active === id
-                  ? "text-white"
-                  : "text-zinc-600 group-hover:text-zinc-400",
+                  ? "text-accent-foreground"
+                  : "text-muted-foreground group-hover:text-foreground",
               )}
             />
             {label}
             {active === id && (
-              <ChevronRight className="ml-auto h-3.5 w-3.5 text-zinc-600" />
+              <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
             )}
           </button>
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-white/[0.06] p-3">
+      <div className="shrink-0 border-t border-border p-3">
         <button
           onClick={save}
           disabled={saving}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-sm font-medium text-black",
-            "transition-all hover:bg-zinc-100 active:scale-[0.98]",
+            "flex w-full items-center justify-center gap-2 rounded-lg bg-foreground py-2 text-sm font-medium text-background",
+            "transition-all hover:opacity-90 active:scale-[0.98]",
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
         >
@@ -110,13 +110,13 @@ function Banners() {
   return (
     <div className="space-y-2">
       {status && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-900/40 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-400">
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
           <Check className="h-4 w-4 shrink-0" /> {status}
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-900/40 bg-red-950/20 px-4 py-3 text-sm text-red-400">
-          <span className="h-4 w-4 shrink-0 text-red-400">!</span> {error}
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          <span className="h-4 w-4 shrink-0 text-red-500">!</span> {error}
         </div>
       )}
     </div>
@@ -136,20 +136,20 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
     <div
-      className="flex min-h-screen bg-black text-zinc-100"
+      className="flex min-h-screen bg-background text-foreground"
       style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
       <Sidebar active={active} onSelect={onSelect} />
 
-      <main className="flex-1 px-6 sm:px-10 py-10">
+      <main className="flex-1 bg-gradient-to-br from-background via-muted/20 to-background px-6 py-10 sm:px-10">
         <div className="mx-auto max-w-2xl space-y-6">
           <Banners />
           {children}

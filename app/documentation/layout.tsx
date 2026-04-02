@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Terminal, ShieldCheck, Cpu, BookOpen } from "lucide-react";
 
 export default function DocsLayout({
   children,
@@ -7,45 +6,58 @@ export default function DocsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-black text-zinc-200">
-      <aside className="w-64 border-r border-zinc-800/80 hidden md:block p-6 sticky top-0 h-screen bg-black">
-        <div className="space-y-8">
-          <div>
-            <h4 className="text-zinc-500 font-semibold mb-4 text-[10px] tracking-[0.35em] uppercase">
-              Getting Started
-            </h4>
-            <ul className="space-y-3 text-sm">
-              <li>
-                <Link
-                  href="/documentation"
-                  className="hover:text-white transition-colors"
-                >
-                  Introduction
-                </Link>
-              </li>
+    <div className="flex min-h-screen bg-background text-foreground">
+      <aside className="sticky top-0 hidden h-screen w-64 border-r border-border bg-card md:block">
+        <div className="space-y-8 p-6">
+          <div className="rounded-2xl border border-border bg-muted/30 p-4">
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+              Documentation
+            </p>
+            <p className="mt-2 text-sm font-medium text-foreground">
+              Setup, install guides, and usage notes for Votrio.
+            </p>
+          </div>
 
-              <li>
-                <Link
-                  href="/documentation/installation"
-                  className="hover:text-white transition-colors"
-                >
-                  Installation
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/documentation/quickstart"
-                  className="hover:text-white transition-colors"
-                >
-                  Quick Start
-                </Link>
-              </li>
-            </ul>
+          <div className="space-y-8">
+            <div>
+              <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                Getting Started
+              </h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <Link
+                    href="/documentation"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Introduction
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
+                    href="/documentation/installation"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Installation
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/quickstart"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Quick Start
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 p-8 md:p-16 max-w-4xl">{children}</main>
+      <main className="flex-1 bg-background p-8 md:p-16">
+        <div className="mx-auto max-w-4xl">{children}</div>
+      </main>
     </div>
   );
 }

@@ -40,7 +40,7 @@ export function AccountSection() {
       <div className="pt-2">
         <button
           onClick={() => router.push("/feedback")}
-          className="text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline transition-colors"
+          className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
         >
           Submit feedback →
         </button>

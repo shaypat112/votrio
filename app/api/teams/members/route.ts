@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import { getAccessibleTeamIds } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
+    const accessibleTeamIds = await getAccessibleTeamIds(accessToken, userId);
+    if (!accessibleTeamIds.includes(teamId)) {
+      return NextResponse.json({ error: "You do not have access to this team." }, { status: 403 });
+    }
+
     const env = getSupabaseEnv();
     const res = await supabaseFetch(
       env,
@@ -32,7 +38,7 @@ export async function GET(request: Request) {
 
     const members = await res.json();
     return NextResponse.json({ members });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

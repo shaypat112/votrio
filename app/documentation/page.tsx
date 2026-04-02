@@ -56,11 +56,13 @@ export default function MainDocsPage() {
         <Badge variant="outline">v0.1.0-beta now available</Badge>
 
         <div className="space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-semibold text-white tracking-tight leading-[1.1]">
+          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-5xl">
             The AI debugger that
-            <span className="block text-zinc-400">lives in your shell.</span>
+            <span className="block text-muted-foreground">
+              lives in your shell.
+            </span>
           </h1>
-          <p className="text-base sm:text-lg text-zinc-400 max-w-2xl leading-relaxed">
+          <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Votrio wraps your terminal process, intercepts errors in real time,
             and explains stack traces while scanning for security risks.
           </p>
@@ -78,10 +80,10 @@ export default function MainDocsPage() {
         </div>
       </section>
 
-      <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/70 px-4 py-3 font-mono text-sm text-zinc-300">
-        <span className="text-zinc-600 select-none">$</span> npm install -g
+      <div className="rounded-xl border border-border bg-card px-4 py-3 font-mono text-sm text-foreground">
+        <span className="select-none text-muted-foreground">$</span> npm install -g
         votrio
-        <span className="ml-auto text-zinc-600 text-xs hidden sm:inline">
+        <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
           node larger than 18 required
         </span>
       </div>
@@ -90,7 +92,7 @@ export default function MainDocsPage() {
         {stats.map((s) => (
           <Card key={s.label} className="text-center">
             <CardHeader>
-              <CardTitle className="text-2xl font-semibold text-white">
+              <CardTitle className="text-2xl font-semibold text-foreground">
                 {s.value}
               </CardTitle>
               <CardDescription className="text-xs">{s.label}</CardDescription>
@@ -100,14 +102,14 @@ export default function MainDocsPage() {
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-white">What Votrio does</h2>
+        <h2 className="text-lg font-semibold text-foreground">What Votrio does</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {features.map((f) => {
             const Icon = f.icon;
             return (
               <Card key={f.title}>
                 <CardHeader className="gap-3">
-                  <div className="flex items-center gap-2 text-zinc-200">
+                  <div className="flex items-center gap-2 text-foreground">
                     <Icon size={18} />
                     <CardTitle>{f.title}</CardTitle>
                   </div>
@@ -119,9 +121,9 @@ export default function MainDocsPage() {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-zinc-800/60 bg-zinc-950/60 p-6">
-        <h2 className="text-lg font-semibold text-white">Why Votrio?</h2>
-        <p className="text-sm text-zinc-400 leading-relaxed">
+      <section className="space-y-4 rounded-xl border border-border bg-card p-6">
+        <h2 className="text-lg font-semibold text-foreground">Why Votrio?</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Most security tools are reactive. Votrio is proactive by sitting
           directly in your shell and catching issues before they ship.
         </p>
@@ -134,19 +136,19 @@ export default function MainDocsPage() {
           ].map((item) => (
             <li
               key={item}
-              className="flex items-start gap-2 text-sm text-zinc-400"
+              className="flex items-start gap-2 text-sm text-muted-foreground"
             >
-              <CheckCircle2 size={14} className="text-zinc-200 mt-0.5" />
+              <CheckCircle2 size={14} className="mt-0.5 text-foreground" />
               {item}
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border border-zinc-800/70 bg-zinc-950/60">
+      <section className="flex flex-col items-start justify-between gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center">
         <div>
-          <p className="text-white font-semibold text-sm">Ready to install?</p>
-          <p className="text-zinc-500 text-xs mt-0.5">
+          <p className="text-sm font-semibold text-foreground">Ready to install?</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Takes less than 30 seconds.
           </p>
         </div>

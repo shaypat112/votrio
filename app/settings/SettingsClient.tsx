@@ -768,12 +768,6 @@ export default function SettingsClient() {
                 checked={settings.weeklyDigest}
                 onChange={(v) => update("weeklyDigest", v)}
               />
-              <Toggle
-                label="Daily digest"
-                description="Daily rollup of reviews and completed scans."
-                checked={settings.dailyDigest}
-                onChange={(v) => update("dailyDigest", v)}
-              />
             </SectionCard>
           )}
 
