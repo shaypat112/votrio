@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -175,9 +176,9 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
     setScanLoading(true);
     setScanError(null);
 
-    const res = await fetch(
-      `/api/reports/repo-id?accessToken=${accessToken}&repoId=${repoId}`,
-    );
+    const res = await fetch(`/api/reports/repo-id?repoId=${repoId}`, {
+      headers: buildAuthHeaders(accessToken),
+    });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -224,7 +225,6 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
     }
 
     const payload = {
-      accessToken,
       repoId,
       rating: Number(form.rating),
       title: form.title || null,
@@ -233,7 +233,7 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
 
     const res = await fetch("/api/reviews", {
       method: editingId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify(editingId ? { ...payload, reviewId: editingId } : payload),
     });
 
@@ -269,8 +269,8 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
 
     const res = await fetch("/api/reviews", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, reviewId }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ reviewId }),
     });
 
     if (!res.ok) {
@@ -295,8 +295,8 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
 
     const res = await fetch("/api/reviews/flag", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, reviewId, reason }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ reviewId, reason }),
     });
 
     if (!res.ok) {
@@ -405,9 +405,8 @@ export default function RepositoryDetailClient({ repoId }: { repoId: string }) {
 
     const res = await fetch("/api/github/repo-scan", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         providerToken: providerToken ?? null,
         repo: repoSlug,
         repoId,

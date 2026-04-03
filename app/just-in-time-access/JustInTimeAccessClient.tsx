@@ -7,6 +7,7 @@ import { Clock3, ShieldCheck, TimerReset } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { AccessSessionCard } from "./components/AccessSessionCard";
 import { EmptySessionsState } from "./components/EmptySessionsState";
@@ -37,9 +38,9 @@ export default function JustInTimeAccessClient() {
   const loadSessions = async (token: string) => {
     setLoading(true);
     setError(null);
-    const res = await fetch(
-      `/api/jit?accessToken=${encodeURIComponent(token)}`,
-    );
+    const res = await fetch("/api/jit", {
+      headers: buildAuthHeaders(token),
+    });
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -99,9 +100,8 @@ export default function JustInTimeAccessClient() {
 
     const res = await fetch("/api/jit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         repoId: values.repoId,
         resourceType: values.resourceType,
         accessType: values.accessType,
@@ -132,8 +132,8 @@ export default function JustInTimeAccessClient() {
 
     await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, action: "extend", minutes: 30 }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ action: "extend", minutes: 30 }),
     });
     await loadSessions(accessToken);
   };
@@ -143,8 +143,8 @@ export default function JustInTimeAccessClient() {
 
     await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, action: "revoke" }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ action: "revoke" }),
     });
     await loadSessions(accessToken);
   };

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,8 +133,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
       const res = await fetch("/api/settings/load", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: token }),
+        headers: buildAuthHeaders(token, { "Content-Type": "application/json" }),
       });
 
       if (!mounted) return;
@@ -187,8 +187,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const res = await fetch("/api/settings/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: token, settings }),
+      headers: buildAuthHeaders(token, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ settings }),
     });
 
     if (res.ok) {

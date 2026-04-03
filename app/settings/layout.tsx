@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
-import { useTheme } from "@/app/components/theme-provider";
 
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
@@ -119,7 +118,6 @@ function Banners() {
 function SettingsInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const { loading } = useSettings();
-  const { theme } = useTheme();
 
   const active = (searchParams?.get("section") as SectionId) ?? "account";
 
@@ -134,11 +132,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="flex min-h-screen bg-background text-foreground"
-      style={{
-        fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif",
-        // override the background CSS variable locally so settings area is true black in dark mode
-        ...(theme === "dark" ? { ["--background"]: "#000" } : {}),
-      }}
+      style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
       <Sidebar active={active} />
 

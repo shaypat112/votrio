@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { useSettings } from "./context";
 import { DangerButton, GhostButton, SectionCard } from "./primitives";
 
@@ -25,9 +26,9 @@ export function AdminSection() {
 
     let mounted = true;
     const load = async () => {
-      const res = await fetch(
-        `/api/admin?accessToken=${encodeURIComponent(accessToken)}`,
-      );
+      const res = await fetch("/api/admin", {
+        headers: buildAuthHeaders(accessToken),
+      });
       const data = await res.json().catch(() => ({}));
       if (!mounted) return;
 
@@ -56,8 +57,8 @@ export function AdminSection() {
 
     const res = await fetch("/api/admin", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, targetUserId, action }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ targetUserId, action }),
     });
     const data = await res.json().catch(() => ({}));
     setWorkingId(null);

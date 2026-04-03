@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import {
-  decodeUserId,
+  RequestAuthError,
   getSupabaseEnv,
+  requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { isTeamOwner } from "@/app/lib/server/teams";
@@ -18,19 +19,14 @@ function slugify(value: string) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
+    const { accessToken } = requireRequestAuth(request);
     const teamId = searchParams.get("teamId");
 
-    if (!accessToken || !teamId) {
+    if (!teamId) {
       return NextResponse.json(
-        { error: "Missing accessToken or teamId." },
+        { error: "Missing teamId." },
         { status: 400 },
       );
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -45,15 +41,18 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ environments: await res.json() });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const { accessToken, userId } = requireRequestAuth(request);
     const {
-      accessToken,
       teamId,
       name,
       githubOwner,
@@ -62,16 +61,11 @@ export async function POST(request: Request) {
       metadata,
     } = await request.json();
 
-    if (!accessToken || !teamId || !name) {
+    if (!teamId || !name) {
       return NextResponse.json(
-        { error: "Missing accessToken, teamId, or name." },
+        { error: "Missing teamId or name." },
         { status: 400 },
       );
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const canManage = await isTeamOwner(accessToken, userId, String(teamId));
@@ -107,7 +101,10 @@ export async function POST(request: Request) {
 
     const rows = await res.json();
     return NextResponse.json({ environment: rows?.[0] ?? null });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

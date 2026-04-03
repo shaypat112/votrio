@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
+
+type SettingsPayload = Record<string, unknown> & {
+  fullName?: string | null;
+  username?: string | null;
+  avatarUrl?: string | null;
+  webhookEnabled?: boolean;
+  webhookUrl?: string | null;
+  webhookEvents?: string[];
+  emailNotifications?: boolean;
+  scanDepth?: number;
+  ignoredPaths?: string;
+};
+
+type SettingsRow = {
+  data?: Record<string, unknown>;
+};
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const accessToken = body?.accessToken as string | undefined;
-    const settings = body?.settings as Record<string, any> | undefined;
+    const settings = body?.settings as SettingsPayload | undefined;
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !settings) {
-      return NextResponse.json({ error: "Missing accessToken or settings." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 400 });
+    if (!settings) {
+      return NextResponse.json({ error: "Missing settings." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -43,9 +59,9 @@ export async function POST(request: Request) {
     }
 
     const {
-      fullName,
-      username,
-      avatarUrl,
+      fullName: _fullName,
+      username: _username,
+      avatarUrl: _avatarUrl,
       webhookEnabled,
       webhookUrl,
       webhookEvents,
@@ -72,7 +88,7 @@ export async function POST(request: Request) {
       body: JSON.stringify(settingsPayload),
     });
 
-    let savedData: any = null;
+    let savedData: SettingsRow | Record<string, unknown> | null = null;
 
     if (!settingsRes.ok) {
       const text = await settingsRes.text();
@@ -84,9 +100,9 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           user_id: userId,
-          email_alerts: (normalized as any).emailNotifications ?? true,
-          scan_depth: (normalized as any).scanDepth ?? 3,
-          ignored_paths: (normalized as any).ignoredPaths ?? "",
+          email_alerts: settings.emailNotifications ?? true,
+          scan_depth: settings.scanDepth ?? 3,
+          ignored_paths: settings.ignoredPaths ?? "",
           updated_at: new Date().toISOString(),
         }),
       });
@@ -127,6 +143,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ settings: savedData?.data ?? normalized });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

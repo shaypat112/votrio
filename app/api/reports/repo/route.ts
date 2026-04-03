@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
+    const { accessToken, userId } = requireRequestAuth(request);
     const repo = searchParams.get("repo");
 
-    if (!accessToken || !repo) {
-      return NextResponse.json({ error: "Missing accessToken or repo." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    if (!repo) {
+      return NextResponse.json({ error: "Missing repo." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -34,6 +34,9 @@ export async function GET(request: Request) {
     const scans = await res.json();
     return NextResponse.json({ scans });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

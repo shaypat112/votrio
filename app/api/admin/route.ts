@@ -5,7 +5,10 @@ import {
   getServiceRoleHeaders,
   isAdminAccess,
 } from "@/app/lib/server/admin";
-import { decodeUserId } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  requireRequestAuth,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
@@ -32,10 +35,11 @@ type ScanRow = {
 };
 
 async function requireAdmin(accessToken: string) {
-  const userId = decodeUserId(accessToken);
-  if (!userId) {
-    throw new Error("Invalid access token.");
-  }
+  const { userId } = requireRequestAuth(
+    new Request("http://localhost", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+  );
 
   const allowed = await isAdminAccess(accessToken, userId);
   if (!allowed) {
@@ -99,7 +103,15 @@ async function listUsers() {
   ]);
 
   if (!profilesRes.ok || !demoStateRes.ok || !decisionsRes.ok || !scansRes.ok) {
-    throw new Error("Unable to load admin data.");
+    const details = await Promise.all([
+      profilesRes.ok ? Promise.resolve(null) : profilesRes.text(),
+      demoStateRes.ok ? Promise.resolve(null) : demoStateRes.text(),
+      decisionsRes.ok ? Promise.resolve(null) : decisionsRes.text(),
+      scansRes.ok ? Promise.resolve(null) : scansRes.text(),
+    ]);
+    throw new Error(
+      `Unable to load admin data. ${details.filter(Boolean).join(" | ")}`.trim(),
+    );
   }
 
   const profiles = (await profilesRes.json()) as ProfileRow[];
@@ -200,8 +212,7 @@ async function createDecision(userId: string, approved: boolean) {
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? "";
+    const { accessToken } = requireRequestAuth(request);
     await requireAdmin(accessToken);
 
     const users = await listUsers();
@@ -210,6 +221,11 @@ export async function GET(request: Request) {
       users,
     });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const message =
+      error instanceof Error ? error.message : "Unexpected server error.";
     const status =
       typeof error === "object" &&
       error !== null &&
@@ -218,7 +234,7 @@ export async function GET(request: Request) {
         ? Number((error as { status?: unknown }).status)
         : 500;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected server error." },
+      { error: message },
       { status },
     );
   }
@@ -227,13 +243,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const accessToken = body?.accessToken as string | undefined;
     const action = body?.action as string | undefined;
     const targetUserId = body?.targetUserId as string | undefined;
+    const { accessToken } = requireRequestAuth(request);
 
-    if (!accessToken || !action || !targetUserId) {
+    if (!action || !targetUserId) {
       return NextResponse.json(
-        { error: "Missing accessToken, action, or targetUserId." },
+        { error: "Missing action or targetUserId." },
         { status: 400 },
       );
     }
@@ -271,6 +287,11 @@ export async function POST(request: Request) {
     const users = await listUsers();
     return NextResponse.json({ users });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const message =
+      error instanceof Error ? error.message : "Unexpected server error.";
     const status =
       typeof error === "object" &&
       error !== null &&
@@ -279,7 +300,7 @@ export async function POST(request: Request) {
         ? Number((error as { status?: unknown }).status)
         : 500;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected server error." },
+      { error: message },
       { status },
     );
   }

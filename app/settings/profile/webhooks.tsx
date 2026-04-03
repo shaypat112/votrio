@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { useSettings } from "./context";
 import {
   SectionCard,
@@ -29,8 +30,8 @@ export function WebhooksSection() {
 
     const res = await fetch("/api/settings/test-webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, webhookUrl: settings.webhookUrl }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ webhookUrl: settings.webhookUrl }),
     });
 
     if (res.ok) {

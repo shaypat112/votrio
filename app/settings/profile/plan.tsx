@@ -1,5 +1,6 @@
 "use client";
 
+import { buildAuthHeaders } from "@/app/lib/http";
 import { useSettings } from "./context";
 import { SectionCard } from "./primitives";
 import { cn } from "@/app/lib/utils";
@@ -14,8 +15,7 @@ export function PlanSection() {
 
     const res = await fetch("/api/billing/portal", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     });
 
     if (res.ok) {

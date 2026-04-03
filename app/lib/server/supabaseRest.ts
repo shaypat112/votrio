@@ -3,6 +3,16 @@ export type SupabaseEnv = {
   anonKey: string;
 };
 
+export class RequestAuthError extends Error {
+  status: number;
+
+  constructor(message: string, status = 401) {
+    super(message);
+    this.name = "RequestAuthError";
+    this.status = status;
+  }
+}
+
 export function getSupabaseEnv(): SupabaseEnv {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -25,6 +35,29 @@ export function decodeUserId(token: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function extractBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) return null;
+
+  const [scheme, token] = authHeader.split(" ");
+  if (scheme?.toLowerCase() !== "bearer" || !token) return null;
+  return token.trim() || null;
+}
+
+export function requireRequestAuth(request: Request) {
+  const accessToken = extractBearerToken(request);
+  if (!accessToken) {
+    throw new RequestAuthError("Unauthorized");
+  }
+
+  const userId = decodeUserId(accessToken);
+  if (!userId) {
+    throw new RequestAuthError("Unauthorized");
+  }
+
+  return { accessToken, userId };
 }
 
 export function buildSupabaseHeaders(

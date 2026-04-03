@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 import { stripe, getStripeConfig } from "@/app/lib/stripe";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const accessToken = body?.accessToken as string | undefined;
     const priceId = (body?.priceId as string | undefined) ?? getStripeConfig().pricePro;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
 
     const { secretKey, siteUrl } = getStripeConfig();
     if (!secretKey) {
@@ -62,7 +62,13 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message ?? "Checkout failed." }, { status: 500 });
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Checkout failed.") },
+      { status: 500 },
+    );
   }
 }

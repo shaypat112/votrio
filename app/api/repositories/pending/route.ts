@@ -1,22 +1,33 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, parsePagination, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  parsePagination,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
+
+type Repo = {
+  id: string;
+  owner_id: string;
+  repo_url: string;
+  name: string;
+  description: string | null;
+  tags: string[];
+  review_count: number;
+  rating_avg: number | null;
+  last_review_excerpt: string | null;
+  last_review_at: string | null;
+  created_at: string;
+};
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
+    const { accessToken, userId } = requireRequestAuth(request);
     const { page, pageSize, offset } = parsePagination(searchParams, { page: 1, pageSize: 10 });
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
 
     const env = getSupabaseEnv();
 
@@ -45,8 +56,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: text }, { status: 500 });
     }
 
-    const repos = (await reposRes.json()) as Array<any>;
-    const pending = repos.filter(
+const repos = (await reposRes.json()) as Repo[];    const pending = repos.filter(
       (repo) => repo.owner_id !== userId && !reviewedIds.has(repo.id),
     );
 
@@ -54,6 +64,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ repos: paginated, page, pageSize, total: pending.length });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import ProfileHeader from "./components/ProfileHeader";
@@ -167,8 +168,8 @@ export default function ProfileClient() {
 
     const res = await fetch("/api/github/repos", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, providerToken }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ providerToken }),
     });
 
     if (!res.ok) {
@@ -204,9 +205,8 @@ export default function ProfileClient() {
 
     const res = await fetch("/api/github/repo-scan", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         providerToken: providerToken ?? null,
         repo: repo.full_name,
       }),

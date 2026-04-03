@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -327,8 +328,7 @@ export default function SettingsClient() {
 
       const res = await fetch("/api/settings/load", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
+        headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       });
       if (!mounted) return;
       if (res.ok) {
@@ -347,9 +347,9 @@ export default function SettingsClient() {
 
   const loadRepos = async (accessToken: string) => {
     setLoadingRepos(true);
-    const res = await fetch(
-      `/api/repositories/mine?accessToken=${accessToken}`,
-    );
+    const res = await fetch("/api/repositories/mine", {
+      headers: buildAuthHeaders(accessToken),
+    });
     if (res.ok) {
       const data = await res.json();
       setRepos(data?.repos ?? []);
@@ -359,7 +359,9 @@ export default function SettingsClient() {
 
   const loadTeams = async (accessToken: string) => {
     setLoadingTeams(true);
-    const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
+    const res = await fetch("/api/teams/list", {
+      headers: buildAuthHeaders(accessToken),
+    });
     if (res.ok) {
       const data = await res.json();
       const nextTeams = (data?.teams ?? []) as Team[];
@@ -373,9 +375,9 @@ export default function SettingsClient() {
   };
 
   const loadTeamMembers = async (teamId: string, accessToken: string) => {
-    const res = await fetch(
-      `/api/teams/members?accessToken=${accessToken}&teamId=${teamId}`,
-    );
+    const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
+      headers: buildAuthHeaders(accessToken),
+    });
     if (res.ok) {
       const data = await res.json();
       setTeamMembers(data?.members ?? []);
@@ -389,8 +391,8 @@ export default function SettingsClient() {
     if (!at) return;
     const res = await fetch("/api/repositories/update-visibility", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at, repoId, isPublic }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ repoId, isPublic }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -416,8 +418,8 @@ export default function SettingsClient() {
     }
     const res = await fetch("/api/settings/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at, settings }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ settings }),
     });
     if (res.ok) setStatus("Changes saved.");
     else {
@@ -440,9 +442,8 @@ export default function SettingsClient() {
     }
     const res = await fetch("/api/settings/test-webhook", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken: at,
         webhookUrl: settings.webhookUrl,
       }),
     });
@@ -461,8 +462,8 @@ export default function SettingsClient() {
     if (!at) return;
     const res = await fetch("/api/teams/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at, name: teamName.trim() }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ name: teamName.trim() }),
     });
     if (res.ok) {
       setTeamName("");
@@ -480,9 +481,8 @@ export default function SettingsClient() {
     if (!at) return;
     const res = await fetch("/api/teams/add-member", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken: at,
         teamId: selectedTeamId,
         username: inviteUsername.trim(),
       }),
@@ -503,8 +503,8 @@ export default function SettingsClient() {
     if (!at || !selectedTeamId) return;
     const res = await fetch("/api/teams/remove-member", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at, memberId }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ memberId }),
     });
     if (res.ok) await loadTeamMembers(selectedTeamId, at);
     else {
@@ -520,8 +520,8 @@ export default function SettingsClient() {
     if (!at) return;
     const res = await fetch("/api/settings/clear-data", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at, scope }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ scope }),
     });
     if (res.ok) setStatus("Data cleared.");
     else {
@@ -537,8 +537,7 @@ export default function SettingsClient() {
     if (!at) return;
     const res = await fetch("/api/billing/portal", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: at }),
+      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
     });
     if (res.ok) {
       const data = await res.json();

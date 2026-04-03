@@ -122,9 +122,9 @@ export async function isAdminAccess(accessToken: string, userId: string) {
 
   const config = getAdminIdentityConfig();
   const githubLogin = extractGitHubLogin(authUser);
+  const profileMatches =
+    profile?.username === config.profileUsername ||
+    profile?.username === config.githubLogin;
 
-  return (
-    profile?.username === config.profileUsername &&
-    githubLogin === config.githubLogin
-  );
+  return githubLogin === config.githubLogin || Boolean(profileMatches);
 }

@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { isTeamOwner } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, teamId, username } = await request.json();
+    const { teamId, username } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !teamId || !username) {
-      return NextResponse.json({ error: "Missing accessToken, teamId, or username." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    if (!teamId || !username) {
+      return NextResponse.json({ error: "Missing teamId or username." }, { status: 400 });
     }
 
     const canManageTeam = await isTeamOwner(accessToken, userId, String(teamId));
@@ -64,7 +65,10 @@ export async function POST(request: Request) {
 
     const rows = await memberRes.json();
     return NextResponse.json({ member: rows?.[0] ?? null });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

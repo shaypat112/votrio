@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAdminIdentityConfig, isAdminAccess } from "@/app/lib/server/admin";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { purgeUserData } from "@/app/lib/server/retention";
 
 export const runtime = "nodejs";
@@ -41,16 +46,7 @@ const DEFAULT_SETTINGS = {
 
 export async function POST(request: Request) {
   try {
-    const { accessToken } = await request.json();
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
 
     const env = getSupabaseEnv();
 
@@ -135,7 +131,10 @@ export async function POST(request: Request) {
         githubLogin: adminConfig.githubLogin,
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

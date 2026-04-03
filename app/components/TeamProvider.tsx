@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 
 type Team = { id: string; name: string; slug?: string; role?: string };
 
@@ -44,7 +45,9 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
+        const res = await fetch("/api/teams/list", {
+          headers: buildAuthHeaders(accessToken),
+        });
         if (!mounted) return;
         if (!res.ok) {
           setTeams([]);

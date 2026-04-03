@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarCheck2, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -85,9 +86,9 @@ export default function AccessCodeClient() {
       }
 
       setAccessToken(token);
-      const res = await fetch(
-        `/api/demo-access?accessToken=${encodeURIComponent(token)}`,
-      );
+      const res = await fetch("/api/demo-access", {
+        headers: buildAuthHeaders(token),
+      });
       const data = (await res.json().catch(() => ({}))) as Partial<DemoAccessResponse> & {
         error?: string;
       };
@@ -128,9 +129,8 @@ export default function AccessCodeClient() {
 
     const res = await fetch("/api/demo-access", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         action: "request",
         company,
         useCase,
@@ -157,9 +157,8 @@ export default function AccessCodeClient() {
 
     const res = await fetch("/api/demo-access", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         action,
         requestId,
       }),

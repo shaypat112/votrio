@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
 import { useSettings } from "./context";
 import { SectionCard } from "./primitives";
@@ -27,7 +28,10 @@ export function ReposSection() {
     const load = async () => {
       setLoading(true);
       const res = await fetch(
-        `/api/repositories/mine?accessToken=${accessToken}`,
+        "/api/repositories/mine",
+        {
+          headers: buildAuthHeaders(accessToken),
+        },
       );
       if (res.ok) {
         const data = await res.json();
@@ -43,8 +47,8 @@ export function ReposSection() {
 
     const res = await fetch("/api/repositories/update-visibility", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, repoId, isPublic }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ repoId, isPublic }),
     });
 
     if (res.ok) {

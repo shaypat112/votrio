@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +38,9 @@ export default function MyRepositories() {
         return;
       }
 
-      const res = await fetch(`/api/repositories/mine?accessToken=${accessToken}`);
+      const res = await fetch("/api/repositories/mine", {
+        headers: buildAuthHeaders(accessToken),
+      });
       if (!mounted) return;
 
       if (!res.ok) {

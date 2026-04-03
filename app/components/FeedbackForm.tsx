@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "../lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,9 +72,8 @@ export function FeedBackForm() {
 
     const res = await fetch("/api/feedback", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         message: form.repoUrl.trim(),
         details: form.description.trim() || null,
       }),

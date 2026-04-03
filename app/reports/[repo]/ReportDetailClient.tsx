@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,7 +93,10 @@ export default function ReportDetailClient({ repoSlug }: { repoSlug: string }) {
       }
 
       const res = await fetch(
-        `/api/reports/repo?accessToken=${accessToken}&repo=${encodeURIComponent(repo)}`,
+        `/api/reports/repo?repo=${encodeURIComponent(repo)}`,
+        {
+          headers: buildAuthHeaders(accessToken),
+        },
       );
 
       if (!mounted) return;

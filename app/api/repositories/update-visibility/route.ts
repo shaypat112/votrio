@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { logActivity } from "@/app/lib/server/activity";
 
@@ -7,15 +12,11 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, repoId, isPublic } = await request.json();
+    const { repoId, isPublic } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !repoId) {
-      return NextResponse.json({ error: "Missing accessToken or repoId." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    if (!repoId) {
+      return NextResponse.json({ error: "Missing repoId." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -61,6 +62,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ repo });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

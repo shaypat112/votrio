@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 import {
-  decodeUserId,
+  RequestAuthError,
   getSupabaseEnv,
+  requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { mapJitSession } from "@/app/lib/server/jit";
@@ -17,17 +18,7 @@ export async function GET(
 ) {
   try {
     const { session } = await params;
-    const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
 
     const env = getSupabaseEnv();
     const res = await supabaseFetch(
@@ -46,7 +37,10 @@ export async function GET(
     }
 
     return NextResponse.json({ session: mapJitSession(rows[0]) });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
@@ -57,18 +51,14 @@ export async function POST(
 ) {
   try {
     const { session } = await params;
-    const { accessToken, action, minutes } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
+    const { action, minutes } = await request.json();
 
-    if (!accessToken || !action) {
+    if (!action) {
       return NextResponse.json(
-        { error: "Missing accessToken or action." },
+        { error: "Missing action." },
         { status: 400 },
       );
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -147,6 +137,9 @@ export async function POST(
     const rows = await updateRes.json();
     return NextResponse.json({ session: mapJitSession(rows?.[0]) });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unexpected server error." },
       { status: 500 },

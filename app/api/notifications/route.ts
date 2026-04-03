@@ -1,21 +1,18 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, parsePagination, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  parsePagination,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
 
     const { page, pageSize, offset } = parsePagination(searchParams, { page: 1, pageSize: 10 });
     const env = getSupabaseEnv();
@@ -34,22 +31,17 @@ export async function GET(request: Request) {
     const notifications = await res.json();
     return NextResponse.json({ notifications, page, pageSize });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, notificationIds, markAll } = await request.json();
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
+    const { notificationIds, markAll } = await request.json();
 
     const env = getSupabaseEnv();
     const now = new Date().toISOString();
@@ -89,6 +81,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

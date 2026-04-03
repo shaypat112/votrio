@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { useTheme } from "@/app/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,7 +116,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (mounted) setNotifLoading(false);
         return;
       }
-      const res = await fetch(`/api/notifications?accessToken=${accessToken}`);
+      const res = await fetch("/api/notifications", {
+        headers: buildAuthHeaders(accessToken),
+      });
       if (!mounted) return;
       if (res.ok) {
         const data = await res.json();
@@ -153,9 +156,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const res = await fetch(
-        `/api/demo-access?accessToken=${encodeURIComponent(accessToken)}`,
-      );
+      const res = await fetch("/api/demo-access", {
+        headers: buildAuthHeaders(accessToken),
+      });
       const data = await res.json().catch(() => ({}));
       if (!mounted) return;
 
@@ -207,7 +210,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) return;
       try {
-        const res = await fetch(`/api/teams/list?accessToken=${accessToken}`);
+        const res = await fetch("/api/teams/list", {
+          headers: buildAuthHeaders(accessToken),
+        });
         if (!mounted) return;
         if (!res.ok) return;
         const json = await res.json();
@@ -244,12 +249,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth") ||
     pathname?.startsWith("/access-code");
-  const isDemoGateExemptRoute =
-    pathname?.startsWith("/reports") ||
-    pathname?.startsWith("/repositories");
+  const isDemoRoute = pathname?.startsWith("/demo");
   const isPublicRoute =
-    isMarketingRoute ||
-    pathname?.startsWith("/documentation");
+    isMarketingRoute || pathname?.startsWith("/documentation");
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
@@ -289,8 +291,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!accessToken) return;
     await fetch("/api/notifications", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, markAll: true }),
+      headers: buildAuthHeaders(accessToken, {
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({ markAll: true }),
     });
     setNotifications((prev) =>
       prev.map((item) => ({
@@ -307,8 +311,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading || !user || !demoAccessChecked) return;
-    if (isDemoGateExemptRoute) return;
-    if (!demoAccessVerified && pathname !== "/access-code") {
+    if (!isDemoRoute && pathname !== "/access-code") return;
+    if (!demoAccessVerified && pathname === "/demo") {
       router.replace("/access-code");
       return;
     }
@@ -318,7 +322,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [
     demoAccessChecked,
     demoAccessVerified,
-    isDemoGateExemptRoute,
+    isDemoRoute,
     loading,
     pathname,
     router,
@@ -347,9 +351,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (
     user &&
+    isDemoRoute &&
     !demoAccessVerified &&
-    pathname !== "/access-code" &&
-    !isDemoGateExemptRoute
+    pathname !== "/access-code"
   ) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -390,6 +394,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   className="transition-colors hover:text-foreground"
                 >
                   Settings
+                </Link>
+                <Link
+                  href="/sim-hack"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Si-Hack
                 </Link>
                 {/* Teams dropdown (moved from header right) */}
                 {user ? (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "../lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,9 +105,8 @@ export function SubmitRepoForm() {
 
     const res = await fetch("/api/repositories/submit", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         repoUrl: form.repoUrl.trim(),
         description: form.description.trim() || null,
         scanType: form.scanType,

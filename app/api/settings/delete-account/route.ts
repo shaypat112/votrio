@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { decodeUserId } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  requireRequestAuth,
+} from "@/app/lib/server/supabaseRest";
 import { getServiceRoleHeaders } from "@/app/lib/server/admin";
 
 export const runtime = "nodejs";
@@ -18,17 +21,7 @@ async function adminFetch(path: string, init: RequestInit = {}) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const accessToken = body?.accessToken as string | undefined;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { userId } = requireRequestAuth(request);
 
     const cleanupPaths = [
       `/rest/v1/notifications?user_id=eq.${userId}`,
@@ -68,6 +61,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unexpected server error." },
       { status: 500 },

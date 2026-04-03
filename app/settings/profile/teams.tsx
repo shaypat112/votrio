@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
 import { createClient } from "@/app/lib/supabase";
 import { useSettings } from "./context";
@@ -50,7 +51,9 @@ export function TeamsSection() {
 
   const loadTeams = async (token: string) => {
     setLoading(true);
-    const res = await fetch(`/api/teams/list?accessToken=${token}`);
+    const res = await fetch("/api/teams/list", {
+      headers: buildAuthHeaders(token),
+    });
     if (res.ok) {
       const data = await res.json();
       const next = (data?.teams ?? []) as Team[];
@@ -67,9 +70,9 @@ export function TeamsSection() {
   };
 
   const loadMembers = async (teamId: string, token: string) => {
-    const res = await fetch(
-      `/api/teams/members?accessToken=${token}&teamId=${teamId}`,
-    );
+    const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
+      headers: buildAuthHeaders(token),
+    });
     if (res.ok) {
       const data = await res.json();
       setMembers(data?.members ?? []);
@@ -85,8 +88,8 @@ export function TeamsSection() {
     setTeamError(null);
     const res = await fetch("/api/teams/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, name: teamName.trim() }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ name: teamName.trim() }),
     });
     if (res.ok) {
       setTeamName("");
@@ -102,9 +105,8 @@ export function TeamsSection() {
     setTeamError(null);
     const res = await fetch("/api/teams/add-member", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        accessToken,
         teamId: selectedTeamId,
         username: inviteUsername.trim(),
       }),
@@ -122,8 +124,8 @@ export function TeamsSection() {
     if (!accessToken || !selectedTeamId) return;
     const res = await fetch("/api/teams/remove-member", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, memberId }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ memberId }),
     });
     if (res.ok) {
       await loadMembers(selectedTeamId, accessToken);

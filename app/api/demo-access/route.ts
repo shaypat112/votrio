@@ -6,8 +6,9 @@ import {
   isAdminAccess,
 } from "@/app/lib/server/admin";
 import {
-  decodeUserId,
+  RequestAuthError,
   getSupabaseEnv,
+  requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 
@@ -282,17 +283,7 @@ async function loadApproverContext(accessToken: string, userId: string) {
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "Missing accessToken." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
-    }
+    const { accessToken, userId } = requireRequestAuth(request);
 
     const row = await loadState(accessToken, userId);
     const decision = await loadDecision(accessToken, userId);
@@ -341,6 +332,9 @@ export async function GET(request: Request) {
       pendingRequests: approver.pendingRequests,
     });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unexpected server error." },
       { status: 500 },
@@ -351,19 +345,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const accessToken = body?.accessToken as string | undefined;
     const action = body?.action as string | undefined;
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !action) {
+    if (!action) {
       return NextResponse.json(
-        { error: "Missing accessToken or action." },
+        { error: "Missing action." },
         { status: 400 },
       );
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     if (action === "request") {
@@ -518,6 +507,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unexpected server error." },
       { status: 500 },

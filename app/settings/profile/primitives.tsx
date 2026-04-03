@@ -144,10 +144,12 @@ export function DangerButton({
   children,
   onClick,
   disabled,
+  className,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <button
@@ -157,6 +159,7 @@ export function DangerButton({
         "rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors dark:text-red-400",
         "hover:border-red-500/50 hover:bg-red-500/15",
         "disabled:opacity-40 disabled:cursor-not-allowed",
+        className,
       )}
     >
       {children}

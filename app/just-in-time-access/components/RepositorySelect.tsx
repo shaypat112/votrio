@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildAuthHeaders } from "@/app/lib/http";
 import {
   Select,
   SelectContent,
@@ -31,9 +32,9 @@ export default function RepositorySelect({
   useEffect(() => {
     if (!accessToken) return;
     let mounted = true;
-    fetch(
-      `/api/repositories/mine?accessToken=${encodeURIComponent(accessToken)}`,
-    )
+    fetch("/api/repositories/mine", {
+      headers: buildAuthHeaders(accessToken),
+    })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
         if (!mounted) return;

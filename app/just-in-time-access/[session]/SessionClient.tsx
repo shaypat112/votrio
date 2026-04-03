@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import type { AccessSession } from "../types";
 
@@ -50,9 +51,9 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
 
       setLoading(true);
       setError(null);
-      const res = await fetch(
-        `/api/jit/${sessionId}?accessToken=${encodeURIComponent(nextToken)}`,
-      );
+      const res = await fetch(`/api/jit/${sessionId}`, {
+        headers: buildAuthHeaders(nextToken),
+      });
       const data = await res.json().catch(() => ({}));
       if (!mounted) return;
 
@@ -79,8 +80,8 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     setLoading(true);
     const res = await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, action, minutes }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ action, minutes }),
     });
     const data = await res.json().catch(() => ({}));
 

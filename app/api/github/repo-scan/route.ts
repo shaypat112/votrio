@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { logActivity } from "@/app/lib/server/activity";
 import { createNotification } from "@/app/lib/server/notifications";
@@ -13,38 +18,18 @@ type MistralResponse = {
   choices?: Array<{ message?: { content?: string } }>;
 };
 
-function decodeUserId(token: string): string | null {
-  const parts = token.split(".");
-  if (parts.length < 2) return null;
-  try {
-    const payload = JSON.parse(
-      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
-        "utf-8"
-      )
-    );
-    return payload.sub ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: Request) {
   const body = await request.json();
-  const accessToken = body?.accessToken as string | undefined;
   const providerToken = (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
   const repoId = body?.repoId as string | undefined;
+  const { accessToken, userId } = requireRequestAuth(request);
 
-  if (!accessToken || !repoFullName) {
+  if (!repoFullName) {
     return NextResponse.json(
-      { error: "Missing accessToken or repo" },
+      { error: "Missing repo" },
       { status: 400 }
     );
-  }
-
-  const userId = decodeUserId(accessToken);
-  if (!userId) {
-    return NextResponse.json({ error: "Invalid access token" }, { status: 400 });
   }
 
   const mistralKey = process.env.MISTRAL_API_KEY;
@@ -209,6 +194,9 @@ export async function POST(request: Request) {
       findings,
     });
   } catch (err: unknown) {
+    if (err instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const error = err as ErrorWithStatus;
     const status = Number(error?.status ?? 0);
     const message = String(error?.message ?? "Scan failed.");

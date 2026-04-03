@@ -1,5 +1,6 @@
 "use client";
 
+import { buildAuthHeaders } from "@/app/lib/http";
 import { useSettings } from "./context";
 import { SectionCard, DangerButton } from "./primitives";
 
@@ -14,8 +15,8 @@ export function RetentionSection() {
 
     const res = await fetch("/api/settings/clear-data", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, scope }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ scope }),
     });
 
     if (res.ok) {
@@ -36,8 +37,7 @@ export function RetentionSection() {
     setError(null);
     const res = await fetch("/api/settings/delete-account", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken }),
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     });
 
     if (res.ok) {
@@ -84,8 +84,17 @@ export function RetentionSection() {
           <DangerButton onClick={() => clearData("all")}>
             Clear all data
           </DangerButton>
-          <DangerButton onClick={() => void deleteAccount()}>
-            Delete account
+        </div>
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+          <p className="text-sm font-semibold text-red-500">Delete account</p>
+          <p className="mt-1 text-xs text-red-500/80">
+            Permanently removes your profile, notifications, scans, linked repositories, and sign-in access.
+          </p>
+          <DangerButton
+            onClick={() => void deleteAccount()}
+            className="mt-4 w-full bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 hover:text-white"
+          >
+            Delete my account permanently
           </DangerButton>
         </div>
       </div>

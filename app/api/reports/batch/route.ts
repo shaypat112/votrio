@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const accessToken = searchParams.get("accessToken") ?? undefined;
+    const { accessToken, userId } = requireRequestAuth(request);
     const repoIdsParam = searchParams.get("repoIds") ?? "";
 
-    if (!accessToken || !repoIdsParam) {
-      return NextResponse.json({ error: "Missing accessToken or repoIds." }, { status: 400 });
+    if (!repoIdsParam) {
+      return NextResponse.json({ error: "Missing repoIds." }, { status: 400 });
     }
 
     const repoIds = repoIdsParam
@@ -20,11 +25,6 @@ export async function GET(request: Request) {
 
     if (repoIds.length === 0) {
       return NextResponse.json({ scans: [] });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -64,6 +64,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ scans: Array.from(latestByRepo.values()) });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

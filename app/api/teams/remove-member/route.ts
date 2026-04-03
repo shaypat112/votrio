@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { isTeamOwner } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, memberId } = await request.json();
+    const { memberId } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !memberId) {
-      return NextResponse.json({ error: "Missing accessToken or memberId." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    if (!memberId) {
+      return NextResponse.json({ error: "Missing memberId." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -55,7 +56,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

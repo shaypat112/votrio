@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/app/lib/supabase";
+import { buildAuthHeaders } from "@/app/lib/http";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
@@ -94,11 +95,12 @@ export default function RepositoriesClient() {
   const loadScanSummaries = async (repoIds: string[], accessToken: string) => {
     setScanError(null);
     const params = new URLSearchParams({
-      accessToken,
       repoIds: repoIds.join(","),
     });
 
-    const res = await fetch(`/api/reports/batch?${params.toString()}`);
+    const res = await fetch(`/api/reports/batch?${params.toString()}`, {
+      headers: buildAuthHeaders(accessToken),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setScanError(data?.error ?? "Unable to load scan summaries.");

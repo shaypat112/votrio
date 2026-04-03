@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, parsePagination, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  parsePagination,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { logActivity } from "@/app/lib/server/activity";
 import { sendNotificationEmail } from "@/app/lib/server/email";
@@ -69,19 +75,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, repoId, rating, title, body } = await request.json();
+    const { repoId, rating, title, body } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !repoId || !rating || !body) {
-      return NextResponse.json({ error: "Missing accessToken, repoId, rating, or body." }, { status: 400 });
+    if (!repoId || !rating || !body) {
+      return NextResponse.json({ error: "Missing repoId, rating, or body." }, { status: 400 });
     }
 
     if (Number(rating) < 1 || Number(rating) > 5) {
       return NextResponse.json({ error: "Rating must be between 1 and 5." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -225,25 +227,24 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ review });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const { accessToken, reviewId, rating, title, body } = await request.json();
+    const { reviewId, rating, title, body } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !reviewId) {
-      return NextResponse.json({ error: "Missing accessToken or reviewId." }, { status: 400 });
+    if (!reviewId) {
+      return NextResponse.json({ error: "Missing reviewId." }, { status: 400 });
     }
 
     if (rating && (Number(rating) < 1 || Number(rating) > 5)) {
       return NextResponse.json({ error: "Rating must be between 1 and 5." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -333,21 +334,20 @@ export async function PUT(request: Request) {
     const updated = await updateRes.json();
     return NextResponse.json({ review: updated?.[0] });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const { accessToken, reviewId } = await request.json();
+    const { reviewId } = await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !reviewId) {
-      return NextResponse.json({ error: "Missing accessToken or reviewId." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
+    if (!reviewId) {
+      return NextResponse.json({ error: "Missing reviewId." }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -428,6 +428,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

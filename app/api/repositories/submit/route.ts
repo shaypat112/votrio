@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
+import {
+  RequestAuthError,
+  getSupabaseEnv,
+  requireRequestAuth,
+  supabaseFetch,
+} from "@/app/lib/server/supabaseRest";
 import { logActivity } from "@/app/lib/server/activity";
 import { isTeamOwner } from "@/app/lib/server/teams";
 
@@ -18,20 +23,16 @@ function extractRepoName(url: string) {
 
 export async function POST(request: Request) {
   try {
-    const { accessToken, repoUrl, description, tags, teamId, environmentId } =
+    const { repoUrl, description, tags, teamId, environmentId } =
       await request.json();
+    const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!accessToken || !repoUrl) {
-      return NextResponse.json({ error: "Missing accessToken or repoUrl." }, { status: 400 });
+    if (!repoUrl) {
+      return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
 
     if (!validateRepoUrl(repoUrl)) {
       return NextResponse.json({ error: "Invalid GitHub repository URL." }, { status: 400 });
-    }
-
-    const userId = decodeUserId(accessToken);
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid access token." }, { status: 401 });
     }
 
     const env = getSupabaseEnv();
@@ -167,7 +168,10 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ repo });
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }
