@@ -4,7 +4,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { glob } from "glob";
 
-import { analyzeCode } from "../lib/mistral";
+import { summarizeFindings } from "../lib/mistral";
 import { loadConfig } from "../config.js";
 
 type Severity = "low" | "medium" | "high" | "critical";
@@ -155,15 +155,18 @@ export async function scanCommand(
 
   const findings = await scanFiles(files, {
     ...options,
-    ai: aiEnabled,
     aiModel,
     fix: options.fix || scanConfig.autoFix || false,
     extraPatterns: rules.patterns,
   });
 
   const deduped = dedupe(findings);
+  const aiSummary =
+    aiEnabled && deduped.length > 0
+      ? await summarizeFindings(deduped, aiModel)
+      : null;
 
-  outputResults(deduped, options);
+  outputResults(deduped, options, aiSummary);
 
   if (options.ci) handleCI(deduped, options);
 
@@ -232,46 +235,11 @@ async function scanFiles(
       }
     }
 
-    if (options.ai) {
-      const ai = await runAIAnalysis(content, options.aiModel);
-
-      if (ai) {
-        findings.push({
-          file: path.relative(process.cwd(), file),
-          line: 1,
-          severity: "medium",
-          score: 60,
-          type: "AI_ANALYSIS",
-          message: "AI detected potential issues",
-          snippet: ai.slice(0, 200),
-          suggestion: "Review AI suggestions",
-          source: "ai"
-        });
-      }
-    }
   }
 
   spinner.succeed(`Scanned ${files.length} files`);
 
   return findings;
-}
-
-async function runAIAnalysis(code: string, model?: string) {
-  try {
-    const prompt = `
-Analyze this code for vulnerabilities, inefficiencies, or insecure patterns.
-
-Respond briefly.
-
-${code.slice(0, 6000)}
-`;
-
-    const result = await analyzeCode(prompt, model);
-
-    return result;
-  } catch {
-    return null;
-  }
 }
 
 async function defaultRulesPath(cwd: string): Promise<string | undefined> {
@@ -322,8 +290,9 @@ async function loadRules(rulesPath?: string) {
       ignore: data.ignore ?? [],
       warnings,
     };
-  } catch (err: any) {
-    warnings.push(`Failed to parse ${rulesPath}: ${err?.message ?? String(err)}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    warnings.push(`Failed to parse ${rulesPath}: ${message}`);
     return { patterns: [] as PatternCheck[], ignore: [] as string[], warnings };
   }
 }
@@ -341,9 +310,13 @@ function dedupe(findings: Finding[]) {
   );
 }
 
-function outputResults(findings: Finding[], options: ScanOptions) {
+function outputResults(
+  findings: Finding[],
+  options: ScanOptions,
+  aiSummary?: string | null
+) {
   if (options.format === "json") {
-    console.log(JSON.stringify(findings, null, 2));
+    console.log(JSON.stringify({ findings, aiSummary: aiSummary ?? null }, null, 2));
     return;
   }
 
@@ -357,6 +330,10 @@ function outputResults(findings: Finding[], options: ScanOptions) {
       console.log(
         `| ${f.severity} | ${f.file} | ${f.line} | ${f.type} | ${f.message} |`
       );
+    }
+
+    if (aiSummary) {
+      console.log(`\n## AI Summary\n\n${aiSummary}`);
     }
 
     return;
@@ -394,6 +371,11 @@ function outputResults(findings: Finding[], options: ScanOptions) {
       console.log(`  ${chalk.dim("fix")} ${chalk.dim(f.suggestion)}`);
 
     console.log();
+  }
+
+  if (aiSummary) {
+    console.log(chalk.cyan("AI summary"));
+    console.log(`  ${chalk.dim(aiSummary)}\n`);
   }
 
   console.log(`${findings.length} issue(s) detected\n`);
@@ -526,8 +508,9 @@ async function publishScanSummary(
     }
 
     spinner.succeed("Published scan summary");
-  } catch (err: any) {
-    spinner.fail(`Publish failed: ${err?.message ?? String(err)}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    spinner.fail(`Publish failed: ${message}`);
   }
 }
 

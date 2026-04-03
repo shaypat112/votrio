@@ -37,6 +37,12 @@ function formatNotificationTitle(type: string) {
       return "Review created";
     case "repository.published":
       return "Repository published";
+    case "demo.access_request":
+      return "Demo access request";
+    case "demo.access_approved":
+      return "Demo access approved";
+    case "demo.access_rejected":
+      return "Demo access declined";
     default:
       return type.replace(".", " ");
   }
@@ -243,15 +249,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/repositories");
   const isPublicRoute =
     isMarketingRoute ||
-    pathname?.startsWith("/documentation") ||
-    pathname?.startsWith("/demo");
+    pathname?.startsWith("/documentation");
 
   const getNotificationLabel = (item: (typeof notifications)[number]) => {
     const repoName = item.data?.["repo_name"];
     const repoUrl = item.data?.["repo_url"];
+    const requesterName = item.data?.["requesterName"];
+    const company = item.data?.["company"];
 
     if (typeof repoName === "string" && repoName.length > 0) return repoName;
     if (typeof repoUrl === "string" && repoUrl.length > 0) return repoUrl;
+    if (typeof requesterName === "string" && requesterName.length > 0) {
+      return typeof company === "string" && company.length > 0
+        ? `${requesterName} · ${company}`
+        : requesterName;
+    }
+    if (typeof company === "string" && company.length > 0) return company;
     return "Activity update";
   };
   const getNotificationSeverity = (item: (typeof notifications)[number]) => {

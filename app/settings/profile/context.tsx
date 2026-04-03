@@ -32,6 +32,12 @@ export type SettingsState = {
   retentionDays: number;
 };
 
+export type AdminState = {
+  isAdmin: boolean;
+  profileUsername: string | null;
+  githubLogin: string | null;
+};
+
 const defaultSettings: SettingsState = {
   fullName: "",
   username: "",
@@ -75,6 +81,7 @@ type SettingsContextValue = {
   setError: (msg: string | null) => void;
   setStatus: (msg: string | null) => void;
   accessToken: string | null;
+  admin: AdminState;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -96,6 +103,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [admin, setAdmin] = useState<AdminState>({
+    isAdmin: false,
+    profileUsername: null,
+    githubLogin: null,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -129,6 +141,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
+        setAdmin({
+          isAdmin: Boolean(data?.admin?.isAdmin),
+          profileUsername:
+            typeof data?.admin?.profileUsername === "string"
+              ? data.admin.profileUsername
+              : null,
+          githubLogin:
+            typeof data?.admin?.githubLogin === "string"
+              ? data.admin.githubLogin
+              : null,
+        });
       }
 
       setLoading(false);
@@ -191,6 +214,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setError,
         setStatus,
         accessToken,
+        admin,
       }}
     >
       {children}

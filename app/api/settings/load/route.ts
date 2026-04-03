@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { getAdminIdentityConfig, isAdminAccess } from "@/app/lib/server/admin";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 import { purgeUserData } from "@/app/lib/server/retention";
 
 export const runtime = "nodejs";
+
+type SettingsRow = {
+  data?: Record<string, unknown>;
+};
+
+type WebhookRow = {
+  url?: string | null;
+  enabled?: boolean | null;
+  events?: string[] | null;
+};
 
 const DEFAULT_SETTINGS = {
   emailNotifications: true,
@@ -63,8 +74,8 @@ export async function POST(request: Request) {
     }
 
     const profileRows = await profileRes.json();
-    let settingsRows: any[] = [];
-    let webhookRows: any[] = [];
+    let settingsRows: SettingsRow[] = [];
+    let webhookRows: WebhookRow[] = [];
 
     if (settingsRes.ok) {
       settingsRows = await settingsRes.json();
@@ -113,8 +124,18 @@ export async function POST(request: Request) {
 
     await purgeUserData({ env, accessToken, userId, days: 30 });
 
-    return NextResponse.json({ settings });
-  } catch (error) {
+    const adminConfig = getAdminIdentityConfig();
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
+
+    return NextResponse.json({
+      settings,
+      admin: {
+        isAdmin,
+        profileUsername: adminConfig.profileUsername,
+        githubLogin: adminConfig.githubLogin,
+      },
+    });
+  } catch {
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }
 }

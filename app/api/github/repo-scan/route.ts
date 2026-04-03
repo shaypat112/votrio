@@ -4,16 +4,11 @@ import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { logActivity } from "@/app/lib/server/activity";
 import { createNotification } from "@/app/lib/server/notifications";
 import { purgeUserData } from "@/app/lib/server/retention";
+import { runGitHubScanWithToken } from "@/app/services/githubScanner";
 
 export const runtime = "nodejs";
 
-const ALLOWED_EXT = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".cs", ".php"];
-
 type ErrorWithStatus = Error & { status?: number };
-type GitHubRepo = { default_branch: string };
-type GitHubTreeItem = { path: string; type: string };
-type GitHubTreeResponse = { tree?: GitHubTreeItem[] };
-type GitHubContentResponse = { content?: string };
 type MistralResponse = {
   choices?: Array<{ message?: { content?: string } }>;
 };
@@ -31,23 +26,6 @@ function decodeUserId(token: string): string | null {
   } catch {
     return null;
   }
-}
-
-async function fetchJson(url: string, token?: string) {
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const text = await res.text();
-    const error: ErrorWithStatus = new Error(text);
-    error.status = res.status;
-    throw error;
-  }
-  return res.json();
 }
 
 export async function POST(request: Request) {
@@ -77,41 +55,30 @@ export async function POST(request: Request) {
 
   try {
     const supabaseEnv = getSupabaseEnv();
-    const repo = (await fetchJson(
-      `https://api.github.com/repos/${repoFullName}`,
+    const scanResult = await runGitHubScanWithToken(
+      `https://github.com/${repoFullName}`,
+      { ai: false },
       providerToken,
-    )) as GitHubRepo;
-    const branch = repo.default_branch;
+    );
+    const findings = scanResult.findings;
+    const highestSeverity =
+      findings.find((item) => item.severity === "critical")?.severity ??
+      findings.find((item) => item.severity === "high")?.severity ??
+      findings.find((item) => item.severity === "medium")?.severity ??
+      findings.find((item) => item.severity === "low")?.severity ??
+      "low";
+    const score =
+      findings.length > 0
+        ? Math.round(
+            findings.reduce((sum, item) => sum + item.score, 0) / findings.length,
+          )
+        : 0;
 
-    const tree = (await fetchJson(
-      `https://api.github.com/repos/${repoFullName}/git/trees/${branch}?recursive=1`,
-      providerToken,
-    )) as GitHubTreeResponse;
-
-    const candidates = (tree.tree ?? [])
-      .filter(
-        (item) =>
-          item.type === "blob" &&
-          ALLOWED_EXT.some((ext) => item.path.endsWith(ext)),
-      )
-      .slice(0, 6);
-
-    const files: Array<{ path: string; content: string }> = [];
-
-    for (const item of candidates) {
-      const file = (await fetchJson(
-        `https://api.github.com/repos/${repoFullName}/contents/${item.path}`,
-        providerToken,
-      )) as GitHubContentResponse;
-      if (file?.content) {
-        const decoded = Buffer.from(file.content, "base64").toString("utf-8");
-        files.push({ path: item.path, content: decoded.slice(0, 2000) });
-      }
-    }
-
-    const prompt = `Analyze the following repository snippets for security risks and refactoring suggestions. Return JSON: {summary, severity, score, issues}.\n\n${files
-      .map((f) => `FILE: ${f.path}\n${f.content}`)
-      .join("\n\n")}`;
+    const prompt = `You are summarizing real repository scan findings. Do not invent additional findings. Explain the highest-risk issues first and give direct fixes.\n\n${JSON.stringify(
+      findings.slice(0, 50),
+      null,
+      2,
+    )}`;
 
     const mistralRes = await fetch("https://api.mistral.ai/v1/chat/completions", {
       method: "POST",
@@ -123,7 +90,11 @@ export async function POST(request: Request) {
         model: "mistral-large-latest",
         temperature: 0.2,
         messages: [
-          { role: "system", content: "Return JSON only." },
+          {
+            role: "system",
+            content:
+              "Summarize only the provided findings in plain text. Do not invent vulnerabilities or files.",
+          },
           { role: "user", content: prompt },
         ],
         max_tokens: 400,
@@ -138,26 +109,11 @@ export async function POST(request: Request) {
     const mistralJson = (await mistralRes.json()) as MistralResponse;
     const content = mistralJson?.choices?.[0]?.message?.content as string | undefined;
     let summary = "AI scan completed.";
-    let severity = "medium";
-    let score = 60;
-    let issues = 1;
+    const severity = highestSeverity;
+    const issues = findings.length;
 
-    try {
-      if (content) {
-        const parsed = JSON.parse(content);
-        summary = parsed.summary ?? summary;
-        severity = parsed.severity ?? severity;
-        score = parsed.score ?? score;
-        if (Array.isArray(parsed.issues)) {
-          issues = parsed.issues.length;
-        } else {
-          issues = parsed.issues ?? issues;
-        }
-      }
-    } catch {
-      if (content) {
-        summary = content.slice(0, 600);
-      }
+    if (content) {
+      summary = content.slice(0, 1200);
     }
 
     const now = new Date().toISOString();
@@ -171,7 +127,7 @@ export async function POST(request: Request) {
       score,
       findings: {
         ai_summary: summary,
-        files: files.map((f) => ({ path: f.path })),
+        list: findings,
       },
       created_at: now,
     };
@@ -250,6 +206,7 @@ export async function POST(request: Request) {
       issues,
       repoId: repoId ?? null,
       scan: inserted?.[0] ?? null,
+      findings,
     });
   } catch (err: unknown) {
     const error = err as ErrorWithStatus;

@@ -12,6 +12,7 @@ import { ReposSection } from "./profile/repos";
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
 import { PlanSection } from "./profile/plan";
+import { AdminSection } from "./profile/admin";
 import { Suspense } from "react";
 
 const SECTION_MAP = {
@@ -25,6 +26,7 @@ const SECTION_MAP = {
   retention: RetentionSection,
   teams: TeamsSection,
   plan: PlanSection,
+  admin: AdminSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;

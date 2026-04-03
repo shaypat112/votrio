@@ -14,6 +14,7 @@ import {
   Palette,
   Users,
   CreditCard,
+  LockKeyhole,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
@@ -32,15 +33,20 @@ const NAV_SECTIONS = [
   { id: "plan", label: "Plan", icon: CreditCard },
 ] as const;
 
-export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
+const ADMIN_SECTION = { id: "admin", label: "Admin", icon: LockKeyhole } as const;
+
+export type SectionId =
+  | (typeof NAV_SECTIONS)[number]["id"]
+  | typeof ADMIN_SECTION.id;
 
 function Sidebar({ active }: { active: SectionId }) {
-  const { save, saving } = useSettings();
+  const { save, saving, admin } = useSettings();
+  const sections = admin.isAdmin ? [...NAV_SECTIONS, ADMIN_SECTION] : NAV_SECTIONS;
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+        {sections.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}

@@ -1,46 +1,22 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import os
 import sys
 import urllib.request
+import json
 
 
-def load_examples(path: str):
-    if not path:
-        return []
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Examples file not found: {path}")
-    examples = []
-    with open(path, "r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if "user" in obj and "assistant" in obj:
-                examples.append(obj)
-    return examples
-
-
-def build_messages(user_input: str, examples):
+def build_messages(user_input: str):
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a debugging assistant. Provide a short root cause, "
-                "a clear explanation, and a minimal fix. Be concise."
+                "You are a debugging assistant. Use only the provided input. "
+                "Provide a short root cause, a clear explanation, and a minimal fix. "
+                "Be concise."
             ),
         }
     ]
-
-    for ex in examples:
-        messages.append({"role": "user", "content": ex["user"]})
-        messages.append({"role": "assistant", "content": ex["assistant"]})
-
     messages.append({"role": "user", "content": user_input})
     return messages
 
@@ -82,10 +58,6 @@ def main():
         help="Path to a file containing the error/trace (or omit to read stdin).",
     )
     parser.add_argument(
-        "--examples",
-        help="Optional JSONL file with {user, assistant} pairs for few-shot.",
-    )
-    parser.add_argument(
         "--model",
         default=os.getenv("MISTRAL_MODEL", "mistral-large-latest"),
         help="Mistral model name (default: mistral-large-latest).",
@@ -107,8 +79,7 @@ def main():
         print("No input provided.", file=sys.stderr)
         sys.exit(1)
 
-    examples = load_examples(args.examples) if args.examples else []
-    messages = build_messages(user_input, examples)
+    messages = build_messages(user_input)
 
     try:
         result = request_chat(api_key, args.model, messages)

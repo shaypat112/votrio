@@ -26,6 +26,29 @@ export function RetentionSection() {
     }
   };
 
+  const deleteAccount = async () => {
+    if (!accessToken) return;
+    const confirmed = window.confirm(
+      "Delete your account permanently? This removes your profile, scans, notifications, and sign-in access.",
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    const res = await fetch("/api/settings/delete-account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken }),
+    });
+
+    if (res.ok) {
+      window.location.href = "/";
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    setError(data?.error ?? "Unable to delete account.");
+  };
+
   return (
     <SectionCard
       title="Data retention"
@@ -60,6 +83,9 @@ export function RetentionSection() {
           </DangerButton>
           <DangerButton onClick={() => clearData("all")}>
             Clear all data
+          </DangerButton>
+          <DangerButton onClick={() => void deleteAccount()}>
+            Delete account
           </DangerButton>
         </div>
       </div>

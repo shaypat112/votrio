@@ -171,6 +171,14 @@ async function scanFiles(root: string, options: ScanOptions) {
 }
 
 export async function runGitHubScan(repoUrl: string, options: ScanOptions = {}) {
+  return runGitHubScanWithToken(repoUrl, options);
+}
+
+export async function runGitHubScanWithToken(
+  repoUrl: string,
+  options: ScanOptions = {},
+  providerToken?: string,
+) {
   if (!isValidGitHubUrl(repoUrl)) {
     throw new Error("Invalid GitHub repository URL.");
   }
@@ -181,23 +189,28 @@ export async function runGitHubScan(repoUrl: string, options: ScanOptions = {}) 
 
   try {
     await execFileAsync("git", ["--version"], { timeout: 10_000 });
-    await execFileAsync(
-      "git",
-      [
-        "clone",
-        "--depth",
-        "1",
-        "--filter=blob:limit=1m",
-        "--single-branch",
-        repoUrl,
-        repoPath,
-      ],
-      {
-        env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-        timeout: 120_000,
-        maxBuffer: 5 * 1024 * 1024,
-      },
-    );
+    const cloneArgs = [
+      ...(providerToken
+        ? [
+            "-c",
+            `http.extraHeader=AUTHORIZATION: basic ${Buffer.from(
+              `x-access-token:${providerToken}`,
+            ).toString("base64")}`,
+          ]
+        : []),
+      "clone",
+      "--depth",
+      "1",
+      "--filter=blob:limit=1m",
+      "--single-branch",
+      repoUrl,
+      repoPath,
+    ];
+    await execFileAsync("git", cloneArgs, {
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+      timeout: 120_000,
+      maxBuffer: 5 * 1024 * 1024,
+    });
 
     const findings = await scanFiles(repoPath, options);
 
@@ -206,11 +219,17 @@ export async function runGitHubScan(repoUrl: string, options: ScanOptions = {}) 
       repoName,
       findings,
     };
-  } catch (error: any) {
-    if (error?.message?.includes("not found") || error?.code === "ENOENT") {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+
+    if (message.includes("not found") || code === "ENOENT") {
       throw new Error("Git is not available on the server.");
     }
-    if (String(error?.message ?? "").includes("clone")) {
+    if (message.includes("clone")) {
       throw new Error("Clone failed.");
     }
     throw new Error("Scan failed.");
