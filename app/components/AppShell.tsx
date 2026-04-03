@@ -238,6 +238,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/landing-page") ||
     pathname?.startsWith("/auth") ||
     pathname?.startsWith("/access-code");
+  const isDemoGateExemptRoute =
+    pathname?.startsWith("/reports") ||
+    pathname?.startsWith("/repositories");
   const isPublicRoute =
     isMarketingRoute ||
     pathname?.startsWith("/documentation") ||
@@ -291,6 +294,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading || !user || !demoAccessChecked) return;
+    if (isDemoGateExemptRoute) return;
     if (!demoAccessVerified && pathname !== "/access-code") {
       router.replace("/access-code");
       return;
@@ -298,7 +302,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (demoAccessVerified && pathname === "/access-code") {
       router.replace("/dashboard");
     }
-  }, [demoAccessChecked, demoAccessVerified, loading, pathname, router, user]);
+  }, [
+    demoAccessChecked,
+    demoAccessVerified,
+    isDemoGateExemptRoute,
+    loading,
+    pathname,
+    router,
+    user,
+  ]);
 
   if (isMarketingRoute) {
     return (
@@ -320,7 +332,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  if (user && !demoAccessVerified && pathname !== "/access-code") {
+  if (
+    user &&
+    !demoAccessVerified &&
+    pathname !== "/access-code" &&
+    !isDemoGateExemptRoute
+  ) {
     return <div className="min-h-screen bg-background" />;
   }
 
