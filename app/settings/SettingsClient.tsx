@@ -14,7 +14,6 @@ import {
   Shield,
   Zap,
   Webhook,
-  Eye,
   Database,
   Users,
   CreditCard,
@@ -51,17 +50,6 @@ type SettingsState = {
   webhookUrl: string;
   webhookEvents: string[];
   retentionDays: number;
-};
-
-type RepoVisibility = {
-  id: string;
-  repo_url: string;
-  name: string;
-  description: string | null;
-  is_public: boolean;
-  status: string;
-  review_count: number;
-  rating_avg: number;
 };
 
 const defaultSettings: SettingsState = {
@@ -118,7 +106,6 @@ const NAV_SECTIONS = [
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "scanning", label: "Scanning", icon: Zap },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
-  { id: "repos", label: "Repositories", icon: Eye },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
   { id: "plan", label: "Plan", icon: CreditCard },
@@ -290,8 +277,6 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [testingWebhook, setTestingWebhook] = useState(false);
-  const [repos, setRepos] = useState<RepoVisibility[]>([]);
-  const [loadingRepos, setLoadingRepos] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -335,74 +320,38 @@ export default function SettingsClient() {
         const data = await res.json();
         setSettings((prev) => ({ ...prev, ...(data?.settings ?? {}) }));
       }
-      await loadRepos(accessToken);
-      await loadTeams(accessToken);
+      setLoadingTeams(true);
+      const teamsRes = await fetch("/api/teams/list", {
+        headers: buildAuthHeaders(accessToken),
+      });
+      if (teamsRes.ok) {
+        const teamsData = await teamsRes.json();
+        const nextTeams = (teamsData?.teams ?? []) as Team[];
+        setTeams(nextTeams);
+        if (!selectedTeamId && nextTeams.length > 0) {
+          const nextTeamId = nextTeams[0].id;
+          setSelectedTeamId(nextTeamId);
+
+          const membersRes = await fetch(
+            `/api/teams/members?teamId=${nextTeamId}`,
+            {
+              headers: buildAuthHeaders(accessToken),
+            },
+          );
+          if (membersRes.ok) {
+            const membersData = await membersRes.json();
+            setTeamMembers(membersData?.members ?? []);
+          }
+        }
+      }
+      setLoadingTeams(false);
       setLoading(false);
     };
     load();
     return () => {
       mounted = false;
     };
-  }, [supabase]);
-
-  const loadRepos = async (accessToken: string) => {
-    setLoadingRepos(true);
-    const res = await fetch("/api/repositories/mine", {
-      headers: buildAuthHeaders(accessToken),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setRepos(data?.repos ?? []);
-    }
-    setLoadingRepos(false);
-  };
-
-  const loadTeams = async (accessToken: string) => {
-    setLoadingTeams(true);
-    const res = await fetch("/api/teams/list", {
-      headers: buildAuthHeaders(accessToken),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const nextTeams = (data?.teams ?? []) as Team[];
-      setTeams(nextTeams);
-      if (!selectedTeamId && nextTeams.length > 0) {
-        setSelectedTeamId(nextTeams[0].id);
-        await loadTeamMembers(nextTeams[0].id, accessToken);
-      }
-    }
-    setLoadingTeams(false);
-  };
-
-  const loadTeamMembers = async (teamId: string, accessToken: string) => {
-    const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
-      headers: buildAuthHeaders(accessToken),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setTeamMembers(data?.members ?? []);
-    }
-  };
-
-  const updateRepoVisibility = async (repoId: string, isPublic: boolean) => {
-    if (!supabase) return;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const at = sessionData.session?.access_token;
-    if (!at) return;
-    const res = await fetch("/api/repositories/update-visibility", {
-      method: "POST",
-      headers: buildAuthHeaders(at, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ repoId, isPublic }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const updated = data?.repo as RepoVisibility | undefined;
-      if (updated)
-        setRepos((prev) =>
-          prev.map((r) => (r.id === updated.id ? updated : r)),
-        );
-    }
-  };
+  }, [selectedTeamId, supabase]);
 
   const saveSettings = async () => {
     if (!supabase) return;
@@ -924,56 +873,6 @@ export default function SettingsClient() {
                   {testingWebhook ? "Sending…" : "Send test event"}
                 </button>
               </div>
-            </SectionCard>
-          )}
-
-          {/* ── Repos ── */}
-          {activeSection === "repos" && (
-            <SectionCard
-              title="Repository visibility"
-              description="Control which of your repos are public."
-            >
-              {loadingRepos ? (
-                <div className="flex items-center gap-2 py-4 text-sm text-zinc-500">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading
-                  repositories…
-                </div>
-              ) : repos.length === 0 ? (
-                <p className="py-4 text-sm text-zinc-500">
-                  No repositories submitted yet.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {repos.map((repo) => (
-                    <div
-                      key={repo.id}
-                      className="flex items-center justify-between gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-zinc-100">
-                          {repo.name}
-                        </p>
-                        <p className="truncate text-xs text-zinc-600">
-                          {repo.repo_url}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() =>
-                          updateRepoVisibility(repo.id, !repo.is_public)
-                        }
-                        className={cn(
-                          "shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                          repo.is_public
-                            ? "bg-card text-foreground hover:bg-muted"
-                            : "border border-white/[0.1] text-zinc-400 hover:border-white/20 hover:text-zinc-200",
-                        )}
-                      >
-                        {repo.is_public ? "Public" : "Private"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </SectionCard>
           )}
 

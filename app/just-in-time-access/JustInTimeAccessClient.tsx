@@ -102,7 +102,6 @@ export default function JustInTimeAccessClient() {
       method: "POST",
       headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        repoId: values.repoId,
         resourceType: values.resourceType,
         accessType: values.accessType,
         durationMinutes: values.durationMinutes,

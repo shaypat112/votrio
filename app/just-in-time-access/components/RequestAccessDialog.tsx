@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,8 @@ import type {
   AccessLevel,
   AccessRequestForm,
   DurationOption,
-  RepositorySummary,
   ResourceOption,
 } from "../types";
-import RepositorySelect from "./RepositorySelect";
-import { Label } from "@/components/ui/label";
-import { createClient } from "@/app/lib/supabase";
 
 const resourceOptions: ResourceOption[] = ["Database", "Admin Panel", "API"];
 const accessOptions: AccessLevel[] = ["Read", "Write", "Admin"];
@@ -41,9 +37,6 @@ const defaultForm: AccessRequestForm = {
   accessType: "Read",
   durationMinutes: 30,
   reason: "",
-  repoId: "",
-  repoName: "",
-  repoUrl: "",
 };
 
 export function RequestAccessDialog({
@@ -56,58 +49,20 @@ export function RequestAccessDialog({
   onSubmit: (values: AccessRequestForm) => Promise<string | null>;
 }) {
   const [form, setForm] = useState<AccessRequestForm>(defaultForm);
-  const [selectedRepo, setSelectedRepo] = useState<RepositorySummary | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [repoError, setRepoError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const supabase = useMemo(() => createClient(), []);
-
-  useEffect(() => {
-    let mounted = true;
-    if (!open) return;
-    (async () => {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token ?? null;
-        if (mounted) setAccessToken(token);
-      } catch {
-        if (mounted) setAccessToken(null);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [open, supabase]);
-
-  const resourceName = useMemo(() => {
-    switch (form.resourceType) {
-      case "Database":
-        return "Production Database";
-      case "Admin Panel":
-        return "Admin Panel";
-      case "API":
-        return "Staging API";
-    }
-  }, [form.resourceType]);
+  const resourceName =
+    form.resourceType === "Database"
+      ? "Production Database"
+      : form.resourceType === "Admin Panel"
+        ? "Admin Panel"
+        : "Staging API";
 
   const handleSubmit = async () => {
-    if (!selectedRepo) {
-      setRepoError("Choose a GitHub repository for this sandbox session.");
-      return;
-    }
-
     setSubmitting(true);
     setSubmitError(null);
-    const payload: AccessRequestForm = {
-      ...form,
-      repoId: selectedRepo.id,
-      repoName: selectedRepo.name,
-      repoUrl: selectedRepo.repoUrl,
-    };
-    const nextError = await onSubmit(payload);
+    const nextError = await onSubmit(form);
     setSubmitting(false);
 
     if (nextError) {
@@ -116,8 +71,6 @@ export function RequestAccessDialog({
     }
 
     setForm(defaultForm);
-    setSelectedRepo(null);
-    setRepoError(null);
     setSubmitError(null);
     onOpenChange(false);
   };
@@ -157,21 +110,6 @@ export function RequestAccessDialog({
                 ))}
               </SelectContent>
             </Select>
-
-            <div className="grid gap-2">
-              <Label>Repository</Label>
-              <RepositorySelect
-                accessToken={accessToken}
-                value={selectedRepo?.id ?? null}
-                onChange={(repo) => {
-                  setSelectedRepo(repo);
-                  setRepoError(null);
-                }}
-              />
-            </div>
-            {repoError ? (
-              <p className="text-xs text-destructive">{repoError}</p>
-            ) : null}
             {submitError ? (
               <p className="text-xs text-destructive">{submitError}</p>
             ) : null}
@@ -249,7 +187,7 @@ export function RequestAccessDialog({
               {form.accessType} access to {resourceName}
             </p>
             <p className="mt-1 text-muted-foreground">
-              Repository: {selectedRepo?.name ?? "Select a GitHub repository"}
+              Sandbox session with automatic expiration
             </p>
             <p className="mt-1 text-muted-foreground">
               Session duration: {form.durationMinutes} min

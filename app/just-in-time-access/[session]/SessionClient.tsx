@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Clock3,
-  ExternalLink,
-  Github,
   ServerCog,
   ShieldCheck,
   TimerReset,
@@ -104,7 +102,6 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     () =>
       session
         ? [
-            { label: "Repository", value: session.repoName },
             { label: "Environment slug", value: session.environmentSlug },
             { label: "Region", value: session.environmentRegion },
             { label: "Runtime", value: session.sandboxRuntime },
@@ -156,8 +153,9 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
                 {session.environmentName}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                Repo-linked just-in-time access for {session.repoName}. Review the
-                environment settings, current scope, and session controls before entering.
+                Just-in-time access for a contained sandbox environment. Review
+                the runtime settings, current scope, and session controls
+                before entering.
               </p>
             </div>
           </div>
@@ -166,12 +164,6 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
             <Badge className="border-border bg-background text-foreground">
               {formatStatus(session)}
             </Badge>
-            <Button asChild variant="outline">
-              <a href={session.repoUrl} target="_blank" rel="noreferrer">
-                View Repo
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
           </div>
         </div>
       </div>
@@ -193,12 +185,12 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
         <Card className="border-border bg-card">
           <CardContent className="space-y-3 p-5">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-muted/40">
-              <Github className="h-5 w-5 text-foreground" />
+              <ShieldCheck className="h-5 w-5 text-foreground" />
             </div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Repository
+              Session Type
             </p>
-            <p className="text-lg font-semibold text-foreground">{session.repoName}</p>
+            <p className="text-lg font-semibold text-foreground">Ethical sandbox</p>
           </CardContent>
         </Card>
         <Card className="border-border bg-card">

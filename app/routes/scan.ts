@@ -27,41 +27,6 @@ export async function handleGitHubScan(input: {
   const result = await runGitHubScan(input.repoUrl, input.options ?? {});
   const { total, severity, avgScore } = summarizeFindings(result.findings);
 
-  let repoId: string | null = null;
-
-  const repoRes = await supabaseFetch(
-    env,
-    `repositories?repo_url=eq.${encodeURIComponent(result.repoUrl)}&select=id`,
-    { accessToken },
-  );
-
-  if (repoRes.ok) {
-    const rows = await repoRes.json();
-    repoId = rows?.[0]?.id ?? null;
-  }
-
-  if (!repoId && userId) {
-    const insertRepoRes = await supabaseFetch(env, "repositories", {
-      method: "POST",
-      accessToken,
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        owner_id: userId,
-        repo_url: result.repoUrl,
-        name: result.repoName,
-        is_public: false,
-        status: "private",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-    });
-
-    if (insertRepoRes.ok) {
-      const rows = await insertRepoRes.json();
-      repoId = rows?.[0]?.id ?? null;
-    }
-  }
-
   const scanPayload: Record<string, unknown> = {
     repo: result.repoName,
     created_at: new Date().toISOString(),
@@ -72,7 +37,6 @@ export async function handleGitHubScan(input: {
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
-  if (repoId) scanPayload.repo_id = repoId;
 
   let scanInsertRes = await supabaseFetch(env, "scan_history", {
     method: "POST",
@@ -105,7 +69,7 @@ export async function handleGitHubScan(input: {
       actor_id: userId,
       action: "scan.completed",
       target_type: "repository",
-      target_id: repoId,
+      target_id: null,
       meta: { repo_url: result.repoUrl },
     });
 
@@ -114,50 +78,30 @@ export async function handleGitHubScan(input: {
       event: "scan.completed",
       payload: {
         repo_url: result.repoUrl,
-        repo_id: repoId,
         total_findings: total,
       },
     });
-if (userId && accessToken) {
-  await logActivity(env, accessToken, {
-    actor_id: userId,
-    action: "scan.completed",
-    target_type: "repository",
-    target_id: repoId,
-    meta: { repo_url: result.repoUrl },
-  });
 
-  await deliverWebhooks(env, accessToken, {
-    userId,
-    event: "scan.completed",
-    payload: {
-      repo_url: result.repoUrl,
-      repo_id: repoId,
-      total_findings: total,
-    },
-  });
+    await createNotification({
+      env,
+      accessToken,
+      userId,
+      type: "scan.completed",
+      data: {
+        repo_name: result.repoName,
+        repo_url: result.repoUrl,
+        severity,
+        issues: total,
+        score: avgScore,
+      },
+    });
 
-  await createNotification({
-    env,
-    accessToken,
-    userId,
-    type: "scan.completed",
-    data: {
-      repo_name: result.repoName,
-      repo_url: result.repoUrl,
-      severity,
-      issues: total,
-      score: avgScore,
-    },
-  });
-
-  await purgeUserData({
-    env,
-    accessToken,
-    userId,
-    days: 30,
-  });
-}
+    await purgeUserData({
+      env,
+      accessToken,
+      userId,
+      days: 30,
+    });
   }
 
   return {

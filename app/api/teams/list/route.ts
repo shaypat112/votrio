@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
     const env = getSupabaseEnv();
 
-    const [ownedRes, memberRes, repoRes, environmentRes] = await Promise.all([
+    const [ownedRes, memberRes, environmentRes] = await Promise.all([
       supabaseFetch(env, `teams?owner_id=eq.${userId}&select=id,name,slug,owner_id,created_at`, {
         accessToken,
       }),
@@ -40,9 +40,6 @@ export async function GET(request: Request) {
         `team_members?user_id=eq.${userId}&select=team_id,role,teams(id,name,slug,owner_id,created_at)`,
         { accessToken },
       ),
-      supabaseFetch(env, "repositories?team_id=not.is.null&select=team_id", {
-        accessToken,
-      }),
       supabaseFetch(env, "team_environments?select=team_id", {
         accessToken,
       }),
@@ -56,7 +53,7 @@ export async function GET(request: Request) {
 
     const owned = (await ownedRes.json()) as TeamRow[];
 
-    // memberRes, repoRes, environmentRes are optional depending on DB schema.
+    // memberRes and environmentRes are optional depending on DB schema.
     // If the underlying column/table is missing (e.g. during incremental migrations),
     // fall back to empty results instead of failing the whole endpoint.
     let memberRows: TeamMemberRow[] = [];
@@ -74,20 +71,6 @@ export async function GET(request: Request) {
       memberRows = [];
     }
 
-    let repoRows: CountRow[] = [];
-    try {
-      if (repoRes.ok) {
-        repoRows = (await repoRes.json()) as CountRow[];
-      } else {
-        const text = await repoRes.text();
-        if (!/PGRST|could not find table|column .* does not exist/i.test(text)) {
-          return NextResponse.json({ error: text }, { status: 500 });
-        }
-      }
-    } catch {
-      repoRows = [];
-    }
-
     let environmentRows: CountRow[] = [];
     try {
       if (environmentRes.ok) {
@@ -101,11 +84,6 @@ export async function GET(request: Request) {
     } catch {
       environmentRows = [];
     }
-
-    const repoCounts = repoRows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.team_id] = (acc[row.team_id] ?? 0) + 1;
-      return acc;
-    }, {});
 
     const environmentCounts = environmentRows.reduce<Record<string, number>>(
       (acc, row) => {
@@ -123,7 +101,7 @@ export async function GET(request: Request) {
       teams.set(row.id, {
         ...row,
         role: "owner",
-        repo_count: repoCounts[row.id] ?? 0,
+        repo_count: 0,
         environment_count: environmentCounts[row.id] ?? 0,
       });
     }
@@ -132,7 +110,7 @@ export async function GET(request: Request) {
         teams.set(row.teams.id, {
           ...row.teams,
           role: row.role ?? "member",
-          repo_count: repoCounts[row.teams.id] ?? 0,
+          repo_count: 0,
           environment_count: environmentCounts[row.teams.id] ?? 0,
         });
       }

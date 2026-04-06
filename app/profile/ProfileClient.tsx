@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,31 +9,23 @@ import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
 import TabNav, { type TabKey } from "./components/TabNav";
-
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
-
-import MyRepositories from "./components/MyRepositories";
-import React from "react";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState("Developer");
-  const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [tier, setTier] = useState<"free" | "pro" | "team">("free");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scans, setScans] = useState<ScanRow[]>([]);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
-  const [profileId, setProfileId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>("scans");
-  const [savingProfile, setSavingProfile] = useState(false);
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     let mounted = true;
@@ -68,10 +59,8 @@ export default function ProfileClient() {
         .single();
 
       if (profileData) {
-        setProfileId(profileData.id);
-        setName(profileData.full_name ?? name);
-        setUsername(profileData.username ?? "");
-        setAvatarUrl(profileData.avatar_url ?? avatarUrl);
+        setName(profileData.full_name ?? "Developer");
+        setAvatarUrl(profileData.avatar_url ?? null);
         setTier(profileData.tier ?? "free");
       }
 
@@ -107,13 +96,6 @@ export default function ProfileClient() {
     };
   }, [supabase]);
 
-  useEffect(() => {
-    const tab = searchParams.get("tab") as TabKey | null;
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
-
   const initials = name
     .split(" ")
     .filter((part) => part.length > 0)
@@ -140,20 +122,6 @@ export default function ProfileClient() {
           : "-",
     },
   ];
-
-  const saveProfile = async () => {
-    if (!supabase || !profileId) return;
-    setSavingProfile(true);
-    await supabase
-      .from("profiles")
-      .update({
-        full_name: name,
-        username,
-        avatar_url: avatarUrl,
-      })
-      .eq("id", profileId);
-    setSavingProfile(false);
-  };
 
   const connectGitHub = async () => {
     if (!supabase) return;
@@ -278,16 +246,6 @@ export default function ProfileClient() {
         avatarUrl={avatarUrl}
       />
 
-      {/* show team banner when a team is selected */}
-      <div>
-        {/* lazy load TeamBanner to avoid adding to initial bundle */}
-        {/* import inline to keep this file simple */}
-        <React.Suspense fallback={null}>
-          {/* @ts-ignore-next-line server-component */}
-          {/* TeamBanner is a client component so import dynamically */}
-        </React.Suspense>
-      </div>
-
       <StatsRow stats={stats} />
 
       <Card>
@@ -316,21 +274,6 @@ export default function ProfileClient() {
         </div>
       )}
 
-      {activeTab === "my-repos" && (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-1">
-              <p className="text-sm font-semibold text-zinc-100">
-                My repositories
-              </p>
-              <p className="text-xs text-zinc-500">
-                Submitted repositories appear here with review links.
-              </p>
-            </CardContent>
-          </Card>
-          <MyRepositories />
-        </div>
-      )}
     </div>
   );
 }

@@ -27,7 +27,6 @@ export async function POST(request: Request) {
       `/rest/v1/notifications?user_id=eq.${userId}`,
       `/rest/v1/scan_history?user_id=eq.${userId}`,
       `/rest/v1/connected_repos?user_id=eq.${userId}`,
-      `/rest/v1/repositories?owner_id=eq.${userId}`,
       `/rest/v1/team_members?user_id=eq.${userId}`,
       `/rest/v1/teams?owner_id=eq.${userId}`,
       `/rest/v1/webhook_endpoints?user_id=eq.${userId}`,

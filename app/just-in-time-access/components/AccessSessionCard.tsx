@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpRight, Clock3, Github, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowUpRight, Clock3, ServerCog, ShieldCheck, UserRound } from "lucide-react";
 
 import type { AccessSession } from "../types";
 
@@ -93,10 +93,10 @@ export function AccessSessionCard({
 
         <div className="rounded-xl border border-border bg-muted/30 p-3">
           <p className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            <Github className="h-3.5 w-3.5" />
-            Repository
+            <ServerCog className="h-3.5 w-3.5" />
+            Sandbox
           </p>
-          <p className="mt-2 font-medium text-foreground">{session.repoName}</p>
+          <p className="mt-2 font-medium text-foreground">{session.environmentName}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {session.environmentName} · {session.environmentRegion}
           </p>

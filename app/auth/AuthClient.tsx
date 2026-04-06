@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "../lib/supabase";
-import { ArrowLeft, Github, Mail, Lock } from "lucide-react";
+import { ArrowLeft, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,16 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
   const postAuthPath = "/dashboard";
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -50,41 +45,6 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supabase) {
-      setError(
-        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-      );
-      return;
-    }
-    setError(null);
-    setNotice(null);
-    setLoading(true);
-
-    if (isLogin) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError) setError(signInError.message);
-      else window.location.href = postAuthPath;
-      setLoading(false);
-      return;
-    }
-
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
-      },
-    });
-    if (signUpError) setError(signUpError.message);
-    else setNotice("Check your email to confirm your account.");
-    setLoading(false);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md border border-zinc-800 shadow-xl">
@@ -99,8 +59,7 @@ export default function AuthPage() {
           </div>
           <CardTitle className="text-2xl text-white font-semibold"></CardTitle>
           <CardDescription className="text-zinc-400 text-sm">
-            Connect your account to link your repositories and start scanning
-            for vulnerabilities.
+            Sign in to manage scans, access sessions, and security workflows.
           </CardDescription>
         </CardHeader>
 
@@ -127,6 +86,13 @@ export default function AuthPage() {
               Continue with Google
             </Button>
           </div>
+
+          {error ? (
+            <p className="text-center text-xs text-red-400">{error}</p>
+          ) : null}
+          {notice ? (
+            <p className="text-center text-xs text-zinc-400">{notice}</p>
+          ) : null}
 
           <Button
             variant="link"

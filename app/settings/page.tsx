@@ -8,7 +8,7 @@ import { NotificationsSection } from "./profile/notifications";
 import { ScanningSection } from "./profile/scanning";
 import { AppearanceSection } from "./profile/appearance";
 import { WebhooksSection } from "./profile/webhooks";
-import { ReposSection } from "./profile/repos";
+
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
 import { PlanSection } from "./profile/plan";
@@ -22,7 +22,7 @@ const SECTION_MAP = {
   scanning: ScanningSection,
   appearance: AppearanceSection,
   webhooks: WebhooksSection,
-  repos: ReposSection,
+
   retention: RetentionSection,
   teams: TeamsSection,
   plan: PlanSection,

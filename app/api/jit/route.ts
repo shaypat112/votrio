@@ -8,8 +8,6 @@ import {
 } from "@/app/lib/server/supabaseRest";
 import {
   buildSessionInsertPayload,
-  fetchAccessibleRepository,
-  fetchEnvironmentForRepository,
   mapJitSession,
 } from "@/app/lib/server/jit";
 
@@ -46,7 +44,6 @@ export async function POST(request: Request) {
   try {
     const { accessToken, userId } = requireRequestAuth(request);
     const {
-      repoId,
       resourceType,
       accessType,
       durationMinutes,
@@ -54,7 +51,6 @@ export async function POST(request: Request) {
     } = await request.json();
 
     if (
-      !repoId ||
       !resourceType ||
       !accessType ||
       !durationMinutes
@@ -65,19 +61,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const repo = await fetchAccessibleRepository(accessToken, String(repoId));
-    if (!repo) {
-      return NextResponse.json(
-        { error: "Repository not found or not accessible." },
-        { status: 404 },
-      );
-    }
-
-    const environment = await fetchEnvironmentForRepository(accessToken, repo);
     const payload = buildSessionInsertPayload({
       userId,
-      repo,
-      environment,
       resourceType,
       accessType,
       durationMinutes,

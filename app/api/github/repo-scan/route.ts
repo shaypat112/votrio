@@ -22,7 +22,6 @@ export async function POST(request: Request) {
   const body = await request.json();
   const providerToken = (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
-  const repoId = body?.repoId as string | undefined;
   const { accessToken, userId } = requireRequestAuth(request);
 
   if (!repoFullName) {
@@ -105,7 +104,7 @@ export async function POST(request: Request) {
 
     const payload = {
       user_id: userId,
-      repo_id: repoId ?? null,
+      repo_id: null,
       repo: repoFullName,
       severity,
       issues,
@@ -189,7 +188,6 @@ export async function POST(request: Request) {
       severity,
       score,
       issues,
-      repoId: repoId ?? null,
       scan: inserted?.[0] ?? null,
       findings,
     });

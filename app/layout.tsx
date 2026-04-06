@@ -12,7 +12,7 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Votrio",
-  description: "Votrio — automated repository scanning, reviews and insights.",
+  description: "Votrio — AI security scanning, sandbox sessions, and insights.",
   icons: {
     icon: "/votrio_logo.jpeg",
     shortcut: "/votrio_logo.jpeg",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Votrio",
-    description: "Automated repo scanning, reviews and developer insights.",
+    description: "AI security scanning, sandbox sessions, and developer insights.",
     images: ["/votrio_logo.jpeg"],
   },
 };

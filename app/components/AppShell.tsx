@@ -372,12 +372,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Profile
                 </Link>
                 <Link
-                  href="/repositories"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Repositories
-                </Link>
-                <Link
                   href="/just-in-time-access"
                   className="transition-colors hover:text-foreground"
                 >
