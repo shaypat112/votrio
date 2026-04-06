@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock3, ShieldCheck, TimerReset } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { buildAuthHeaders } from "@/app/lib/http";
+import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { AccessSessionCard } from "./components/AccessSessionCard";
 import { EmptySessionsState } from "./components/EmptySessionsState";
 import { RequestAccessDialog } from "./components/RequestAccessDialog";
 import type { AccessRequestForm, AccessSession } from "./types";
+import { useTeam } from "@/app/components/TeamProvider";
+import type { ConnectedRepo } from "@/app/profile/components/RepoTable";
 
 function sortSessions(a: AccessSession, b: AccessSession) {
   if (a.status !== b.status) {
@@ -25,21 +27,23 @@ export default function JustInTimeAccessClient() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [sessions, setSessions] = useState<AccessSession[]>([]);
+  const [repos, setRepos] = useState<ConnectedRepo[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedTeamId } = useTeam();
 
   const sortedSessions = useMemo(
     () => [...sessions].sort(sortSessions),
     [sessions],
   );
 
-  const loadSessions = async (token: string) => {
+  const loadSessions = useCallback(async (token: string) => {
     setLoading(true);
     setError(null);
     const res = await fetch("/api/jit", {
-      headers: buildAuthHeaders(token),
+      headers: buildTeamAuthHeaders(token, selectedTeamId),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -52,7 +56,15 @@ export default function JustInTimeAccessClient() {
 
     setSessions((data?.sessions ?? []) as AccessSession[]);
     setLoading(false);
-  };
+  }, [selectedTeamId]);
+
+  const loadRepos = useCallback(async () => {
+    const { data } = await supabase
+      .from("connected_repos")
+      .select("id, full_name, private, last_scanned_at")
+      .order("full_name", { ascending: true });
+    setRepos((data as ConnectedRepo[]) ?? []);
+  }, [supabase]);
 
   useEffect(() => {
     let mounted = true;
@@ -65,11 +77,12 @@ export default function JustInTimeAccessClient() {
       setAccessToken(nextToken);
       if (!nextToken) {
         setSessions([]);
+        setRepos([]);
         setLoading(false);
         return;
       }
 
-      await loadSessions(nextToken);
+      await Promise.all([loadSessions(nextToken), loadRepos()]);
     };
 
     init();
@@ -80,10 +93,11 @@ export default function JustInTimeAccessClient() {
         setAccessToken(nextToken);
         if (!nextToken) {
           setSessions([]);
+          setRepos([]);
           setLoading(false);
           return;
         }
-        void loadSessions(nextToken);
+        void Promise.all([loadSessions(nextToken), loadRepos()]);
       },
     );
 
@@ -91,7 +105,36 @@ export default function JustInTimeAccessClient() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [loadRepos, loadSessions, supabase]);
+
+  const connectGitHub = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const nextToken = sessionData.session?.access_token;
+    const providerToken = sessionData.session?.provider_token;
+
+    if (!nextToken || !providerToken) {
+      setError("GitHub is not connected. Sign in with GitHub first.");
+      return;
+    }
+
+    const res = await fetch("/api/github/repos", {
+      method: "POST",
+      headers: buildTeamAuthHeaders(
+        nextToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
+      body: JSON.stringify({ providerToken }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data?.error ?? "Failed to sync repositories.");
+      return;
+    }
+
+    setRepos((data?.repos ?? []) as ConnectedRepo[]);
+  };
 
   const handleRequestAccess = async (values: AccessRequestForm) => {
     if (!accessToken) {
@@ -100,8 +143,13 @@ export default function JustInTimeAccessClient() {
 
     const res = await fetch("/api/jit", {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({
+        repoId: values.repoId,
         resourceType: values.resourceType,
         accessType: values.accessType,
         durationMinutes: values.durationMinutes,
@@ -131,7 +179,11 @@ export default function JustInTimeAccessClient() {
 
     await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({ action: "extend", minutes: 30 }),
     });
     await loadSessions(accessToken);
@@ -142,7 +194,11 @@ export default function JustInTimeAccessClient() {
 
     await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({ action: "revoke" }),
     });
     await loadSessions(accessToken);
@@ -261,6 +317,8 @@ export default function JustInTimeAccessClient() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSubmit={handleRequestAccess}
+        repos={repos}
+        onConnectGitHub={connectGitHub}
       />
     </>
   );

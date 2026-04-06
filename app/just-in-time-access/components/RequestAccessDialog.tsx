@@ -28,11 +28,18 @@ import type {
   ResourceOption,
 } from "../types";
 
+type RepoOption = {
+  id: string;
+  full_name: string;
+  private: boolean;
+};
+
 const resourceOptions: ResourceOption[] = ["Database", "Admin Panel", "API"];
 const accessOptions: AccessLevel[] = ["Read", "Write", "Admin"];
 const durationOptions: DurationOption[] = [15, 30, 60];
 
 const defaultForm: AccessRequestForm = {
+  repoId: "",
   resourceType: "Database",
   accessType: "Read",
   durationMinutes: 30,
@@ -43,10 +50,14 @@ export function RequestAccessDialog({
   open,
   onOpenChange,
   onSubmit,
+  repos,
+  onConnectGitHub,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: AccessRequestForm) => Promise<string | null>;
+  repos: RepoOption[];
+  onConnectGitHub: () => void;
 }) {
   const [form, setForm] = useState<AccessRequestForm>(defaultForm);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -86,6 +97,48 @@ export function RequestAccessDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Repository
+            </label>
+            <Select
+              value={form.repoId}
+              onValueChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  repoId: value,
+                }))
+              }
+            >
+              <SelectTrigger className="h-10 w-full bg-background">
+                <SelectValue placeholder="Select a connected repository" />
+              </SelectTrigger>
+              <SelectContent>
+                {repos.map((repo) => (
+                  <SelectItem key={repo.id} value={repo.id}>
+                    {repo.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {repos.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                <p>No repositories connected yet.</p>
+                <button
+                  type="button"
+                  onClick={onConnectGitHub}
+                  className="mt-2 font-medium text-foreground underline underline-offset-4"
+                >
+                  Connect GitHub to load repositories
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Pick the repository this sandbox session should be tied to.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Resource
@@ -197,9 +250,12 @@ export function RequestAccessDialog({
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" disabled={submitting}>Cancel</Button>
+          <Button variant="outline" disabled={submitting}>Cancel</Button>
           </DialogClose>
-          <Button onClick={() => void handleSubmit()} disabled={submitting}>
+          <Button
+            onClick={() => void handleSubmit()}
+            disabled={submitting || repos.length === 0 || !form.repoId}
+          >
             {submitting ? "Creating..." : "Request Access"}
           </Button>
         </DialogFooter>

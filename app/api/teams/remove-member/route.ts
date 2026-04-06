@@ -5,7 +5,8 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
-import { isTeamOwner } from "@/app/lib/server/teams";
+import { adminSupabaseFetch, isAdminAccess } from "@/app/lib/server/admin";
+import { canManageTeam } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
@@ -19,11 +20,16 @@ export async function POST(request: Request) {
     }
 
     const env = getSupabaseEnv();
-    const memberLookupRes = await supabaseFetch(
-      env,
-      `team_members?id=eq.${memberId}&select=id,team_id,user_id,role`,
-      { accessToken },
-    );
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
+    const memberLookupRes = isAdmin
+      ? await adminSupabaseFetch(
+          `team_members?id=eq.${memberId}&select=id,team_id,user_id,role`,
+        )
+      : await supabaseFetch(
+          env,
+          `team_members?id=eq.${memberId}&select=id,team_id,user_id,role`,
+          { accessToken },
+        );
 
     if (!memberLookupRes.ok) {
       const text = await memberLookupRes.text();
@@ -36,19 +42,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Member not found." }, { status: 404 });
     }
 
-    const canManageTeam = await isTeamOwner(accessToken, userId, member.team_id);
-    if (!canManageTeam) {
-      return NextResponse.json({ error: "Only team owners can remove members." }, { status: 403 });
+    const canManage = await canManageTeam(accessToken, userId, member.team_id);
+    if (!canManage) {
+      return NextResponse.json({ error: "Only team admins can remove members." }, { status: 403 });
     }
 
     if (member.role === "owner") {
       return NextResponse.json({ error: "Owners cannot be removed from their team." }, { status: 400 });
     }
 
-    const res = await supabaseFetch(env, `team_members?id=eq.${memberId}`, {
-      method: "DELETE",
-      accessToken,
-    });
+    const res = isAdmin
+      ? await adminSupabaseFetch(`team_members?id=eq.${memberId}`, {
+          method: "DELETE",
+        })
+      : await supabaseFetch(env, `team_members?id=eq.${memberId}`, {
+          method: "DELETE",
+          accessToken,
+        });
 
     if (!res.ok) {
       const text = await res.text();

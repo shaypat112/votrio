@@ -59,14 +59,18 @@ export async function POST(request: Request) {
     }
 
     const {
-      fullName: _fullName,
-      username: _username,
-      avatarUrl: _avatarUrl,
+      fullName,
+      username,
+      avatarUrl,
       webhookEnabled,
       webhookUrl,
       webhookEvents,
       ...rest
     } = settings ?? {};
+
+    void fullName;
+    void username;
+    void avatarUrl;
 
     const normalized = {
       ...rest,
@@ -123,7 +127,7 @@ export async function POST(request: Request) {
       enabled: Boolean(webhookEnabled) && Boolean(webhookUrl),
       events: Array.isArray(webhookEvents) && webhookEvents.length > 0
         ? webhookEvents
-        : ["repository.published", "review.created", "scan.completed"],
+        : ["scan.completed"],
       updated_at: new Date().toISOString(),
     };
 

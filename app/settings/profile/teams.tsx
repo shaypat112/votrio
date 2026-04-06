@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
-import { createClient } from "@/app/lib/supabase";
 import { useSettings } from "./context";
 import {
   SectionCard,
   FieldGroup,
   StyledInput,
   DangerButton,
+  StyledSelect,
 } from "./primitives";
 
 type Team = {
@@ -19,6 +19,8 @@ type Team = {
   slug: string;
   owner_id: string;
   role: string;
+  can_manage?: boolean;
+  environment_count?: number;
 };
 
 type TeamMember = {
@@ -33,8 +35,7 @@ type TeamMember = {
 };
 
 export function TeamsSection() {
-  const { accessToken } = useSettings();
-  const supabase = useMemo(() => createClient(), []);
+  const { accessToken, admin } = useSettings();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -42,14 +43,24 @@ export function TeamsSection() {
   const [teamName, setTeamName] = useState("");
   const [inviteUsername, setInviteUsername] = useState("");
   const [loading, setLoading] = useState(false);
+  const [workingMemberId, setWorkingMemberId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    loadTeams(accessToken);
-  }, [accessToken]);
+  const loadMembers = useCallback(async (teamId: string, token: string) => {
+    const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
+      headers: buildAuthHeaders(token),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setMembers(data?.members ?? []);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setTeamError(data?.error ?? "Unable to load members.");
+      setMembers([]);
+    }
+  }, []);
 
-  const loadTeams = async (token: string) => {
+  const loadTeams = useCallback(async (token: string) => {
     setLoading(true);
     const res = await fetch("/api/teams/list", {
       headers: buildAuthHeaders(token),
@@ -67,21 +78,15 @@ export function TeamsSection() {
       setTeamError(data?.error ?? "Unable to load teams.");
     }
     setLoading(false);
-  };
+  }, [loadMembers, selectedTeamId]);
 
-  const loadMembers = async (teamId: string, token: string) => {
-    const res = await fetch(`/api/teams/members?teamId=${teamId}`, {
-      headers: buildAuthHeaders(token),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setMembers(data?.members ?? []);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setTeamError(data?.error ?? "Unable to load members.");
-      setMembers([]);
-    }
-  };
+  useEffect(() => {
+    if (!accessToken) return;
+    const timer = window.setTimeout(() => {
+      void loadTeams(accessToken);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, loadTeams]);
 
   const createTeam = async () => {
     if (!accessToken || !teamName.trim()) return;
@@ -141,8 +146,41 @@ export function TeamsSection() {
     await loadMembers(teamId, accessToken);
   };
 
+  const selectedTeam =
+    teams.find((team) => team.id === selectedTeamId) ?? null;
+  const canManageSelectedTeam = Boolean(
+    admin.isAdmin ||
+      selectedTeam?.can_manage ||
+      selectedTeam?.role === "owner" ||
+      selectedTeam?.role === "admin",
+  );
+
+  const updateMemberRole = async (
+    memberId: string,
+    role: "member" | "admin",
+  ) => {
+    if (!accessToken || !selectedTeamId) return;
+    setWorkingMemberId(memberId);
+    setTeamError(null);
+    const res = await fetch("/api/teams/update-member-role", {
+      method: "POST",
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ memberId, role }),
+    });
+    setWorkingMemberId(null);
+    if (res.ok) {
+      await loadMembers(selectedTeamId, accessToken);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setTeamError(d?.error ?? "Unable to update member role.");
+    }
+  };
+
   return (
-    <SectionCard title="Teams" description="Create and manage team access.">
+    <SectionCard
+      title="Teams"
+      description="Create teams, manage members, and control access from the backend."
+    >
       <FieldGroup label="New team">
         <div className="flex gap-2">
           <StyledInput
@@ -163,6 +201,10 @@ export function TeamsSection() {
             Create
           </button>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Creating a team makes you its owner. Owners and admins can invite,
+          promote, and remove members.
+        </p>
       </FieldGroup>
 
       {teamError && <p className="text-xs text-red-400">{teamError}</p>}
@@ -188,7 +230,12 @@ export function TeamsSection() {
                     : "border border-border text-zinc-400 hover:border-border hover:text-zinc-200",
                 )}
               >
-                {team.name}
+                <span>{team.name}</span>
+                <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {admin.isAdmin && team.role !== "owner" && team.role !== "admin"
+                    ? "admin"
+                    : team.role}
+                </span>
               </button>
             ))}
           </div>
@@ -196,27 +243,44 @@ export function TeamsSection() {
           {/* Selected team panel */}
           {selectedTeamId && (
             <div className="space-y-4 rounded-lg border border-white/[0.07] bg-white/[0.02] p-4">
-              <FieldGroup label="Add member">
-                <div className="flex gap-2">
-                  <StyledInput
-                    placeholder="username"
-                    value={inviteUsername}
-                    onChange={(e) => setInviteUsername(e.target.value)}
-                    className="flex-1"
-                  />
-                  <button
-                    onClick={addMember}
-                    disabled={!inviteUsername.trim()}
-                    className={cn(
-                      "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
-                      "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
-                      "disabled:opacity-40 disabled:cursor-not-allowed",
-                    )}
-                  >
-                    Add
-                  </button>
-                </div>
-              </FieldGroup>
+              <div className="rounded-lg border border-border bg-background px-3 py-3 text-xs text-muted-foreground">
+                Team role:{" "}
+                <strong className="text-foreground">
+                  {admin.isAdmin && selectedTeam?.role !== "owner" && selectedTeam?.role !== "admin"
+                    ? "admin"
+                    : selectedTeam?.role ?? "member"}
+                </strong>
+                {" · "}
+                Environments: {selectedTeam?.environment_count ?? 0}
+              </div>
+
+              {canManageSelectedTeam ? (
+                <FieldGroup label="Add member">
+                  <div className="flex gap-2">
+                    <StyledInput
+                      placeholder="username"
+                      value={inviteUsername}
+                      onChange={(e) => setInviteUsername(e.target.value)}
+                      className="flex-1"
+                    />
+                    <button
+                      onClick={addMember}
+                      disabled={!inviteUsername.trim()}
+                      className={cn(
+                        "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
+                        "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
+                        "disabled:opacity-40 disabled:cursor-not-allowed",
+                      )}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </FieldGroup>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  You can view this team, but only team admins can manage members.
+                </p>
+              )}
 
               <div className="space-y-2">
                 {members.length === 0 ? (
@@ -238,12 +302,32 @@ export function TeamsSection() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md border border-white/[0.07] px-2 py-0.5 text-xs text-zinc-400">
-                          {member.role}
-                        </span>
-                        <DangerButton onClick={() => removeMember(member.id)}>
-                          Remove
-                        </DangerButton>
+                        {canManageSelectedTeam && member.role !== "owner" ? (
+                          <>
+                            <StyledSelect
+                              value={member.role}
+                              onChange={(value) =>
+                                void updateMemberRole(
+                                  member.id,
+                                  value as "member" | "admin",
+                                )
+                              }
+                            >
+                              <option value="member">member</option>
+                              <option value="admin">admin</option>
+                            </StyledSelect>
+                            <DangerButton
+                              onClick={() => removeMember(member.id)}
+                              disabled={workingMemberId === member.id}
+                            >
+                              Remove
+                            </DangerButton>
+                          </>
+                        ) : (
+                          <span className="rounded-md border border-white/[0.07] px-2 py-0.5 text-xs text-zinc-400">
+                            {member.role}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))

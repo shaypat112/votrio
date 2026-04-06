@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
-import { useTheme } from "@/app/components/theme-provider";
+import { useTeam } from "./TeamProvider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -52,14 +52,8 @@ function formatNotificationTitle(type: string) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [teams, setTeams] = useState<
-    Array<{ id: string; name: string; slug: string; role?: string }>
-  >([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
@@ -74,6 +68,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [demoAccessChecked, setDemoAccessChecked] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
+  const { teams, selectedTeamId, setSelectedTeamId } = useTeam();
 
   useEffect(() => {
     let mounted = true;
@@ -173,19 +168,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, supabase]);
 
-  useEffect(() => {
-    // mark client-mounted so we can avoid rendering theme-dependent UI on the server
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // load selected team from localStorage
-    try {
-      const v = window.localStorage.getItem("votrio-selected-team");
-      if (v) setSelectedTeamId(v);
-    } catch {}
-  }, []);
-
   const displayName = user ? getDisplayName(user) : "";
   const avatarUrl = user ? getAvatarUrl(user) : null;
   const initials = displayName
@@ -201,46 +183,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  // Teams dropdown: fetch teams for the current user and expose a selector in the header
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      if (!user) return;
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) return;
-      try {
-        const res = await fetch("/api/teams/list", {
-          headers: buildAuthHeaders(accessToken),
-        });
-        if (!mounted) return;
-        if (!res.ok) return;
-        const json = await res.json();
-        const items = json?.teams ?? [];
-        setTeams(items);
-        // if no selected team yet, pick first
-        if (!selectedTeamId && items.length > 0) {
-          setSelectedTeamId(items[0].id);
-          try {
-            window.localStorage.setItem("votrio-selected-team", items[0].id);
-          } catch {}
-        }
-      } catch (e) {
-        // ignore
-      }
-    };
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [user, supabase, selectedTeamId]);
-
   const onSelectTeam = (teamId: string) => {
     setSelectedTeamId(teamId);
-    try {
-      window.localStorage.setItem("votrio-selected-team", teamId);
-    } catch {}
   };
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
@@ -369,7 +313,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href="/profile"
                   className="transition-colors hover:text-foreground"
                 >
-                  Profile
+                  Scans
                 </Link>
                 <Link
                   href="/just-in-time-access"
@@ -389,11 +333,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   Settings
                 </Link>
+
                 <Link
-                  href="/sim-hack"
+                  href="/eval"
                   className="transition-colors hover:text-foreground"
                 >
-                  Si-Hack
+                  Eval
                 </Link>
                 {/* Teams dropdown (moved from header right) */}
                 {user ? (

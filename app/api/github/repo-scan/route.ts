@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  extractSelectedTeamId,
   RequestAuthError,
   getSupabaseEnv,
   requireRequestAuth,
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
   const providerToken = (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
   const { accessToken, userId } = requireRequestAuth(request);
+  const selectedTeamId = extractSelectedTeamId(request);
 
   if (!repoFullName) {
     return NextResponse.json(
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
       findings: {
         ai_summary: summary,
         list: findings,
+        team_id: selectedTeamId,
       },
       created_at: now,
     };

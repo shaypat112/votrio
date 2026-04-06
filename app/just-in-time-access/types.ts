@@ -5,6 +5,9 @@ export type DurationOption = 15 | 30 | 60;
 
 export type AccessSession = {
   id: string;
+  repoId: string | null;
+  repoName: string | null;
+  repoUrl: string | null;
   resourceName: string;
   resourceType: ResourceOption;
   accessType: AccessLevel;
@@ -22,6 +25,7 @@ export type AccessSession = {
 };
 
 export type AccessRequestForm = {
+  repoId: string;
   resourceType: ResourceOption;
   accessType: AccessLevel;
   durationMinutes: DurationOption;

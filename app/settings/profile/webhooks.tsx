@@ -13,8 +13,6 @@ import {
 } from "./primitives";
 
 const WEBHOOK_EVENTS = [
-  { id: "repository.published", label: "Repository published" },
-  { id: "review.created", label: "Review created" },
   { id: "scan.completed", label: "Scan completed" },
 ] as const;
 

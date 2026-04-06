@@ -5,7 +5,8 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
-import { isTeamOwner } from "@/app/lib/server/teams";
+import { adminSupabaseFetch, isAdminAccess } from "@/app/lib/server/admin";
+import { canManageTeam } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ function slugify(value: string) {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const { accessToken } = requireRequestAuth(request);
+    const { accessToken, userId } = requireRequestAuth(request);
     const teamId = searchParams.get("teamId");
 
     if (!teamId) {
@@ -30,11 +31,16 @@ export async function GET(request: Request) {
     }
 
     const env = getSupabaseEnv();
-    const res = await supabaseFetch(
-      env,
-      `team_environments?team_id=eq.${teamId}&select=id,team_id,repo_id,name,slug,provider,github_owner,metadata,created_at,updated_at&order=created_at.desc`,
-      { accessToken },
-    );
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
+    const res = isAdmin
+      ? await adminSupabaseFetch(
+          `team_environments?team_id=eq.${teamId}&select=id,team_id,repo_id,name,slug,provider,github_owner,metadata,created_at,updated_at&order=created_at.desc`,
+        )
+      : await supabaseFetch(
+          env,
+          `team_environments?team_id=eq.${teamId}&select=id,team_id,repo_id,name,slug,provider,github_owner,metadata,created_at,updated_at&order=created_at.desc`,
+          { accessToken },
+        );
 
     if (!res.ok) {
       return NextResponse.json({ error: await res.text() }, { status: 500 });
@@ -68,32 +74,49 @@ export async function POST(request: Request) {
       );
     }
 
-    const canManage = await isTeamOwner(accessToken, userId, String(teamId));
+    const canManage = await canManageTeam(accessToken, userId, String(teamId));
     if (!canManage) {
       return NextResponse.json(
-        { error: "Only team owners can create environments." },
+        { error: "Only team admins can create environments." },
         { status: 403 },
       );
     }
 
     const env = getSupabaseEnv();
     const slug = slugify(String(name));
-    const res = await supabaseFetch(env, "team_environments", {
-      method: "POST",
-      accessToken,
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        team_id: teamId,
-        repo_id: repoId ?? null,
-        name,
-        slug,
-        provider: provider ?? "github",
-        github_owner: githubOwner ?? null,
-        metadata: metadata ?? {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }),
-    });
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
+    const res = isAdmin
+      ? await adminSupabaseFetch("team_environments", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            team_id: teamId,
+            repo_id: repoId ?? null,
+            name,
+            slug,
+            provider: provider ?? "github",
+            github_owner: githubOwner ?? null,
+            metadata: metadata ?? {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        })
+      : await supabaseFetch(env, "team_environments", {
+          method: "POST",
+          accessToken,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            team_id: teamId,
+            repo_id: repoId ?? null,
+            name,
+            slug,
+            provider: provider ?? "github",
+            github_owner: githubOwner ?? null,
+            metadata: metadata ?? {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        });
 
     if (!res.ok) {
       return NextResponse.json({ error: await res.text() }, { status: 500 });

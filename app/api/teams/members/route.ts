@@ -5,6 +5,7 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { adminSupabaseFetch, isAdminAccess } from "@/app/lib/server/admin";
 import { getAccessibleTeamIds } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
@@ -25,11 +26,16 @@ export async function GET(request: Request) {
     }
 
     const env = getSupabaseEnv();
-    const res = await supabaseFetch(
-      env,
-      `team_members?team_id=eq.${teamId}&select=id,role,user_id,profiles(full_name,username,avatar_url)`,
-      { accessToken },
-    );
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
+    const res = isAdmin
+      ? await adminSupabaseFetch(
+          `team_members?team_id=eq.${teamId}&select=id,role,user_id,profiles(full_name,username,avatar_url)`,
+        )
+      : await supabaseFetch(
+          env,
+          `team_members?team_id=eq.${teamId}&select=id,role,user_id,profiles(full_name,username,avatar_url)`,
+          { accessToken },
+        );
 
     if (!res.ok) {
       const text = await res.text();

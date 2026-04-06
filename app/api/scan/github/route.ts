@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleGitHubScan } from "@/app/routes/scan";
 import {
+  extractSelectedTeamId,
   RequestAuthError,
   requireRequestAuth,
 } from "@/app/lib/server/supabaseRest";
@@ -17,12 +18,18 @@ export async function POST(request: Request) {
     const repoUrl = body?.repoUrl as string | undefined;
     const options = body?.options;
     const { accessToken } = requireRequestAuth(request);
+    const selectedTeamId = extractSelectedTeamId(request);
 
     if (!repoUrl) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
 
-    const result = await handleGitHubScan({ repoUrl, options, accessToken });
+    const result = await handleGitHubScan({
+      repoUrl,
+      options,
+      accessToken,
+      teamId: selectedTeamId,
+    });
 
     return NextResponse.json(result);
   } catch (error) {

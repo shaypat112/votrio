@@ -56,8 +56,16 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         }
         const json = await res.json();
         const items = json?.teams ?? [];
-        if (mounted) setTeams(items as Team[]);
-      } catch (e) {
+        if (mounted) {
+          setTeams(items as Team[]);
+          setSelectedTeamIdState((current) => {
+            if (current && items.some((item: Team) => item.id === current)) {
+              return current;
+            }
+            return items[0]?.id ?? null;
+          });
+        }
+      } catch {
         if (mounted) setTeams([]);
       } finally {
         if (mounted) setLoading(false);
@@ -82,6 +90,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       if (id) window.localStorage.setItem("votrio-selected-team", id);
       else window.localStorage.removeItem("votrio-selected-team");
     } catch {}
+    window.location.reload();
   };
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId) ?? null;

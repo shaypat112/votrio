@@ -5,6 +5,7 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { adminSupabaseFetch, isAdminAccess } from "@/app/lib/server/admin";
 
 export const runtime = "nodejs";
 
@@ -28,22 +29,30 @@ type CountRow = {
 export async function GET(request: Request) {
   try {
     const { accessToken, userId } = requireRequestAuth(request);
-
     const env = getSupabaseEnv();
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
 
-    const [ownedRes, memberRes, environmentRes] = await Promise.all([
-      supabaseFetch(env, `teams?owner_id=eq.${userId}&select=id,name,slug,owner_id,created_at`, {
-        accessToken,
-      }),
-      supabaseFetch(
-        env,
-        `team_members?user_id=eq.${userId}&select=team_id,role,teams(id,name,slug,owner_id,created_at)`,
-        { accessToken },
-      ),
-      supabaseFetch(env, "team_environments?select=team_id", {
-        accessToken,
-      }),
-    ]);
+    const [ownedRes, memberRes, environmentRes] = isAdmin
+      ? await Promise.all([
+          adminSupabaseFetch("teams?select=id,name,slug,owner_id,created_at"),
+          adminSupabaseFetch(
+            "team_members?select=team_id,role,teams(id,name,slug,owner_id,created_at)",
+          ),
+          adminSupabaseFetch("team_environments?select=team_id"),
+        ])
+      : await Promise.all([
+          supabaseFetch(env, `teams?owner_id=eq.${userId}&select=id,name,slug,owner_id,created_at`, {
+            accessToken,
+          }),
+          supabaseFetch(
+            env,
+            `team_members?user_id=eq.${userId}&select=team_id,role,teams(id,name,slug,owner_id,created_at)`,
+            { accessToken },
+          ),
+          supabaseFetch(env, "team_environments?select=team_id", {
+            accessToken,
+          }),
+        ]);
 
     // Owned teams must succeed
     if (!ownedRes.ok) {
@@ -95,23 +104,30 @@ export async function GET(request: Request) {
 
     const teams = new Map<
       string,
-      TeamRow & { role: string; repo_count: number; environment_count: number }
+      TeamRow & {
+        role: string;
+        repo_count: number;
+        environment_count: number;
+        can_manage: boolean;
+      }
     >();
     for (const row of owned) {
       teams.set(row.id, {
         ...row,
-        role: "owner",
+        role: isAdmin ? "admin" : "owner",
         repo_count: 0,
         environment_count: environmentCounts[row.id] ?? 0,
+        can_manage: true,
       });
     }
     for (const row of memberRows) {
       if (row.teams?.id && !teams.has(row.teams.id)) {
         teams.set(row.teams.id, {
           ...row.teams,
-          role: row.role ?? "member",
+          role: isAdmin ? "admin" : row.role ?? "member",
           repo_count: 0,
           environment_count: environmentCounts[row.teams.id] ?? 0,
+          can_manage: isAdmin || row.role === "owner" || row.role === "admin",
         });
       }
     }

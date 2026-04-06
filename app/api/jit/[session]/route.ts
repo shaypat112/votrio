@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  extractSelectedTeamId,
   RequestAuthError,
   getSupabaseEnv,
   requireRequestAuth,
@@ -19,11 +20,15 @@ export async function GET(
   try {
     const { session } = await params;
     const { accessToken, userId } = requireRequestAuth(request);
+    const selectedTeamId = extractSelectedTeamId(request);
 
     const env = getSupabaseEnv();
+    const teamFilter = selectedTeamId
+      ? `team_id=eq.${selectedTeamId}`
+      : "team_id=is.null";
     const res = await supabaseFetch(
       env,
-      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&select=id,repo_id,resource_type,access_type,status,duration_minutes,reason,repo_name_snapshot,repo_url_snapshot,environment_name,environment_slug,environment_region,sandbox_runtime,branch_name,started_at,expires_at,last_synced_at&limit=1`,
+      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&${teamFilter}&select=id,repo_id,resource_type,access_type,status,duration_minutes,reason,repo_name_snapshot,repo_url_snapshot,environment_name,environment_slug,environment_region,sandbox_runtime,branch_name,started_at,expires_at,last_synced_at&limit=1`,
       { accessToken },
     );
 
@@ -52,6 +57,7 @@ export async function POST(
   try {
     const { session } = await params;
     const { accessToken, userId } = requireRequestAuth(request);
+    const selectedTeamId = extractSelectedTeamId(request);
     const { action, minutes } = await request.json();
 
     if (!action) {
@@ -62,9 +68,12 @@ export async function POST(
     }
 
     const env = getSupabaseEnv();
+    const teamFilter = selectedTeamId
+      ? `team_id=eq.${selectedTeamId}`
+      : "team_id=is.null";
     const existingRes = await supabaseFetch(
       env,
-      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&select=id,expires_at,status,duration_minutes&limit=1`,
+      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&${teamFilter}&select=id,expires_at,status,duration_minutes&limit=1`,
       { accessToken },
     );
 
@@ -103,7 +112,7 @@ export async function POST(
     } else if ((action as JitAction) === "revoke") {
       const deleteRes = await supabaseFetch(
         env,
-        `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}`,
+        `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&${teamFilter}`,
         {
           method: "DELETE",
           accessToken,
@@ -121,7 +130,7 @@ export async function POST(
 
     const updateRes = await supabaseFetch(
       env,
-      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}`,
+      `jit_access_sessions?id=eq.${session}&user_id=eq.${userId}&${teamFilter}`,
       {
         method: "PATCH",
         accessToken,

@@ -7,3 +7,14 @@ export function buildAuthHeaders(
     Authorization: `Bearer ${accessToken}`,
   };
 }
+
+export function buildTeamAuthHeaders(
+  accessToken: string,
+  teamId: string | null | undefined,
+  headers: HeadersInit = {},
+): HeadersInit {
+  return {
+    ...buildAuthHeaders(accessToken, headers),
+    ...(teamId ? { "x-votrio-team-id": teamId } : {}),
+  };
+}

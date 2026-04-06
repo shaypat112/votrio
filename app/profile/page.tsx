@@ -2,6 +2,10 @@ import { Suspense } from "react";
 import ProfileClient from "./ProfileClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
+export const metadata = {
+  title: "Scans - Votrio",
+};
+
 export default function ProfilePage() {
   return (
     <Suspense

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
-import { buildAuthHeaders } from "@/app/lib/http";
+import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import ProfileHeader from "./components/ProfileHeader";
@@ -11,6 +11,7 @@ import StatsRow from "./components/StatsRow";
 import TabNav, { type TabKey } from "./components/TabNav";
 import IntegrationPanel from "./components/IntegrationPanel";
 import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
+import { useTeam } from "@/app/components/TeamProvider";
 
 export default function ProfileClient() {
   const [email, setEmail] = useState<string | null>(null);
@@ -26,6 +27,7 @@ export default function ProfileClient() {
   const [scanningRepo, setScanningRepo] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
+  const { selectedTeamId } = useTeam();
 
   useEffect(() => {
     let mounted = true;
@@ -43,7 +45,7 @@ export default function ProfileClient() {
       if (!mounted) return;
 
       if (userErr || !userData.user) {
-        setError("Please sign in to view your profile.");
+        setError("Please sign in to view your scans.");
         setLoading(false);
         return;
       }
@@ -64,11 +66,17 @@ export default function ProfileClient() {
         setTier(profileData.tier ?? "free");
       }
 
-      const { data: scanData } = await supabase
-        .from("scan_history")
-        .select("repo, created_at, severity, issues, score, findings")
-        .order("created_at", { ascending: false })
-        .limit(8);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? null;
+      const scanRes = accessToken
+        ? await fetch("/api/scans/recent", {
+            headers: buildTeamAuthHeaders(accessToken, selectedTeamId),
+          })
+        : null;
+      const scanJson = scanRes?.ok ? await scanRes.json() : null;
+      const scanData = (scanJson?.scans ?? []) as Array<
+        ScanRow & { findings?: { ai_summary?: string } }
+      >;
 
       const { data: repoData } = await supabase
         .from("connected_repos")
@@ -77,9 +85,7 @@ export default function ProfileClient() {
 
       if (!mounted) return;
       const mappedScans =
-        (
-          scanData as Array<ScanRow & { findings?: { ai_summary?: string } }>
-        )?.map((scan) => ({
+        scanData?.map((scan) => ({
           ...scan,
           summary: scan.findings?.ai_summary ?? null,
         })) ?? [];
@@ -94,7 +100,7 @@ export default function ProfileClient() {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, [selectedTeamId, supabase]);
 
   const initials = name
     .split(" ")
@@ -136,7 +142,11 @@ export default function ProfileClient() {
 
     const res = await fetch("/api/github/repos", {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({ providerToken }),
     });
 
@@ -173,7 +183,11 @@ export default function ProfileClient() {
 
     const res = await fetch("/api/github/repo-scan", {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({
         providerToken: providerToken ?? null,
         repo: repo.full_name,
@@ -221,7 +235,7 @@ export default function ProfileClient() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl py-10 text-sm text-zinc-500">
-        Loading profile...
+        Loading scans...
       </div>
     );
   }

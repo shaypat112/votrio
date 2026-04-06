@@ -18,6 +18,13 @@ type JitSessionRow = {
   last_synced_at: string;
 };
 
+type RepositoryRow = {
+  id: string;
+  name: string;
+  repo_url: string;
+  team_id: string | null;
+};
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -43,6 +50,9 @@ export function mapJitSession(row: JitSessionRow) {
 
   return {
     id: row.id,
+    repoId: row.repo_id,
+    repoName: row.repo_name_snapshot,
+    repoUrl: row.repo_url_snapshot,
     resourceName:
       row.resource_type === "Database"
         ? "Production Database"
@@ -67,6 +77,8 @@ export function mapJitSession(row: JitSessionRow) {
 
 export function buildSessionInsertPayload(input: {
   userId: string;
+  teamId: string | null;
+  repo: RepositoryRow;
   resourceType: "Database" | "Admin Panel" | "API";
   accessType: "Read" | "Write" | "Admin";
   durationMinutes: 15 | 30 | 60;
@@ -74,29 +86,32 @@ export function buildSessionInsertPayload(input: {
 }) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + input.durationMinutes * 60000);
+  const repoSlug = slugify(input.repo.name || input.repo.repo_url);
   const environmentLabel =
     input.resourceType === "API"
-      ? "API Sandbox"
+      ? `${input.repo.name} API Sandbox`
       : input.resourceType === "Admin Panel"
-        ? "Admin Sandbox"
-        : "Database Sandbox";
+        ? `${input.repo.name} Admin Sandbox`
+        : `${input.repo.name} Database Sandbox`;
   const baseSlug = slugify(environmentLabel);
 
   return {
     user_id: input.userId,
-    repo_id: null,
-    team_id: null,
+    repo_id: input.repo.id,
+    team_id: input.teamId ?? input.repo.team_id,
     team_environment_id: null,
     resource_type: input.resourceType,
     access_type: input.accessType,
     status: "active",
     duration_minutes: input.durationMinutes,
     expires_at: expiresAt.toISOString(),
-    reason: input.reason || `Temporary access requested for ${environmentLabel}.`,
-    repo_name_snapshot: null,
-    repo_url_snapshot: null,
+    reason:
+      input.reason ||
+      `Temporary access requested for ${input.repo.name} in ${environmentLabel}.`,
+    repo_name_snapshot: input.repo.name,
+    repo_url_snapshot: input.repo.repo_url,
     environment_name: environmentLabel,
-    environment_slug: `${baseSlug}-jit`,
+    environment_slug: `${repoSlug || baseSlug}-jit`,
     environment_region: "us-east-1",
     sandbox_runtime:
       input.resourceType === "API"

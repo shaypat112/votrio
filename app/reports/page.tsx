@@ -1,11 +1,11 @@
-import { Card, CardDescription } from "@/components/ui/card";
+import type { Metadata } from "next";
+import { ReportsIndexClient } from "./components/ReportsIndexClient";
+
+export const metadata: Metadata = {
+  title: "Reports - Votrio",
+  description: "Repository scan reports and scan history.",
+};
 
 export default function ReportsPage() {
-  return (
-    <div>
-      <Card>
-        <CardDescription>This is the reports for the pages</CardDescription>
-      </Card>
-    </div>
-  );
+  return <ReportsIndexClient />;
 }

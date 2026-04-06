@@ -8,10 +8,10 @@ import { NotificationsSection } from "./profile/notifications";
 import { ScanningSection } from "./profile/scanning";
 import { AppearanceSection } from "./profile/appearance";
 import { WebhooksSection } from "./profile/webhooks";
+import { BillingSection } from "./profile/billing";
 
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
-import { PlanSection } from "./profile/plan";
 import { AdminSection } from "./profile/admin";
 import { Suspense } from "react";
 
@@ -20,12 +20,12 @@ const SECTION_MAP = {
   security: SecuritySection,
   notifications: NotificationsSection,
   scanning: ScanningSection,
+  billing: BillingSection,
   appearance: AppearanceSection,
   webhooks: WebhooksSection,
 
   retention: RetentionSection,
   teams: TeamsSection,
-  plan: PlanSection,
   admin: AdminSection,
 } satisfies Record<string, React.ComponentType>;
 

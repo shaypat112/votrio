@@ -8,12 +8,11 @@ import {
   Bell,
   Shield,
   Zap,
+  CreditCard,
   Webhook,
-  Eye,
   Database,
   Palette,
   Users,
-  CreditCard,
   LockKeyhole,
 } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -24,12 +23,11 @@ const NAV_SECTIONS = [
   { id: "security", label: "Security", icon: Shield },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "scanning", label: "Scanning", icon: Zap },
+  { id: "billing", label: "Billing", icon: CreditCard },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
-  { id: "repos", label: "Repositories", icon: Eye },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
-  { id: "plan", label: "Plan", icon: CreditCard },
 ] as const;
 
 const ADMIN_SECTION = { id: "admin", label: "Admin", icon: LockKeyhole } as const;

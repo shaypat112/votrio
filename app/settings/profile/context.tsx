@@ -62,7 +62,7 @@ const defaultSettings: SettingsState = {
   securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
-  webhookEvents: ["repository.published", "review.created", "scan.completed"],
+  webhookEvents: ["scan.completed"],
   retentionDays: 30,
 };
 

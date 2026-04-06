@@ -5,7 +5,8 @@ import {
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
-import { isTeamOwner } from "@/app/lib/server/teams";
+import { adminSupabaseFetch, isAdminAccess } from "@/app/lib/server/admin";
+import { canManageTeam } from "@/app/lib/server/teams";
 
 export const runtime = "nodejs";
 
@@ -18,18 +19,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing teamId or username." }, { status: 400 });
     }
 
-    const canManageTeam = await isTeamOwner(accessToken, userId, String(teamId));
-    if (!canManageTeam) {
-      return NextResponse.json({ error: "Only team owners can add members." }, { status: 403 });
+    const canManage = await canManageTeam(accessToken, userId, String(teamId));
+    if (!canManage) {
+      return NextResponse.json({ error: "Only team admins can add members." }, { status: 403 });
     }
 
     const env = getSupabaseEnv();
+    const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
 
-    const profileRes = await supabaseFetch(
-      env,
-      `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
-      { accessToken },
-    );
+    const profileRes = isAdmin
+      ? await adminSupabaseFetch(
+          `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
+        )
+      : await supabaseFetch(
+          env,
+          `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
+          { accessToken },
+        );
 
     if (!profileRes.ok) {
       const text = await profileRes.text();
@@ -46,17 +52,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You are already on this team." }, { status: 400 });
     }
 
-    const memberRes = await supabaseFetch(env, "team_members", {
-      method: "POST",
-      accessToken,
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        team_id: teamId,
-        user_id: profile.id,
-        role: "member",
-        created_at: new Date().toISOString(),
-      }),
-    });
+    const memberRes = isAdmin
+      ? await adminSupabaseFetch("team_members", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            team_id: teamId,
+            user_id: profile.id,
+            role: "member",
+            created_at: new Date().toISOString(),
+          }),
+        })
+      : await supabaseFetch(env, "team_members", {
+          method: "POST",
+          accessToken,
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            team_id: teamId,
+            user_id: profile.id,
+            role: "member",
+            created_at: new Date().toISOString(),
+          }),
+        });
 
     if (!memberRes.ok) {
       const text = await memberRes.text();

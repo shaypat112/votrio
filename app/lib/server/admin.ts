@@ -23,6 +23,9 @@ export function getAdminIdentityConfig() {
       process.env.ADMIN_PROFILE_USERNAME?.trim() ||
       process.env.DEMO_APPROVER_USERNAME?.trim() ||
       "shivang",
+    fullName:
+      process.env.ADMIN_FULL_NAME?.trim() ||
+      "Shivang Pat",
     githubLogin:
       process.env.ADMIN_GITHUB_LOGIN?.trim() ||
       process.env.DEMO_APPROVER_GITHUB_LOGIN?.trim() ||
@@ -45,6 +48,20 @@ export function getServiceRoleHeaders() {
       "Content-Type": "application/json",
     },
   };
+}
+
+export async function adminSupabaseFetch(
+  path: string,
+  init: RequestInit = {},
+) {
+  const { env, headers } = getServiceRoleHeaders();
+  return fetch(`${env.url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      ...headers,
+      ...(init.headers ?? {}),
+    },
+  });
 }
 
 export async function loadProfileForUser(
@@ -122,9 +139,13 @@ export async function isAdminAccess(accessToken: string, userId: string) {
 
   const config = getAdminIdentityConfig();
   const githubLogin = extractGitHubLogin(authUser);
+  const fullName = profile?.full_name?.trim().toLowerCase() ?? "";
   const profileMatches =
     profile?.username === config.profileUsername ||
     profile?.username === config.githubLogin;
+  const fullNameMatches =
+    fullName === config.fullName.trim().toLowerCase() ||
+    fullName === "shivang patel";
 
-  return githubLogin === config.githubLogin || Boolean(profileMatches);
+  return githubLogin === config.githubLogin || Boolean(profileMatches) || fullNameMatches;
 }

@@ -100,6 +100,11 @@ export function AccessSessionCard({
           <p className="mt-1 text-xs text-muted-foreground">
             {session.environmentName} · {session.environmentRegion}
           </p>
+          {session.repoName ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Repository: {session.repoName}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">

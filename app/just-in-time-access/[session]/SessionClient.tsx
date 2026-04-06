@@ -14,9 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { buildAuthHeaders } from "@/app/lib/http";
+import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import type { AccessSession } from "../types";
+import { useTeam } from "@/app/components/TeamProvider";
 
 function formatStatus(session: AccessSession) {
   if (session.status === "revoked") return "Revoked";
@@ -31,6 +32,7 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedTeamId } = useTeam();
 
   useEffect(() => {
     let mounted = true;
@@ -50,7 +52,7 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
       setLoading(true);
       setError(null);
       const res = await fetch(`/api/jit/${sessionId}`, {
-        headers: buildAuthHeaders(nextToken),
+        headers: buildTeamAuthHeaders(nextToken, selectedTeamId),
       });
       const data = await res.json().catch(() => ({}));
       if (!mounted) return;
@@ -70,7 +72,7 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     return () => {
       mounted = false;
     };
-  }, [sessionId, supabase]);
+  }, [selectedTeamId, sessionId, supabase]);
 
   const callAction = async (action: "start" | "extend" | "revoke", minutes?: number) => {
     if (!accessToken) return;
@@ -78,7 +80,11 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     setLoading(true);
     const res = await fetch(`/api/jit/${sessionId}`, {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildTeamAuthHeaders(
+        accessToken,
+        selectedTeamId,
+        { "Content-Type": "application/json" },
+      ),
       body: JSON.stringify({ action, minutes }),
     });
     const data = await res.json().catch(() => ({}));
@@ -102,6 +108,7 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
     () =>
       session
         ? [
+            { label: "Repository", value: session.repoName ?? "Unknown repository" },
             { label: "Environment slug", value: session.environmentSlug },
             { label: "Region", value: session.environmentRegion },
             { label: "Runtime", value: session.sandboxRuntime },
@@ -157,6 +164,16 @@ export default function SessionClient({ sessionId }: { sessionId: string }) {
                 the runtime settings, current scope, and session controls
                 before entering.
               </p>
+              {session.repoUrl ? (
+                <a
+                  href={session.repoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex text-sm font-medium text-foreground underline underline-offset-4"
+                >
+                  Open repository
+                </a>
+              ) : null}
             </div>
           </div>
 

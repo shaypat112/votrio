@@ -19,9 +19,10 @@ export async function handleGitHubScan(input: {
   repoUrl: string;
   options?: ScanOptions;
   accessToken?: string;
+  teamId?: string | null;
 }) {
   const env = getSupabaseEnv();
-  const accessToken = input.accessToken;
+  const accessToken: any = input.accessToken;
   const userId = accessToken ? decodeUserId(accessToken) : null;
 
   const result = await runGitHubScan(input.repoUrl, input.options ?? {});
@@ -33,7 +34,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { list: result.findings },
+    findings: { list: result.findings, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -52,7 +53,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { list: result.findings },
+      findings: { list: result.findings, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",

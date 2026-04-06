@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/app/lib/supabase";
 import { useRouter } from "next/navigation";
+import { buildTeamAuthHeaders } from "@/app/lib/http";
+import { useTeam } from "@/app/components/TeamProvider";
 
 const fallbackScans = [
   {
@@ -75,6 +77,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const { selectedTeamId } = useTeam();
 
   const router = useRouter();
 
@@ -86,15 +89,22 @@ export default function DashboardPage() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("scan_history")
-        .select("repo, created_at, severity, issues, score, findings")
-        .order("created_at", { ascending: false })
-        .limit(10);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? null;
+      if (!accessToken) {
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch("/api/scans/recent", {
+        headers: buildTeamAuthHeaders(accessToken, selectedTeamId),
+      });
+      const payload = await res.json().catch(() => ({}));
+      const data = (payload?.scans ?? []) as ScanRow[];
 
       if (!mounted) return;
 
-      if (error || !data || data.length === 0) {
+      if (!res.ok || !data || data.length === 0) {
         setLoading(false);
         return;
       }
@@ -117,7 +127,7 @@ export default function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, [selectedTeamId, supabase]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
