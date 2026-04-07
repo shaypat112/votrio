@@ -81,6 +81,23 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --eval-bg: color-mix(in oklab, var(--background) 82%, black);
+  --eval-bg-elevated: color-mix(in oklab, var(--card) 72%, black);
+  --eval-panel: color-mix(in oklab, var(--card) 84%, black);
+  --eval-panel-soft: color-mix(in oklab, var(--muted) 76%, transparent);
+  --eval-border: color-mix(in oklab, var(--border) 78%, var(--foreground) 22%);
+  --eval-text: var(--foreground);
+  --eval-text-muted: var(--muted-foreground);
+  --eval-accent: var(--primary);
+  --eval-accent-strong: color-mix(in oklab, var(--primary) 68%, white);
+  --eval-accent-soft: color-mix(in oklab, var(--primary) 12%, transparent);
+  --eval-compare: var(--chart-4);
+  --eval-compare-soft: color-mix(in oklab, var(--chart-4) 14%, transparent);
+  --eval-success: var(--chart-2);
+  --eval-danger: var(--destructive);
+  --eval-grid: color-mix(in oklab, var(--border) 32%, var(--primary) 68%);
+  --eval-line: color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+  --eval-fog: color-mix(in oklab, var(--background) 88%, black);
 }
 
 .dark {
@@ -115,6 +132,23 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --eval-bg: color-mix(in oklab, var(--background) 88%, black);
+  --eval-bg-elevated: color-mix(in oklab, var(--card) 78%, black);
+  --eval-panel: color-mix(in oklab, var(--card) 90%, black);
+  --eval-panel-soft: color-mix(in oklab, var(--muted) 86%, transparent);
+  --eval-border: color-mix(in oklab, var(--border) 78%, var(--foreground) 22%);
+  --eval-text: var(--foreground);
+  --eval-text-muted: var(--muted-foreground);
+  --eval-accent: var(--primary);
+  --eval-accent-strong: color-mix(in oklab, var(--primary) 84%, white);
+  --eval-accent-soft: color-mix(in oklab, var(--primary) 18%, transparent);
+  --eval-compare: var(--chart-4);
+  --eval-compare-soft: color-mix(in oklab, var(--chart-4) 20%, transparent);
+  --eval-success: var(--chart-2);
+  --eval-danger: var(--destructive);
+  --eval-grid: color-mix(in oklab, var(--border) 26%, var(--primary) 74%);
+  --eval-line: color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+  --eval-fog: color-mix(in oklab, var(--background) 94%, black);
 }
 
 @layer base {

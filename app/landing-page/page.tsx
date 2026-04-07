@@ -22,7 +22,6 @@ import { useTheme } from "@/app/components/theme-provider";
 
 const scanLines = [
   "$ votrio si-hack start",
-  "Opening an isolated ethical hacking sandbox...",
   "Mapping attack paths, weak auth, secrets, and unsafe data flows...",
   "Debunking noisy findings and grouping the real issues by exploit chain...",
   "Report ready: issue-by-issue breakdown, suggested fixes, and next steps",
@@ -80,7 +79,8 @@ const demoSteps = [
   },
   {
     command: "",
-    output: "✅ Sandbox run complete. Findings ranked, debunked, and ready to review.",
+    output:
+      "✅ Sandbox run complete. Findings ranked, debunked, and ready to review.",
     severity: "success",
   },
 ];
@@ -289,9 +289,6 @@ function InteractiveScanDemo() {
           <div className="rounded-full bg-primary/10 p-1.5">
             <ScanLine className="h-4 w-4 text-primary" />
           </div>
-          <span className="text-sm font-mono text-muted-foreground">
-            Interactive demo
-          </span>
         </div>
         <button
           onClick={resetDemo}
@@ -354,8 +351,8 @@ function InteractiveScanDemo() {
           <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
           <span>Fix suggestions ready</span>
         </div>
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+        <div className="flex items-center gap-1">
+          <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
           <span>Session controlled</span>
         </div>
         <div className="flex items-center gap-1">
@@ -522,8 +519,8 @@ export default function LandingPage() {
               See the sandbox flow
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Watch Votrio isolate a sandbox, validate real attack paths,
-              and turn each issue into a guided remediation plan
+              Watch Votrio isolate a sandbox, validate real attack paths, and
+              turn each issue into a guided remediation plan
             </p>
           </div>
 
@@ -581,17 +578,22 @@ export default function LandingPage() {
               Core surfaces
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-8 opacity-60">
-              {["JIT Access", "Session Controls", "SI-Hack Sandbox", "Audit Trail", "Fix Guidance", "Live Findings"].map(
-                (tech) => (
-                  <div
-                    key={tech}
-                    className="flex items-center gap-2 font-mono text-sm"
-                  >
-                    <Code2 className="h-3.5 w-3.5" />
-                    <span>{tech}</span>
-                  </div>
-                ),
-              )}
+              {[
+                "JIT Access",
+                "Session Controls",
+                "SI-Hack Sandbox",
+                "Audit Trail",
+                "Fix Guidance",
+                "Live Findings",
+              ].map((tech) => (
+                <div
+                  key={tech}
+                  className="flex items-center gap-2 font-mono text-sm"
+                >
+                  <Code2 className="h-3.5 w-3.5" />
+                  <span>{tech}</span>
+                </div>
+              ))}
             </div>
           </div>
         </FadeIn>

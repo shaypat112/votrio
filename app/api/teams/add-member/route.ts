@@ -12,11 +12,14 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { teamId, username } = await request.json();
+    const { teamId, username, userId: targetUserId } = await request.json();
     const { accessToken, userId } = requireRequestAuth(request);
 
-    if (!teamId || !username) {
-      return NextResponse.json({ error: "Missing teamId or username." }, { status: 400 });
+    if (!teamId || (!username && !targetUserId)) {
+      return NextResponse.json(
+        { error: "Missing teamId or selected user." },
+        { status: 400 },
+      );
     }
 
     const canManage = await canManageTeam(accessToken, userId, String(teamId));
@@ -27,15 +30,13 @@ export async function POST(request: Request) {
     const env = getSupabaseEnv();
     const isAdmin = await isAdminAccess(accessToken, userId).catch(() => false);
 
+    const profileLookup = targetUserId
+      ? `profiles?id=eq.${encodeURIComponent(String(targetUserId))}&select=id,username,full_name,avatar_url`
+      : `profiles?username=eq.${encodeURIComponent(String(username))}&select=id,username,full_name,avatar_url`;
+
     const profileRes = isAdmin
-      ? await adminSupabaseFetch(
-          `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
-        )
-      : await supabaseFetch(
-          env,
-          `profiles?username=eq.${encodeURIComponent(username)}&select=id,username,full_name,avatar_url`,
-          { accessToken },
-        );
+      ? await adminSupabaseFetch(profileLookup)
+      : await supabaseFetch(env, profileLookup, { accessToken });
 
     if (!profileRes.ok) {
       const text = await profileRes.text();

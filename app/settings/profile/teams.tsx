@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { cn } from "@/app/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettings } from "./context";
 import {
   SectionCard,
@@ -34,15 +41,24 @@ type TeamMember = {
   };
 };
 
+type PlatformUser = {
+  id: string;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+};
+
 export function TeamsSection() {
   const { accessToken, admin } = useSettings();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUser[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamName, setTeamName] = useState("");
-  const [inviteUsername, setInviteUsername] = useState("");
+  const [inviteUserId, setInviteUserId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingPlatformUsers, setLoadingPlatformUsers] = useState(false);
   const [workingMemberId, setWorkingMemberId] = useState<string | null>(null);
   const [teamError, setTeamError] = useState<string | null>(null);
 
@@ -106,19 +122,22 @@ export function TeamsSection() {
   };
 
   const addMember = async () => {
-    if (!accessToken || !selectedTeamId || !inviteUsername.trim()) return;
+    if (!accessToken || !selectedTeamId || !inviteUserId) return;
     setTeamError(null);
     const res = await fetch("/api/teams/add-member", {
       method: "POST",
       headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
         teamId: selectedTeamId,
-        username: inviteUsername.trim(),
+        userId: inviteUserId,
       }),
     });
     if (res.ok) {
-      setInviteUsername("");
-      await loadMembers(selectedTeamId, accessToken);
+      setInviteUserId("");
+      await Promise.all([
+        loadMembers(selectedTeamId, accessToken),
+        loadPlatformUsers(selectedTeamId, accessToken),
+      ]);
     } else {
       const d = await res.json().catch(() => ({}));
       setTeamError(d?.error ?? "Unable to add member.");
@@ -154,6 +173,32 @@ export function TeamsSection() {
       selectedTeam?.role === "owner" ||
       selectedTeam?.role === "admin",
   );
+  const availablePlatformUsers = platformUsers.filter(
+    (user) =>
+      user.id !== selectedTeam?.owner_id &&
+      !members.some((member) => member.user_id === user.id),
+  );
+
+  const loadPlatformUsers = useCallback(async (teamId: string, token: string) => {
+    setLoadingPlatformUsers(true);
+    const res = await fetch(`/api/teams/platform-members?teamId=${teamId}`, {
+      headers: buildAuthHeaders(token),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setPlatformUsers((data?.members ?? []) as PlatformUser[]);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setTeamError(data?.error ?? "Unable to load platform members.");
+      setPlatformUsers([]);
+    }
+    setLoadingPlatformUsers(false);
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || !selectedTeamId || !canManageSelectedTeam) return;
+    void loadPlatformUsers(selectedTeamId, accessToken);
+  }, [accessToken, canManageSelectedTeam, loadPlatformUsers, selectedTeamId]);
 
   const updateMemberRole = async (
     memberId: string,
@@ -257,15 +302,35 @@ export function TeamsSection() {
               {canManageSelectedTeam ? (
                 <FieldGroup label="Add member">
                   <div className="flex gap-2">
-                    <StyledInput
-                      placeholder="username"
-                      value={inviteUsername}
-                      onChange={(e) => setInviteUsername(e.target.value)}
-                      className="flex-1"
-                    />
+                    <div className="flex-1">
+                      <Select
+                        value={inviteUserId}
+                        onValueChange={setInviteUserId}
+                      >
+                        <SelectTrigger className="h-9 rounded-lg border border-border bg-background text-sm text-foreground">
+                          <SelectValue
+                            placeholder={
+                              loadingPlatformUsers
+                                ? "Loading platform members..."
+                                : availablePlatformUsers.length === 0
+                                  ? "No available members"
+                                  : "Select a platform member"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availablePlatformUsers.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.full_name ?? user.username ?? "Member"}
+                              {user.username ? ` (@${user.username})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <button
                       onClick={addMember}
-                      disabled={!inviteUsername.trim()}
+                      disabled={!inviteUserId || loadingPlatformUsers}
                       className={cn(
                         "rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm font-medium text-zinc-200",
                         "hover:border-white/[0.18] hover:bg-white/[0.09] hover:text-white transition-colors",
@@ -275,6 +340,9 @@ export function TeamsSection() {
                       Add
                     </button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Pick from users already on the platform instead of typing a username.
+                  </p>
                 </FieldGroup>
               ) : (
                 <p className="text-xs text-muted-foreground">

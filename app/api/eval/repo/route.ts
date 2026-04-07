@@ -1,27 +1,12 @@
 import { NextResponse } from "next/server";
+import type { EvalEdge, EvalNode } from "@/app/eval/lib/types";
 
 export const runtime = "nodejs";
 
 type GitHubTreeItem = {
   path: string;
   type: "blob" | "tree";
-};
-
-type EvalNode = {
-  id: string;
-  path: string;
-  x: number;
-  y: number;
-  z: number;
-  depth: number;
-  risk: number;
-  role: "source" | "sink" | "bridge" | "file";
-  color: string;
-};
-
-type EvalEdge = {
-  source: string;
-  target: string;
+  size?: number;
 };
 
 function parseGitHubRepo(input: string) {
@@ -83,31 +68,54 @@ function getRisk(path: string, role: EvalNode["role"]) {
 
 function getColor(role: EvalNode["role"], risk: number) {
   if (risk > 0.84) return "#ff5b5b";
-  if (role === "sink") return "#ff8a3d";
-  if (role === "source") return "#ffd166";
-  if (role === "bridge") return "#7dd3fc";
+  if (role === "sink") return "#ff7a1a";
+  if (role === "source") return "#8ef9ff";
+  if (role === "bridge") return "#3aa4ff";
   return "#63f3a6";
 }
 
-function buildNodes(files: string[]) {
-  return files.map((path, index) => {
+function collectSignals(path: string) {
+  const lower = path.toLowerCase();
+  const signals: string[] = [];
+  if (lower.includes("auth")) signals.push("auth");
+  if (lower.includes("admin")) signals.push("admin");
+  if (lower.includes("token") || lower.includes("secret")) signals.push("secret");
+  if (lower.includes("webhook")) signals.push("webhook");
+  if (lower.includes("sql") || lower.includes("db") || lower.includes("supabase")) {
+    signals.push("data");
+  }
+  if (lower.includes("/api/") || lower.includes("route.")) signals.push("endpoint");
+  return signals;
+}
+
+function buildNodes(files: GitHubTreeItem[]) {
+  return files.map((file, index) => {
+    const path = file.path;
     const depth = path.split("/").length - 1;
     const role = getRole(path);
     const risk = getRisk(path, role);
-    const radius = 130 + depth * 18;
+    const radius = 110 + depth * 22;
     const angle = index * 0.52;
-    const z = (index % 7) - 3;
+    const z = ((index % 9) - 4) * 0.8;
+    const parts = path.split("/");
+    const extension = path.includes(".") ? path.split(".").pop()?.toLowerCase() ?? "file" : "dir";
+    const directory = parts.length > 1 ? parts.slice(0, -1).join("/") : "root";
+    const signals = collectSignals(path);
 
     return {
       id: path,
       path,
-      x: Math.round(Math.cos(angle) * radius + z * 8),
-      y: Math.round(Math.sin(angle) * radius * 0.72),
+      x: Math.round(Math.cos(angle) * radius + z * 10),
+      y: Math.round(Math.sin(angle) * radius * 0.68),
       z,
       depth,
       role,
       risk,
       color: getColor(role, risk),
+      directory,
+      extension,
+      size: Number(file.size ?? 0),
+      signals,
     } satisfies EvalNode;
   });
 }
@@ -158,12 +166,21 @@ function buildAttackPath(nodes: EvalNode[]) {
 function buildSummary(nodes: EvalNode[]) {
   const sourceCount = nodes.filter((node) => node.role === "source").length;
   const sinkCount = nodes.filter((node) => node.role === "sink").length;
+  const bridgeCount = nodes.filter((node) => node.role === "bridge").length;
   const maxDepth = Math.max(...nodes.map((node) => node.depth), 0);
+  const directories = new Set(nodes.map((node) => node.directory)).size;
+  const highRisk = nodes.filter((node) => node.risk >= 0.8).length;
+  const avgRisk =
+    nodes.reduce((sum, node) => sum + node.risk, 0) / Math.max(nodes.length, 1);
 
   return {
     files: nodes.length,
     sources: sourceCount,
     sinks: sinkCount,
+    bridges: bridgeCount,
+    directories,
+    highRisk,
+    avgRisk: Number(avgRisk.toFixed(2)),
     maxDepth,
   };
 }
@@ -198,7 +215,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const repoJson = (await repoRes.json()) as { default_branch?: string };
+    const repoJson = (await repoRes.json()) as {
+      default_branch?: string;
+      description?: string | null;
+      visibility?: string;
+      private?: boolean;
+      language?: string | null;
+      stargazers_count?: number;
+      forks_count?: number;
+      open_issues_count?: number;
+      updated_at?: string | null;
+    };
     const defaultBranch = repoJson.default_branch ?? "main";
 
     const treeRes = await fetch(
@@ -216,8 +243,7 @@ export async function POST(request: Request) {
     const treeJson = (await treeRes.json()) as { tree?: GitHubTreeItem[] };
     const files = (treeJson.tree ?? [])
       .filter((item) => item.type === "blob" && isCodeFile(item.path))
-      .map((item) => item.path)
-      .slice(0, 72);
+      .slice(0, 120);
 
     if (files.length === 0) {
       return NextResponse.json(
@@ -236,6 +262,15 @@ export async function POST(request: Request) {
       nodes,
       edges,
       attackPath,
+      repoMeta: {
+        description: repoJson.description ?? null,
+        visibility: repoJson.visibility ?? (repoJson.private ? "private" : "public"),
+        language: repoJson.language ?? null,
+        stars: Number(repoJson.stargazers_count ?? 0),
+        forks: Number(repoJson.forks_count ?? 0),
+        openIssues: Number(repoJson.open_issues_count ?? 0),
+        updatedAt: repoJson.updated_at ?? null,
+      },
       summary: buildSummary(nodes),
     });
   } catch (error) {

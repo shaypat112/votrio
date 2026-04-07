@@ -6,23 +6,46 @@ import { createClient } from "@/app/lib/supabase";
 import { useTeam } from "@/app/components/TeamProvider";
 import type { ConnectedRepo } from "@/app/profile/components/RepoTable";
 
-import { EvalRepoPicker } from "./components/EvalRepoPicker";
 import { EvalGraphScene } from "./components/EvalGraphScene";
-import { buildEvalLoadedLines } from "./lib/terminal";
-import type { EvalCommandId, EvalPayload } from "./lib/types";
+import { EvalRepoPicker } from "./components/EvalRepoPicker";
+
+import type {
+  EvalCommandId,
+  EvalPayload,
+  EvalWorkspaceGraph,
+} from "./lib/types";
+import { buildWorkspaceGraph } from "./lib/workspace";
+
+async function fetchEvalGraph(repoUrl: string) {
+  const res = await fetch("/api/eval/repo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repoUrl }),
+  });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? "Unable to evaluate repository.");
+  }
+
+  return data as EvalPayload;
+}
 
 export default function EvalClient() {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
-  const [graph, setGraph] = useState<EvalPayload | null>(null);
+  const [graph, setGraph] = useState<EvalWorkspaceGraph | null>(null);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
   const [selectedRepoId, setSelectedRepoId] = useState("");
+  const [selectedCompareRepoId, setSelectedCompareRepoId] = useState("");
+  const [manualRepoUrl, setManualRepoUrl] = useState("");
+  const [manualCompareRepoUrl, setManualCompareRepoUrl] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeCommand, setActiveCommand] = useState<EvalCommandId | null>(
-    null,
+    "trace",
   );
 
   const highlightedIds = useMemo(() => {
@@ -36,7 +59,7 @@ export default function EvalClient() {
       );
     }
     if (activeCommand === "fix") {
-      return new Set(graph.attackPath.slice(0, 2));
+      return new Set(graph.attackPath.slice(0, 4));
     }
     return new Set<string>();
   }, [activeCommand, graph]);
@@ -55,6 +78,17 @@ export default function EvalClient() {
       }
       return nextRepos[0]?.id ?? "";
     });
+    setSelectedCompareRepoId((current) => {
+      if (
+        current &&
+        nextRepos.some(
+          (repo) => repo.id === current && repo.id !== nextRepos[0]?.id,
+        )
+      ) {
+        return current;
+      }
+      return "";
+    });
   }, [supabase]);
 
   useEffect(() => {
@@ -66,6 +100,12 @@ export default function EvalClient() {
       window.clearTimeout(timer);
     };
   }, [loadRepos]);
+
+  useEffect(() => {
+    if (selectedCompareRepoId && selectedCompareRepoId === selectedRepoId) {
+      setSelectedCompareRepoId("");
+    }
+  }, [selectedCompareRepoId, selectedRepoId]);
 
   const connectGitHub = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -96,39 +136,60 @@ export default function EvalClient() {
     setSelectedRepoId(nextRepos[0]?.id ?? "");
   };
 
+  const resolveRepoUrl = (
+    selectedId: string,
+    manualUrl: string,
+    fallbackRepos: ConnectedRepo[],
+  ) => {
+    if (manualUrl.trim()) return manualUrl.trim();
+    const repo = fallbackRepos.find((item) => item.id === selectedId);
+    return repo ? `https://github.com/${repo.full_name}` : "";
+  };
+
   const runEval = async () => {
-    const selectedRepo = repos.find((repo) => repo.id === selectedRepoId);
-    if (!selectedRepo) {
-      setError("Choose a connected repository first.");
+    const primaryRepoUrl = resolveRepoUrl(selectedRepoId, manualRepoUrl, repos);
+    const compareRepoUrl = resolveRepoUrl(
+      selectedCompareRepoId,
+      manualCompareRepoUrl,
+      repos,
+    );
+
+    if (!primaryRepoUrl) {
+      setError("Choose a primary repository first.");
+      return;
+    }
+
+    if (
+      compareRepoUrl &&
+      compareRepoUrl.replace(/\/$/, "") === primaryRepoUrl.replace(/\/$/, "")
+    ) {
+      setError("Choose a different compare repository.");
       return;
     }
 
     setLoading(true);
     setError(null);
-    setActiveCommand(null);
     setSelectedNodeId(null);
 
-    const res = await fetch("/api/eval/repo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        repoUrl: `https://github.com/${selectedRepo.full_name}`,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
+    try {
+      const [primaryGraph, compareGraph] = await Promise.all([
+        fetchEvalGraph(primaryRepoUrl),
+        compareRepoUrl ? fetchEvalGraph(compareRepoUrl) : Promise.resolve(null),
+      ]);
 
-    if (!res.ok) {
-      setError(data?.error ?? "Unable to evaluate repository.");
+      const workspace = buildWorkspaceGraph(primaryGraph, compareGraph);
+      setGraph(workspace);
+      setSelectedNodeId(workspace.nodes[0]?.id ?? null);
+      setActiveCommand("trace");
+    } catch (runError) {
+      setError(
+        runError instanceof Error
+          ? runError.message
+          : "Unable to evaluate repository.",
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const nextGraph = data as EvalPayload;
-    setGraph(nextGraph);
-    setSelectedNodeId(nextGraph.nodes[0]?.id ?? null);
-    setActiveCommand("trace");
-    void buildEvalLoadedLines(nextGraph);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -147,8 +208,14 @@ export default function EvalClient() {
       <EvalRepoPicker
         repos={repos}
         selectedRepoId={selectedRepoId}
+        selectedCompareRepoId={selectedCompareRepoId}
+        manualRepoUrl={manualRepoUrl}
+        manualCompareRepoUrl={manualCompareRepoUrl}
         loading={loading}
         onSelectRepo={setSelectedRepoId}
+        onSelectCompareRepo={setSelectedCompareRepoId}
+        onManualRepoUrlChange={setManualRepoUrl}
+        onManualCompareRepoUrlChange={setManualCompareRepoUrl}
         onConnectGitHub={connectGitHub}
         onRun={() => void runEval()}
       />
@@ -161,6 +228,7 @@ export default function EvalClient() {
         highlightedIds={highlightedIds}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
+        onCommandChange={setActiveCommand}
         fullscreen={fullscreen}
         onToggleFullscreen={() => setFullscreen((value) => !value)}
       />
