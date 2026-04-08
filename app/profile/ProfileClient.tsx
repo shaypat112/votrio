@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,6 +15,7 @@ import RepoTable, { type ConnectedRepo } from "./components/RepoTable";
 import { useTeam } from "@/app/components/TeamProvider";
 
 export default function ProfileClient() {
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState("Developer");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -160,6 +162,14 @@ export default function ProfileClient() {
     setRepos(synced ?? []);
   };
 
+  const disconnectGitHub = async () => {
+    if (!supabase) return;
+
+    setError(null);
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
+
   const runRepoScan = async (repo: ConnectedRepo) => {
     if (!supabase) return;
     setError(null);
@@ -276,7 +286,7 @@ export default function ProfileClient() {
             title="GitHub"
             description="Link repos to trigger scans on pushes and PRs."
             connected={repos.length > 0}
-            onClick={connectGitHub}
+            onClick={repos.length > 0 ? disconnectGitHub : connectGitHub}
           />
 
           <RepoTable
