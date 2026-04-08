@@ -17,7 +17,12 @@ import {
   ScanLine,
   Sparkles,
 } from "lucide-react";
-import type { EvalCommandId, EvalEdge, EvalNode, EvalWorkspaceGraph } from "../lib/types";
+import type {
+  EvalCommandId,
+  EvalEdge,
+  EvalNode,
+  EvalWorkspaceGraph,
+} from "../lib/types";
 import { buildEvalSceneGraph, type EvalSceneCommit } from "../lib/scene-graph";
 import { EvalNodeWorld } from "./EvalNodeWorld";
 import { EvalTimelineControls } from "./EvalTimelineControls";
@@ -89,7 +94,10 @@ function smoothStep(value: number, edge0: number, edge1: number) {
   return next * next * (3 - 2 * next);
 }
 
-function getNodeColor(node: EvalNode, tokens: ReturnType<typeof useEvalSceneTokens>) {
+function getNodeColor(
+  node: EvalNode,
+  tokens: ReturnType<typeof useEvalSceneTokens>,
+) {
   const ext = node.extension.toLowerCase();
   if (node.risk > 0.74 || node.role === "sink") return tokens.danger;
   if (ext === "ts" || ext === "tsx") return tokens.accent;
@@ -134,7 +142,9 @@ function SceneCameraRig({
   const { camera, gl } = useThree();
   const controlsRef = useRef<OrbitControls | null>(null);
   const targetRef = useRef(new THREE.Vector3());
-  const desiredPosition = useRef(new THREE.Vector3(0, 0, compareMode ? 320 : 250));
+  const desiredPosition = useRef(
+    new THREE.Vector3(0, 0, compareMode ? 320 : 250),
+  );
   const offset = useMemo(
     () => new THREE.Vector3(compareMode ? 42 : 18, 52, compareMode ? 220 : 180),
     [compareMode],
@@ -249,11 +259,19 @@ function ClusterHalos({
           <mesh
             key={cluster.id}
             rotation={[Math.PI / 2, 0, 0]}
-            position={[cluster.centroid[0], -118 + cluster.avgRisk * 18, cluster.centroid[2]]}
+            position={[
+              cluster.centroid[0],
+              -118 + cluster.avgRisk * 18,
+              cluster.centroid[2],
+            ]}
           >
             <ringGeometry args={[radius, radius + 1.8, 48]} />
             <meshBasicMaterial
-              color={cluster.layer === "compare" ? tokens.compare : tokens.accentStrong}
+              color={
+                cluster.layer === "compare"
+                  ? tokens.compare
+                  : tokens.accentStrong
+              }
               transparent
               opacity={containsFocus ? 0.42 : 0.14}
               side={THREE.DoubleSide}
@@ -281,15 +299,7 @@ function TimelineRails({
   tokens: ReturnType<typeof useEvalSceneTokens>;
 }) {
   const axis = useMemo(
-    () =>
-      new Float32Array([
-        -220,
-        -96,
-        -170,
-        -220,
-        -96,
-        170,
-      ]),
+    () => new Float32Array([-220, -96, -170, -220, -96, 170]),
     [],
   );
   const scrubberZ = -170 + progress * 340;
@@ -300,15 +310,27 @@ function TimelineRails({
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[axis, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color={tokens.accentStrong} transparent opacity={0.4} />
+        <lineBasicMaterial
+          color={tokens.accentStrong}
+          transparent
+          opacity={0.4}
+        />
       </line>
       {sceneGraph.commits.map((commit) => (
-        <mesh key={`tick:${commit.id}`} position={[-220, -96, commit.position[2]]}>
+        <mesh
+          key={`tick:${commit.id}`}
+          position={[-220, -96, commit.position[2]]}
+        >
           <sphereGeometry args={[0.85, 10, 10]} />
           <meshBasicMaterial
             color={commit.kind === "merge" ? tokens.compare : tokens.accent}
             transparent
-            opacity={commit.sequence / Math.max(sceneGraph.commits.length - 1, 1) <= progress ? 0.9 : 0.25}
+            opacity={
+              commit.sequence / Math.max(sceneGraph.commits.length - 1, 1) <=
+              progress
+                ? 0.9
+                : 0.25
+            }
           />
         </mesh>
       ))}
@@ -340,8 +362,7 @@ function EdgeField({
       edges
         .filter(
           (edge) =>
-            visibleNodeIds.has(edge.source) &&
-            visibleNodeIds.has(edge.target),
+            visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
         )
         .slice(0, 380),
     [edges, visibleNodeIds],
@@ -372,15 +393,22 @@ function EdgeField({
           new THREE.Vector3(target.x, target.y, target.z * 18),
         ]);
         const points = curve.getPoints(14);
-        const positions = new Float32Array(points.flatMap((point) => [point.x, point.y, point.z]));
+        const positions = new Float32Array(
+          points.flatMap((point) => [point.x, point.y, point.z]),
+        );
 
         return (
           <line key={`${edge.source}-${edge.target}-${index}`}>
             <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+              <bufferAttribute
+                attach="attributes-position"
+                args={[positions, 3]}
+              />
             </bufferGeometry>
             <lineBasicMaterial
-              color={isHot ? tokens.danger : crossRepo ? tokens.compare : tokens.line}
+              color={
+                isHot ? tokens.danger : crossRepo ? tokens.compare : tokens.line
+              }
               transparent
               opacity={isHot ? 0.8 : isFocused ? 0.52 : crossRepo ? 0.22 : 0.14}
             />
@@ -429,7 +457,9 @@ function NodeParticle({
   );
 
   useFrame((state) => {
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * 1.4 + metric.changeFrequency) * 0.04;
+    const pulse =
+      1 +
+      Math.sin(state.clock.elapsedTime * 1.4 + metric.changeFrequency) * 0.04;
     const baseScale =
       (0.72 + metric.importance * 0.95 + activityGlow * 0.25) *
       (selected ? 1.18 : highlighted ? 1.07 : 1);
@@ -444,7 +474,9 @@ function NodeParticle({
     }
 
     if (glowRef.current) {
-      glowRef.current.scale.setScalar(0.98 + pulse * 0.12 + activityGlow * 0.18);
+      glowRef.current.scale.setScalar(
+        0.98 + pulse * 0.12 + activityGlow * 0.18,
+      );
     }
   });
 
@@ -578,12 +610,15 @@ function CommitEvent({
   const haloRef = useRef<THREE.Mesh | null>(null);
 
   useFrame((state) => {
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * 2 + commit.sequence) * 0.08;
+    const pulse =
+      1 + Math.sin(state.clock.elapsedTime * 2 + commit.sequence) * 0.08;
     if (eventRef.current) {
       eventRef.current.scale.setScalar((selected ? 1.34 : 1) * pulse);
     }
     if (haloRef.current) {
-      haloRef.current.scale.setScalar(1 + pulse * 0.14 + commit.importance * 0.22);
+      haloRef.current.scale.setScalar(
+        1 + pulse * 0.14 + commit.importance * 0.22,
+      );
       haloRef.current.rotation.z += 0.004;
     }
   });
@@ -612,7 +647,9 @@ function CommitEvent({
       onPointerOut={() => onHover(null)}
     >
       <mesh ref={haloRef} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[6 + commit.importance * 6, 7 + commit.importance * 6, 32]} />
+        <ringGeometry
+          args={[6 + commit.importance * 6, 7 + commit.importance * 6, 32]}
+        />
         <meshBasicMaterial
           color={color}
           transparent
@@ -686,15 +723,24 @@ function CommitFlow({
         if (points.length < 2) return null;
         const curve = new THREE.CatmullRomCurve3(points);
         const sampled = curve.getPoints(40);
-        const positions = new Float32Array(sampled.flatMap((point) => [point.x, point.y, point.z]));
+        const positions = new Float32Array(
+          sampled.flatMap((point) => [point.x, point.y, point.z]),
+        );
 
         return (
           <line key={branchPath.branch}>
             <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+              <bufferAttribute
+                attach="attributes-position"
+                args={[positions, 3]}
+              />
             </bufferGeometry>
             <lineBasicMaterial
-              color={branchPath.branch === "main" ? tokens.accentStrong : tokens.compare}
+              color={
+                branchPath.branch === "main"
+                  ? tokens.accentStrong
+                  : tokens.compare
+              }
               transparent
               opacity={branchPath.branch === "main" ? 0.34 : 0.22}
             />
@@ -702,19 +748,25 @@ function CommitFlow({
         );
       })}
       {sceneGraph.commits.map((commit) => {
-        const visible = commit.sequence / Math.max(sceneGraph.commits.length - 1, 1) <= progress;
+        const visible =
+          commit.sequence / Math.max(sceneGraph.commits.length - 1, 1) <=
+          progress;
         const contributorSelected =
           selectedContributorId &&
-          sceneGraph.contributors.find((item) => item.id === selectedContributorId)?.commitIds.includes(commit.id);
+          sceneGraph.contributors
+            .find((item) => item.id === selectedContributorId)
+            ?.commitIds.includes(commit.id);
         const dimmed =
           Boolean(focusNodeIds) &&
-          !commit.touchedNodeIds.some((nodeId) => focusNodeIds.has(nodeId));
+          !commit.touchedNodeIds.some((nodeId) => focusNodeIds?.has(nodeId));
 
         return (
           <CommitEvent
             key={commit.id}
             commit={commit}
-            selected={selectedCommitId === commit.id || Boolean(contributorSelected)}
+            selected={
+              selectedCommitId === commit.id || Boolean(contributorSelected)
+            }
             dimmed={dimmed}
             visible={visible}
             tokens={tokens}
@@ -764,7 +816,10 @@ function Scene({
     () => new Map(graph.nodes.map((node) => [node.id, node])),
     [graph.nodes],
   );
-  const visibleNodeIds = useMemo(() => new Set(renderedNodes.map((node) => node.id)), [renderedNodes]);
+  const visibleNodeIds = useMemo(
+    () => new Set(renderedNodes.map((node) => node.id)),
+    [renderedNodes],
+  );
 
   return (
     <>
@@ -787,9 +842,16 @@ function Scene({
         intensity={0.85}
         color={tokens.compare}
       />
-      <pointLight position={[0, -40, -180]} intensity={0.54} color={tokens.accentStrong} />
+      <pointLight
+        position={[0, -40, -180]}
+        intensity={0.54}
+        color={tokens.accentStrong}
+      />
 
-      <SceneCameraRig focusPoint={focusPoint} compareMode={Boolean(graph.compareTarget)} />
+      <SceneCameraRig
+        focusPoint={focusPoint}
+        compareMode={Boolean(graph.compareTarget)}
+      />
       <JarvisFrame hasCompare={Boolean(graph.compareTarget)} tokens={tokens} />
       <ClusterHalos
         graph={graph}
@@ -797,7 +859,11 @@ function Scene({
         focusNodeIds={focusNodeIds}
         tokens={tokens}
       />
-      <TimelineRails sceneGraph={sceneGraph} progress={progress} tokens={tokens} />
+      <TimelineRails
+        sceneGraph={sceneGraph}
+        progress={progress}
+        tokens={tokens}
+      />
       <EdgeField
         edges={renderedEdges}
         nodeMap={nodeMap}
@@ -859,11 +925,16 @@ export function EvalGraphScene({
   const [timelinePlaying, setTimelinePlaying] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
-  const [selectedContributorId, setSelectedContributorId] = useState<string | null>(null);
+  const [selectedContributorId, setSelectedContributorId] = useState<
+    string | null
+  >(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [hoverCard, setHoverCard] = useState<HoverCard>(null);
 
-  const sceneGraph = useMemo(() => (graph ? buildEvalSceneGraph(graph) : null), [graph]);
+  const sceneGraph = useMemo(
+    () => (graph ? buildEvalSceneGraph(graph) : null),
+    [graph],
+  );
 
   useEffect(() => {
     if (!graph) return;
@@ -936,7 +1007,10 @@ export function EvalGraphScene({
     ? sceneGraph.commits[
         Math.min(
           sceneGraph.commits.length - 1,
-          Math.max(0, Math.round(timelineProgress * (sceneGraph.commits.length - 1))),
+          Math.max(
+            0,
+            Math.round(timelineProgress * (sceneGraph.commits.length - 1)),
+          ),
         )
       ]
     : null;
@@ -948,7 +1022,9 @@ export function EvalGraphScene({
       ? sceneGraph.commits.find((item) => item.id === selectedCommitId)
       : null;
     const contributor = selectedContributorId
-      ? sceneGraph.contributors.find((item) => item.id === selectedContributorId)
+      ? sceneGraph.contributors.find(
+          (item) => item.id === selectedContributorId,
+        )
       : null;
 
     for (const id of commit?.touchedNodeIds ?? []) next.add(id);
@@ -958,7 +1034,13 @@ export function EvalGraphScene({
       for (const id of sceneGraph.hotspotIds.slice(0, 5)) next.add(id);
     }
     return next;
-  }, [activeCommand, highlightedIds, sceneGraph, selectedCommitId, selectedContributorId]);
+  }, [
+    activeCommand,
+    highlightedIds,
+    sceneGraph,
+    selectedCommitId,
+    selectedContributorId,
+  ]);
 
   const renderedNodes = useMemo(() => {
     if (!graph || !sceneGraph) return [];
@@ -1018,9 +1100,15 @@ export function EvalGraphScene({
     }
 
     if (selectedCommitId) {
-      const commit = sceneGraph.commits.find((item) => item.id === selectedCommitId);
+      const commit = sceneGraph.commits.find(
+        (item) => item.id === selectedCommitId,
+      );
       if (commit) {
-        return new THREE.Vector3(commit.position[0], commit.position[1], commit.position[2]);
+        return new THREE.Vector3(
+          commit.position[0],
+          commit.position[1],
+          commit.position[2],
+        );
       }
     }
 
@@ -1052,7 +1140,13 @@ export function EvalGraphScene({
     }
 
     return new THREE.Vector3(0, 0, graph.compareTarget ? 10 : 0);
-  }, [graph, sceneGraph, selectedCommitId, selectedContributorId, selectedNodeId]);
+  }, [
+    graph,
+    sceneGraph,
+    selectedCommitId,
+    selectedContributorId,
+    selectedNodeId,
+  ]);
 
   const handleSelectNode = (nodeId: string) => {
     onSelectNode(nodeId);
@@ -1454,7 +1548,8 @@ export function EvalGraphScene({
                             {contributor.name}
                           </p>
                           <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-text-muted)]">
-                            {contributor.commitIds.length} commits · {contributor.touchedNodeIds.length} files
+                            {contributor.commitIds.length} commits ·{" "}
+                            {contributor.touchedNodeIds.length} files
                           </p>
                         </div>
                         <p className="text-sm font-medium text-[color:var(--eval-accent-strong)]">
