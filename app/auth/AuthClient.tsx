@@ -15,7 +15,7 @@ import {
 import { GoogleIcon } from "../components/GoogleIcon";
 
 export default function AuthPage() {
-  const postAuthPath = "/dashboard";
+  const postAuthPath = "/profile";
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

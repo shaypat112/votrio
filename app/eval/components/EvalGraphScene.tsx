@@ -351,12 +351,8 @@ export function EvalGraphScene({
 }) {
   const tokens = useEvalSceneTokens();
   const [feedMinimized, setFeedMinimized] = useState(false);
+  const [telemetryMinimized, setTelemetryMinimized] = useState(false);
   const [nodeWorldId, setNodeWorldId] = useState<string | null>(null);
-
-  const selectedNode =
-    graph?.nodes.find((node) => node.id === selectedNodeId) ??
-    graph?.nodes[0] ??
-    null;
 
   const summaryTone =
     activeCommand === "trace"
@@ -452,57 +448,76 @@ export function EvalGraphScene({
                   {summaryTone}
                 </p>
               </div>
-              {graph.compareTarget ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--eval-border)] bg-[color:var(--eval-compare-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-compare)]">
-                  <GitCompareArrows className="h-3.5 w-3.5" />
-                  Compare active
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--eval-border)] bg-[color:var(--eval-accent-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-accent-strong)]">
-                  <Radar className="h-3.5 w-3.5" />
-                  Single repo
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {commandButtons.map((command) => {
-                const active = activeCommand === command.id;
-                return (
-                  <button
-                    key={command.id}
-                    type="button"
-                    onClick={() => onCommandChange(command.id)}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] transition ${
-                      active
-                        ? "border-[color:var(--eval-accent-strong)] bg-[color:var(--eval-accent-soft)] text-[color:var(--eval-text)] shadow-[0_0_24px_color-mix(in_oklab,var(--eval-accent)_20%,transparent)]"
-                        : "border-[color:var(--eval-border)] bg-[color:var(--eval-panel)] text-[color:var(--eval-text-muted)] hover:border-[color:var(--eval-accent)] hover:text-[color:var(--eval-text)]"
-                    }`}
-                  >
-                    {command.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-[color:var(--eval-border)] bg-[color:var(--eval-panel-soft)] p-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--eval-text-muted)]">
-                  Files mapped
-                </p>
-                <p className="mt-1 text-lg font-semibold text-[color:var(--eval-text)]">
-                  {graph.summary.files}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[color:var(--eval-border)] bg-[color:var(--eval-panel-soft)] p-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--eval-text-muted)]">
-                  Connected paths
-                </p>
-                <p className="mt-1 text-lg font-semibold text-[color:var(--eval-text)]">
-                  {graph.edges.length}
-                </p>
+              <div className="flex items-center gap-2">
+                {graph.compareTarget ? (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--eval-border)] bg-[color:var(--eval-compare-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-compare)]">
+                    <GitCompareArrows className="h-3.5 w-3.5" />
+                    Compare active
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--eval-border)] bg-[color:var(--eval-accent-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-accent-strong)]">
+                    <Radar className="h-3.5 w-3.5" />
+                    Single repo
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTelemetryMinimized((value) => !value)}
+                  className="h-8 w-8 text-[color:var(--eval-accent-strong)] hover:bg-[color:var(--eval-accent-soft)] hover:text-[color:var(--eval-text)]"
+                >
+                  {telemetryMinimized ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
             </div>
+
+            {!telemetryMinimized ? (
+              <>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {commandButtons.map((command) => {
+                    const active = activeCommand === command.id;
+                    return (
+                      <button
+                        key={command.id}
+                        type="button"
+                        onClick={() => onCommandChange(command.id)}
+                        className={`rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] transition ${
+                          active
+                            ? "border-[color:var(--eval-accent-strong)] bg-[color:var(--eval-accent-soft)] text-[color:var(--eval-text)] shadow-[0_0_24px_color-mix(in_oklab,var(--eval-accent)_20%,transparent)]"
+                            : "border-[color:var(--eval-border)] bg-[color:var(--eval-panel)] text-[color:var(--eval-text-muted)] hover:border-[color:var(--eval-accent)] hover:text-[color:var(--eval-text)]"
+                        }`}
+                      >
+                        {command.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-[color:var(--eval-border)] bg-[color:var(--eval-panel-soft)] p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--eval-text-muted)]">
+                      Files mapped
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-[color:var(--eval-text)]">
+                      {graph.summary.files}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[color:var(--eval-border)] bg-[color:var(--eval-panel-soft)] p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--eval-text-muted)]">
+                      Connected paths
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-[color:var(--eval-text)]">
+                      {graph.edges.length}
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div className="absolute right-5 top-5 flex gap-2">
