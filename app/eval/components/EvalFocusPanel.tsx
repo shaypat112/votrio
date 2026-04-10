@@ -6,7 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { EvalNode, EvalWorkspaceGraph } from "../lib/types";
-import type { EvalSceneCommit, EvalSceneContributor, EvalSceneGraph } from "../lib/scene-graph";
+import type {
+  EvalSceneCommit,
+  EvalSceneContributor,
+  EvalSceneGraph,
+} from "../lib/scene-graph";
 
 type Selection =
   | { kind: "node"; id: string }
@@ -38,23 +42,24 @@ export function EvalFocusPanel({
   const selectedNode = useMemo(
     () =>
       selection?.kind === "node"
-        ? graph.nodes.find((node) => node.id === selection.id) ?? null
+        ? (graph.nodes.find((node) => node.id === selection.id) ?? null)
         : null,
     [graph.nodes, selection],
   );
   const selectedCommit = useMemo(
     () =>
       selection?.kind === "commit"
-        ? sceneGraph.commits.find((commit) => commit.id === selection.id) ?? null
+        ? (sceneGraph.commits.find((commit) => commit.id === selection.id) ??
+          null)
         : null,
     [sceneGraph.commits, selection],
   );
   const selectedContributor = useMemo(
     () =>
       selection?.kind === "contributor"
-        ? sceneGraph.contributors.find(
+        ? (sceneGraph.contributors.find(
             (contributor) => contributor.id === selection.id,
-          ) ?? null
+          ) ?? null)
         : null,
     [sceneGraph.contributors, selection],
   );
@@ -69,36 +74,13 @@ export function EvalFocusPanel({
       .slice(0, 10);
   }, [sceneGraph.searchIndex, searchQuery]);
 
-  const nodeMetric =
-    selectedNode ? sceneGraph.nodeMetrics[selectedNode.id] ?? null : null;
+  const nodeMetric = selectedNode
+    ? (sceneGraph.nodeMetrics[selectedNode.id] ?? null)
+    : null;
 
   return (
     <div className="flex h-full flex-col gap-4">
       <div className="rounded-3xl border border-[color:var(--eval-border)] bg-[color:color-mix(in_oklab,var(--eval-panel)_88%,transparent)] p-4 backdrop-blur">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--eval-accent-strong)]">
-              Search + Navigation
-            </p>
-            <p className="mt-1 text-xs text-[color:var(--eval-text-muted)]">
-              Find files, commits, and contributors. Jumping selection steers the camera.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onToggleFocusMode}
-            aria-pressed={focusMode}
-            className={`border-[color:var(--eval-border)] ${
-              focusMode
-                ? "bg-[color:var(--eval-accent-soft)] text-[color:var(--eval-text)]"
-                : "bg-[color:var(--eval-panel)] text-[color:var(--eval-text-muted)]"
-            }`}
-          >
-            {focusMode ? "Focus mode" : "Enable focus"}
-          </Button>
-        </div>
-
         <Input
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -165,7 +147,8 @@ export function EvalFocusPanel({
         ) : null}
         {!selectedNode && !selectedCommit && !selectedContributor ? (
           <div className="rounded-2xl border border-dashed border-[color:var(--eval-border)] bg-[color:var(--eval-panel-soft)] p-4 text-sm text-[color:var(--eval-text-muted)]">
-            Select a node, commit, or contributor to isolate relationships and inspect metadata.
+            Select a node, commit, or contributor to isolate relationships and
+            inspect metadata.
           </div>
         ) : null}
       </div>
@@ -191,8 +174,14 @@ function NodeContext({
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <Metric label="Importance" value={`${Math.round((metric?.importance ?? node.risk) * 100)}%`} />
-        <Metric label="Change freq" value={String(metric?.changeFrequency ?? 0)} />
+        <Metric
+          label="Importance"
+          value={`${Math.round((metric?.importance ?? node.risk) * 100)}%`}
+        />
+        <Metric
+          label="Change freq"
+          value={String(metric?.changeFrequency ?? 0)}
+        />
         <Metric label="Connections" value={String(metric?.degree ?? 0)} />
         <Metric label="Signals" value={String(node.signals.length)} />
       </div>
@@ -219,12 +208,19 @@ function CommitContext({
           {commit.message}
         </p>
         <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[color:var(--eval-text-muted)]">
-          {commit.authorName} · {commit.branch} · {new Date(commit.timestamp).toLocaleString()}
+          {commit.authorName} · {commit.branch} ·{" "}
+          {new Date(commit.timestamp).toLocaleString()}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <Metric label="Touched files" value={String(commit.touchedNodeIds.length)} />
-        <Metric label="Importance" value={`${Math.round(commit.importance * 100)}%`} />
+        <Metric
+          label="Touched files"
+          value={String(commit.touchedNodeIds.length)}
+        />
+        <Metric
+          label="Importance"
+          value={`${Math.round(commit.importance * 100)}%`}
+        />
         <Metric label="Event kind" value={commit.kind} />
         <Metric label="Sequence" value={`#${commit.sequence + 1}`} />
       </div>
@@ -260,9 +256,15 @@ function ContributorContext({
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <Metric label="Influence" value={`${Math.round(contributor.influence * 100)}%`} />
+        <Metric
+          label="Influence"
+          value={`${Math.round(contributor.influence * 100)}%`}
+        />
         <Metric label="Commits" value={String(contributor.commitIds.length)} />
-        <Metric label="Touched files" value={String(contributor.touchedNodeIds.length)} />
+        <Metric
+          label="Touched files"
+          value={String(contributor.touchedNodeIds.length)}
+        />
         <Metric label="Signal" value="active" />
       </div>
     </div>

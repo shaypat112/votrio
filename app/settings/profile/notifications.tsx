@@ -17,24 +17,6 @@ export function NotificationsSection() {
         checked={settings.emailNotifications}
         onChange={(v) => update("emailNotifications", v)}
       />
-      <Toggle
-        label="High severity alerts"
-        description="Fire immediately for critical findings."
-        checked={settings.notifyHigh}
-        onChange={(v) => update("notifyHigh", v)}
-      />
-      <Toggle
-        label="Medium severity alerts"
-        description="Notify when medium-risk issues appear."
-        checked={settings.notifyMedium}
-        onChange={(v) => update("notifyMedium", v)}
-      />
-      <Toggle
-        label="Low severity alerts"
-        description="Bundle lower-priority warnings into digests."
-        checked={settings.notifyLow}
-        onChange={(v) => update("notifyLow", v)}
-      />
     </SectionCard>
   );
 }

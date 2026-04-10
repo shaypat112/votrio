@@ -75,7 +75,9 @@ export function BillingSection() {
 
     const res = await fetch("/api/billing/portal", {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildAuthHeaders(accessToken, {
+        "Content-Type": "application/json",
+      }),
     });
 
     if (res.ok) {
@@ -102,103 +104,23 @@ export function BillingSection() {
       description="Manage your subscription, checkout flow, and recent billing activity."
     >
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading billing overview...</p>
+        <p className="text-sm text-muted-foreground">
+          Loading billing overview...
+        </p>
       ) : !summary?.configured ? (
         <p className="text-sm text-muted-foreground">
           Stripe is not configured for this environment yet.
         </p>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-background p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Active plan
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {summary.subscription?.planName ?? "Starter"}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Status: {summary.subscription?.status ?? "inactive"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-background p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Latest charge
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {formatCurrency(invoiceStats.latest)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Based on the most recent invoice
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-background p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Renewal
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-foreground">
-                {summary.subscription?.currentPeriodEnd
-                  ? new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()
-                  : "Not scheduled"}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Next subscription boundary
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-background p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Billing trend
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Recent invoice amounts across your last six billing events.
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Total: {formatCurrency(invoiceStats.total)}
-              </p>
-            </div>
-
-            <div className="mt-5 flex items-end gap-3">
-              {(summary.invoices.length > 0
-                ? summary.invoices
-                : [
-                    { id: "empty-1", month: "Jan", amount: 0, status: "none" },
-                    { id: "empty-2", month: "Feb", amount: 0, status: "none" },
-                    { id: "empty-3", month: "Mar", amount: 0, status: "none" },
-                  ]).map((invoice) => {
-                const height =
-                  invoiceStats.max > 0
-                    ? Math.max(16, Math.round((invoice.amount / invoiceStats.max) * 140))
-                    : 16;
-
-                return (
-                  <div key={invoice.id} className="flex flex-1 flex-col items-center gap-2">
-                    <div
-                      className="w-full rounded-t-xl bg-[linear-gradient(180deg,#f59e0b_0%,#f97316_100%)]"
-                      style={{ height }}
-                    />
-                    <div className="text-center">
-                      <p className="text-xs font-medium text-foreground">{invoice.month}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatCurrency(invoice.amount)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-2xl border border-border bg-background p-5">
-              <p className="text-sm font-semibold text-foreground">Manage billing</p>
+              <p className="text-sm font-semibold text-foreground">
+                Manage billing
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Open the Stripe portal to update payment methods, download invoices,
-                or switch your subscription.
+                Open the Stripe portal to update payment methods, download
+                invoices, or switch your subscription.
               </p>
               <GhostButton onClick={openBillingPortal} className="mt-4">
                 Open billing portal
@@ -206,9 +128,12 @@ export function BillingSection() {
             </div>
 
             <div className="rounded-2xl border border-border bg-background p-5">
-              <p className="text-sm font-semibold text-foreground">Purchase a plan</p>
+              <p className="text-sm font-semibold text-foreground">
+                Purchase a plan
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Use the hosted Stripe checkout button to start or upgrade your plan.
+                Use the hosted Stripe checkout button to start or upgrade your
+                plan.
               </p>
               <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card p-4">
                 <StripeBuyButton
