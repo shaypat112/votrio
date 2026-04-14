@@ -23,7 +23,7 @@ export default function AuthPage() {
 
   const supabase = createClient();
 
-  const loginWithProvider = async (provider: "github" | "google") => {
+  const loginWithProvider = async (provider: "github") => {
     if (!supabase) {
       setError(
         "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
@@ -64,7 +64,6 @@ export default function AuthPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Social Login */}
           <div className="flex flex-col gap-3">
             <Button
               variant="outline"
@@ -74,16 +73,6 @@ export default function AuthPage() {
             >
               <Github size={16} />
               Continue with GitHub
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full justify-center gap-2 hover:bg-zinc-800/50 transition"
-              onClick={() => loginWithProvider("google")}
-              disabled={loading}
-            >
-              <GoogleIcon />
-              Continue with Google
             </Button>
           </div>
 
@@ -98,11 +87,7 @@ export default function AuthPage() {
             variant="link"
             onClick={() => setIsLogin(!isLogin)}
             className="w-full text-xs text-zinc-500 hover:text-zinc-300 transition"
-          >
-            {isLogin
-              ? "Need an account? Create one"
-              : "Already have an account? Sign in"}
-          </Button>
+          />
         </CardContent>
       </Card>
     </div>

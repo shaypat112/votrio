@@ -454,22 +454,6 @@ export default function LandingPage() {
                 Read docs
               </Link>
             </div>
-
-            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-              {[
-                "JIT access with short-lived sessions and clean approvals",
-                "No repository submission or manual review workflow in the path",
-                "SI-Hack walks each issue, explains risk, and suggests fixes",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-foreground" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
           </FadeIn>
 
           <FadeIn delay={0.08} className="relative">
@@ -503,7 +487,6 @@ export default function LandingPage() {
           ))}
         </section>
 
-        {/* New: Interactive Laptop Demo Section */}
         <FadeIn delay={0.2} className="mt-20">
           <div className="text-center">
             <motion.div
@@ -516,12 +499,8 @@ export default function LandingPage() {
               Live demo
             </motion.div>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              See the sandbox flow
+              Votrio Sandbox
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              Watch Votrio isolate a sandbox, validate real attack paths, and
-              turn each issue into a guided remediation plan
-            </p>
           </div>
 
           <div className="mt-12">
@@ -553,7 +532,6 @@ export default function LandingPage() {
                 {[
                   "JIT access starts fast without repository submission steps",
                   "Settings copy no longer leans on old infrastructure messaging",
-                  "SI-Hack reviews each issue in order, strips false positives, and explains impact",
                   "Suggested fixes come with follow-up checks so teams can verify remediation",
                 ].map((item) => (
                   <div
@@ -581,7 +559,6 @@ export default function LandingPage() {
               {[
                 "JIT Access",
                 "Session Controls",
-                "SI-Hack Sandbox",
                 "Audit Trail",
                 "Fix Guidance",
                 "Live Findings",

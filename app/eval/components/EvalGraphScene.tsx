@@ -24,9 +24,8 @@ import type {
   EvalWorkspaceGraph,
 } from "../lib/types";
 import { buildEvalSceneGraph, type EvalSceneCommit } from "../lib/scene-graph";
-import { EvalNodeWorld } from "./EvalNodeWorld";
+
 import { EvalTimelineControls } from "./EvalTimelineControls";
-import { EvalFocusPanel } from "./EvalFocusPanel";
 
 type Selection =
   | { kind: "node"; id: string }
@@ -1383,34 +1382,7 @@ export function EvalGraphScene({
             </div>
           ) : null}
 
-          <div className="absolute bottom-5 left-5 top-[284px] w-[min(380px,calc(100%-2.5rem))]">
-            <EvalFocusPanel
-              graph={graph}
-              sceneGraph={sceneGraph}
-              selection={selection}
-              searchQuery={searchQuery}
-              focusMode={focusMode}
-              onSearchChange={setSearchQuery}
-              onSelectSearchResult={(entry) => {
-                if (entry.kind === "file") {
-                  handleSelectNode(entry.targetId);
-                }
-                if (entry.kind === "commit") {
-                  handleSelectCommit(entry.targetId);
-                }
-                if (entry.kind === "contributor") {
-                  handleSelectContributor(entry.targetId);
-                }
-              }}
-              onToggleFocusMode={() => setFocusMode((value) => !value)}
-              onClearSelection={() => {
-                setSelectedCommitId(null);
-                setSelectedContributorId(null);
-                setNodeWorldId(null);
-                if (selectedNodeId) onSelectNode(null);
-              }}
-            />
-          </div>
+          <div className="absolute bottom-5 left-5 top-[284px] w-[min(380px,calc(100%-2.5rem))]"></div>
 
           <div className="absolute bottom-5 right-5 w-full max-w-md rounded-3xl border border-[color:var(--eval-border)] bg-[color:color-mix(in_oklab,var(--eval-panel)_84%,transparent)] shadow-[0_0_40px_color-mix(in_oklab,var(--eval-accent)_10%,transparent)] backdrop-blur">
             <div className="flex items-center justify-between border-b border-[color:var(--eval-border)] px-4 py-3">
@@ -1594,15 +1566,6 @@ export function EvalGraphScene({
               </div>
             ) : null}
           </div>
-
-          <EvalNodeWorld
-            graph={graph}
-            nodeId={nodeWorldId}
-            onClose={() => setNodeWorldId(null)}
-            onSelectNode={(nodeId) => {
-              handleSelectNode(nodeId);
-            }}
-          />
         </>
       ) : (
         <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
