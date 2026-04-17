@@ -25,7 +25,7 @@ import type {
 } from "../lib/types";
 import { buildEvalSceneGraph, type EvalSceneCommit } from "../lib/scene-graph";
 
-import { EvalTimelineControls } from "./EvalTimelineControls";
+
 
 type Selection =
   | { kind: "node"; id: string }
@@ -1313,25 +1313,6 @@ export function EvalGraphScene({
               ) : null}
             </div>
 
-            <EvalTimelineControls
-              progress={timelineProgress}
-              playing={timelinePlaying}
-              currentLabel={currentTimelineLabel}
-              onProgressChange={(next) => {
-                setTimelineProgress(next);
-                if (next < 1) setTimelinePlaying(false);
-              }}
-              onPlayToggle={() => {
-                if (timelineProgress >= 1) {
-                  setTimelineProgress(0);
-                }
-                setTimelinePlaying((value) => !value);
-              }}
-              onReset={() => {
-                setTimelineProgress(0);
-                setTimelinePlaying(false);
-              }}
-            />
           </div>
 
           <div className="absolute right-5 top-5 flex gap-2">
