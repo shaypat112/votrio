@@ -33,24 +33,6 @@ const metrics = [
   { label: "Fix output", value: "Actionable" },
 ];
 
-const features = [
-  {
-    icon: Workflow,
-    title: "JIT access without the extra overhead",
-    body: "Grant short-lived access only when it is needed, keep the request flow lightweight, and make session control easy to understand.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Cleaner session controls",
-    body: "Focus the product on access windows, runtime visibility, and approvals instead of extra setup surfaces that no longer matter.",
-  },
-  {
-    icon: Sparkles,
-    title: "SI-Hack as an ethical sandbox",
-    body: "Spin up a contained environment, tear it apart safely, walk through each issue in context, then suggest fixes, hardening ideas, and follow-up checks.",
-  },
-];
-
 const demoSteps = [
   {
     command: "$ votrio si-hack start",
@@ -466,27 +448,6 @@ export default function LandingPage() {
           </FadeIn>
         </section>
 
-        {/* Original Features Section */}
-        <section className="grid gap-4 border-t border-border pt-10 sm:grid-cols-3">
-          {features.map(({ icon: Icon, title, body }, index) => (
-            <FadeIn
-              key={title}
-              delay={0.12 + index * 0.08}
-              className="rounded-[1.75rem] border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-background">
-                <Icon className="h-5 w-5" />
-              </div>
-              <h2 className="mt-5 text-xl font-semibold tracking-tight">
-                {title}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                {body}
-              </p>
-            </FadeIn>
-          ))}
-        </section>
-
         <FadeIn delay={0.2} className="mt-20">
           <div className="text-center">
             <motion.div
@@ -530,7 +491,6 @@ export default function LandingPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  "JIT access starts fast without repository submission steps",
                   "Settings copy no longer leans on old infrastructure messaging",
                   "Suggested fixes come with follow-up checks so teams can verify remediation",
                 ].map((item) => (
@@ -556,13 +516,7 @@ export default function LandingPage() {
               Core surfaces
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-8 opacity-60">
-              {[
-                "JIT Access",
-                "Session Controls",
-                "Audit Trail",
-                "Fix Guidance",
-                "Live Findings",
-              ].map((tech) => (
+              {["Audit Trail", "Fix Guidance", "Live Findings"].map((tech) => (
                 <div
                   key={tech}
                   className="flex items-center gap-2 font-mono text-sm"

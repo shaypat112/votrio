@@ -315,12 +315,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   Scans
                 </Link>
-                <Link
-                  href="/just-in-time-access"
-                  className="transition-colors hover:text-foreground"
-                >
-                  JIT Access
-                </Link>
+
                 <Link
                   href="/documentation"
                   className="transition-colors hover:text-foreground"
