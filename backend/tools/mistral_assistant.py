@@ -11,14 +11,14 @@ def build_messages(user_input: str):
         {
             "role": "system",
             "content": (
-                "You are a debugging assistant. Use only the provided input. "
+                "You are a debugging AI assistant. Use only the provided input. "
                 "Provide a short root cause, a clear explanation, and a minimal fix. "
                 "Be concise."
             ),
         }
     ]
     messages.append({"role": "user", "content": user_input})
-    return messages
+    return messages 
 
 
 def request_chat(api_key: str, model: str, messages, temperature: float = 0.2):
@@ -26,7 +26,7 @@ def request_chat(api_key: str, model: str, messages, temperature: float = 0.2):
         "model": model,
         "temperature": temperature,
         "messages": messages,
-        "max_tokens": 800,
+        "max_tokens": 600,
     }
 
     req = urllib.request.Request(
