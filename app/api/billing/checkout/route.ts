@@ -16,12 +16,27 @@ function getErrorMessage(error: unknown, fallback: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const priceId = (body?.priceId as string | undefined) ?? getStripeConfig().pricePro;
+    const planId = (body?.planId as string) || "pro";
+    const billingCycle = (body?.billingCycle as string) || "monthly";
     const { accessToken, userId } = requireRequestAuth(request);
 
-    const { secretKey, siteUrl } = getStripeConfig();
+    const { secretKey, siteUrl, pricePro, pricePremium } = getStripeConfig();
     if (!secretKey) {
-      return NextResponse.json({ error: "Stripe is not configured." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Stripe is not configured." },
+        { status: 500 },
+      );
+    }
+
+    // Map plan IDs to Stripe price IDs
+    const priceMap: Record<string, string> = {
+      pro: pricePro || "",
+      premium: pricePremium || "",
+    };
+
+    const priceId = priceMap[planId];
+    if (!priceId) {
+      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
     }
 
     const env = getSupabaseEnv();
@@ -33,7 +48,8 @@ export async function POST(request: Request) {
     );
 
     const customerRows = customerRes.ok ? await customerRes.json() : [];
-    let customerId = customerRows?.[0]?.stripe_customer_id as string | undefined;
+    let customerId = customerRows?.[0]?.stripe_customer_id as
+      string | undefined;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -53,13 +69,22 @@ export async function POST(request: Request) {
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    // Special deal for Premium first month
+    let subscriptionData: any = {
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${siteUrl}/settings?section=billing&success=true`,
-      cancel_url: `${siteUrl}/settings?section=billing`,
-    });
+      cancel_url: `${siteUrl}/settings/pricing`,
+    };
+
+    // Add coupon for special offers
+    if (planId === "premium" && billingCycle === "monthly") {
+      // You could create a Stripe coupon for the $5.99 first month deal
+      // subscriptionData.discounts = [{ coupon: "your_coupon_id" }];
+    }
+
+    const session = await stripe.checkout.sessions.create(subscriptionData);
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

@@ -11,16 +11,18 @@ import type { Metadata } from "next";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Votrio",
-  description: "Votrio — AI security scanning, sandbox sessions, and insights.",
+  title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+  description:
+    "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
   icons: {
     icon: "/votrio_logo.jpeg",
     shortcut: "/votrio_logo.jpeg",
     apple: "/votrio_logo.jpeg",
   },
   openGraph: {
-    title: "Votrio",
-    description: "AI security scanning, sandbox sessions, and developer insights.",
+    title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+    description:
+      "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
     images: ["/votrio_logo.jpeg"],
   },
 };

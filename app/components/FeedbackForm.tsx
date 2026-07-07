@@ -72,7 +72,9 @@ export function FeedBackForm() {
 
     const res = await fetch("/api/feedback", {
       method: "POST",
-      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      headers: buildAuthHeaders(accessToken, {
+        "Content-Type": "application/json",
+      }),
       body: JSON.stringify({
         message: form.repoUrl.trim(),
         details: form.description.trim() || null,
