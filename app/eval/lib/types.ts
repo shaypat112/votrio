@@ -55,6 +55,15 @@ export type EvalWorkspaceGraph = EvalPayload & {
     repoMeta: EvalPayload["repoMeta"];
     summary: EvalPayload["summary"];
   } | null;
+  dashboardData?: {
+    metrics?: any;
+    security?: any;
+    codeQuality?: any;
+    architecture?: any;
+    graphData?: any;
+    searchIndex?: any;
+    aiSummary?: string;
+  };
 };
 
 export type EvalToolkit = {
@@ -91,7 +100,8 @@ export const toolkitLoadout: EvalToolkit[] = [
   {
     id: "github",
     label: "GitHub Graph",
-    description: "Repo ingestion, branches, pull requests, code owners, and file history.",
+    description:
+      "Repo ingestion, branches, pull requests, code owners, and file history.",
     category: "source",
     status: "ready",
   },
@@ -112,21 +122,24 @@ export const toolkitLoadout: EvalToolkit[] = [
   {
     id: "jira",
     label: "Jira",
-    description: "Open tickets directly from node worlds and attack-path views.",
+    description:
+      "Open tickets directly from node worlds and attack-path views.",
     category: "response",
     status: "stub",
   },
   {
     id: "vercel",
     label: "Vercel",
-    description: "Map deployed environments and runtime ownership to the graph.",
+    description:
+      "Map deployed environments and runtime ownership to the graph.",
     category: "context",
     status: "stub",
   },
   {
     id: "datadog",
     label: "Datadog",
-    description: "Overlay alerts, services, and incident timelines onto graph sectors.",
+    description:
+      "Overlay alerts, services, and incident timelines onto graph sectors.",
     category: "context",
     status: "stub",
   },

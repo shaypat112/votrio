@@ -10,6 +10,7 @@ export function getStripeConfig() {
   return {
     secretKey,
     pricePro: process.env.STRIPE_PRICE_PRO ?? "price_test_pro",
+    pricePremium: process.env.STRIPE_PRICE_PREMIUM ?? "price_test_premium",
     priceTeam: process.env.STRIPE_PRICE_TEAM ?? "price_test_team",
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   };

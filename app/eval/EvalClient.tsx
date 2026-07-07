@@ -40,7 +40,7 @@ async function fetchEvalGraph(repoUrl: string) {
 export default function EvalClient() {
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
-  const [graph, setGraph] = useState<EvalWorkspaceGraph | null>(null);
+  const [graph, setGraph] = useState<any>(null);
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
   const [selectedRepoId, setSelectedRepoId] = useState("");
   const [selectedCompareRepoId, setSelectedCompareRepoId] = useState("");
@@ -205,7 +205,7 @@ export default function EvalClient() {
       const enhancedWorkspace = {
         ...workspace,
         dashboardData,
-      };
+      } as any;
 
       setGraph(enhancedWorkspace);
       setSelectedNodeId(workspace.nodes[0]?.id ?? null);
@@ -521,7 +521,10 @@ export default function EvalClient() {
           </TabsList>
 
           <TabsContent value="graph" className="mt-6">
-            <RepositoryGraph data={graphData} onNodeClick={handleNodeClick} />
+            <RepositoryGraph
+              data={graphData}
+              onNodeClick={selectedFileData ? handleNodeClick : undefined}
+            />
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-6">

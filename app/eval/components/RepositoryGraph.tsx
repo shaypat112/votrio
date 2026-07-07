@@ -194,7 +194,7 @@ interface RepositoryGraphProps {
     nodes: RepositoryNode[];
     edges: Edge[];
   };
-  onNodeClick?: (node: RepositoryNode) => void;
+  onNodeClick?: (node: Node) => void;
 }
 
 export function RepositoryGraph({ data, onNodeClick }: RepositoryGraphProps) {
@@ -207,6 +207,16 @@ export function RepositoryGraph({ data, onNodeClick }: RepositoryGraphProps) {
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges],
+  );
+
+  const handleNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.stopPropagation();
+      if (onNodeClick) {
+        onNodeClick(node);
+      }
+    },
+    [onNodeClick],
   );
 
   const filteredNodes = useMemo(() => {
@@ -225,14 +235,6 @@ export function RepositoryGraph({ data, onNodeClick }: RepositoryGraphProps) {
       (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target),
     );
   }, [edges, filteredNodes]);
-
-  const handleNodeClick = useCallback(
-    (_: React.MouseEvent, node: RepositoryNode) => {
-      setSelectedNode(node);
-      onNodeClick?.(node);
-    },
-    [onNodeClick],
-  );
 
   return (
     <div className="w-full h-[600px] relative">
@@ -374,7 +376,7 @@ export function RepositoryGraph({ data, onNodeClick }: RepositoryGraphProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={handleNodeClick}
+        onNodeClick={onNodeClick ? handleNodeClick : undefined}
         nodeTypes={nodeTypes}
         fitView
         className="bg-background"
@@ -384,11 +386,7 @@ export function RepositoryGraph({ data, onNodeClick }: RepositoryGraphProps) {
         <MiniMap
           className="bg-card/80 backdrop-blur border-border/60"
           nodeColor={(node) => {
-            const colors =
-              nodeColors[
-                (node.data as RepositoryNode["data"]).type as NodeType
-              ] || nodeColors.file;
-            return colors.bg;
+            return nodeColors.file.bg;
           }}
         />
       </ReactFlow>
