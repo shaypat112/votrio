@@ -17,6 +17,8 @@ import { GlobalSearch } from "./components/GlobalSearch";
 
 import type {
   EvalCommandId,
+  EvalEdge,
+  EvalNode,
   EvalPayload,
   EvalWorkspaceGraph,
 } from "./lib/types";
@@ -62,8 +64,8 @@ export default function EvalClient() {
     if (activeCommand === "sinks") {
       return new Set(
         graph.nodes
-          .filter((node) => node.role === "sink")
-          .map((node) => node.id),
+          .filter((node: EvalNode) => node.role === "sink")
+          .map((node: EvalNode) => node.id),
       );
     }
     if (activeCommand === "fix") {
@@ -319,7 +321,7 @@ export default function EvalClient() {
     // Fallback to actual graph data if dashboard data not available
     return {
       nodes:
-        graph?.nodes.map((node) => ({
+        graph?.nodes.map((node: EvalNode) => ({
           id: node.id,
           type: node.role === "sink" ? "secret" : "file",
           position: { x: node.x, y: node.y },
@@ -331,7 +333,7 @@ export default function EvalClient() {
           },
         })) || [],
       edges:
-        graph?.edges.map((edge) => ({
+        graph?.edges.map((edge: EvalEdge) => ({
           id: `${edge.source}-${edge.target}`,
           source: edge.source,
           target: edge.target,
@@ -361,7 +363,7 @@ export default function EvalClient() {
     // Fallback to actual graph data
     return {
       nodes:
-        graph?.nodes.map((node) => ({
+        graph?.nodes.map((node: EvalNode) => ({
           id: node.id,
           label: node.path,
           type: node.role === "sink" ? "secret" : "file",
@@ -370,7 +372,7 @@ export default function EvalClient() {
           z: node.z / 100,
         })) || [],
       edges:
-        graph?.edges.map((edge) => ({
+        graph?.edges.map((edge: EvalEdge) => ({
           source: edge.source,
           target: edge.target,
           strength: 1,
@@ -386,7 +388,7 @@ export default function EvalClient() {
     // Fallback to actual graph data
     return {
       files:
-        graph?.nodes.map((node) => ({
+        graph?.nodes.map((node: EvalNode) => ({
           id: node.id,
           type: "file" as const,
           label: node.path.split("/").pop() || node.path,
@@ -394,7 +396,7 @@ export default function EvalClient() {
         })) || [],
       folders:
         graph?.nodes
-          .map((node) => node.path.split("/").slice(0, -1).join("/"))
+          .map((node: EvalNode) => node.path.split("/").slice(0, -1).join("/"))
           .filter(Boolean) || [],
       functions: [],
       classes: [],
@@ -411,7 +413,9 @@ export default function EvalClient() {
   const selectedFileData = useMemo(() => {
     if (!selectedNodeId || !graph) return null;
 
-    const selectedNode = graph.nodes.find((n) => n.id === selectedNodeId);
+    const selectedNode = graph.nodes.find(
+      (n: EvalNode) => n.id === selectedNodeId,
+    );
     if (!selectedNode) return null;
 
     // Get security findings for this file
@@ -421,21 +425,24 @@ export default function EvalClient() {
           .map(([type]) => ({
             type: type.replace(/([A-Z])/g, " $1").trim(),
             line: Math.floor(Math.random() * 100) + 1,
-            severity: (Math.random() > 0.5 ? "high" : "medium") as const,
+            severity: (Math.random() > 0.5 ? "high" : "medium") as
+              "high" | "medium",
           }))
       : [];
 
     // Get related files based on graph edges
     const relatedFiles = graph.edges
       .filter(
-        (edge) =>
+        (edge: EvalEdge) =>
           edge.source === selectedNodeId || edge.target === selectedNodeId,
       )
       .slice(0, 3)
-      .map((edge) => {
+      .map((edge: EvalEdge) => {
         const relatedNodeId =
           edge.source === selectedNodeId ? edge.target : edge.source;
-        const relatedNode = graph.nodes.find((n) => n.id === relatedNodeId);
+        const relatedNode = graph.nodes.find(
+          (n: EvalNode) => n.id === relatedNodeId,
+        );
         return {
           path: relatedNode?.path || relatedNodeId,
           similarity: 0.7 + Math.random() * 0.3,
@@ -461,7 +468,7 @@ export default function EvalClient() {
       imports: [],
       exports: [],
       dependencies: [],
-      importedBy: relatedFiles.map((f) => f.path),
+      importedBy: relatedFiles.map((f: EvalNode) => f.path),
       relatedFiles,
       securityIssues: fileSecurityIssues,
       aiExplanation:

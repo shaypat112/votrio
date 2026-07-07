@@ -16,7 +16,7 @@ export interface RepositoryStructure {
   files: RepositoryFile[];
   languages: string[];
   packageJson?: any;
-  readme?: string;
+  readme?: string | null;
   dependencies: Record<string, string>;
   patterns: string[];
 }
@@ -91,7 +91,7 @@ export class RepositoryAnalyzer {
 
   private async analyzeFiles(
     files: string[],
-    repoPath: string
+    repoPath: string,
   ): Promise<RepositoryFile[]> {
     const analyzed: RepositoryFile[] = [];
 
@@ -181,7 +181,7 @@ export class RepositoryAnalyzer {
 
   private async extractDependencies(
     packageJson: any,
-    repoPath: string
+    repoPath: string,
   ): Promise<Record<string, string>> {
     const dependencies: Record<string, string> = {};
 
@@ -220,23 +220,30 @@ export class RepositoryAnalyzer {
       if (packageJson.dependencies.next) patterns.push("Next.js");
       if (packageJson.dependencies.express) patterns.push("Express");
       if (packageJson.dependencies.fastify) patterns.push("Fastify");
-      if (packageJson.dependencies.djangorestframework) patterns.push("Django REST");
+      if (packageJson.dependencies.djangorestframework)
+        patterns.push("Django REST");
     }
 
     // Detect patterns from file structure
-    const hasTests = files.some((f) => f.path.includes(".test.") || f.path.includes(".spec."));
+    const hasTests = files.some(
+      (f) => f.path.includes(".test.") || f.path.includes(".spec."),
+    );
     if (hasTests) patterns.push("Testing");
 
     const hasComponents = files.some((f) => f.path.includes("components"));
     if (hasComponents) patterns.push("Component Architecture");
 
-    const hasApi = files.some((f) => f.path.includes("api") || f.path.includes("routes"));
+    const hasApi = files.some(
+      (f) => f.path.includes("api") || f.path.includes("routes"),
+    );
     if (hasApi) patterns.push("API Layer");
 
     const hasDocker = files.some((f) => f.path === "Dockerfile");
     if (hasDocker) patterns.push("Docker");
 
-    const hasK8s = files.some((f) => f.path.includes("k8s") || f.path.includes("kubernetes"));
+    const hasK8s = files.some(
+      (f) => f.path.includes("k8s") || f.path.includes("kubernetes"),
+    );
     if (hasK8s) patterns.push("Kubernetes");
 
     return patterns;

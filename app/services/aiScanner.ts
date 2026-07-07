@@ -1,7 +1,10 @@
 // AI-Enhanced Scanner Service - Integrates AI analysis with existing scanning
 
 import { aiService, RepositoryData } from "@/app/lib/ai-service";
-import { repositoryAnalyzer, RepositoryStructure } from "@/app/lib/repository-analyzer";
+import {
+  repositoryAnalyzer,
+  RepositoryStructure,
+} from "@/app/lib/repository-analyzer";
 import { runGitHubScanWithToken } from "./githubScanner";
 
 export interface AIScanResult {
@@ -30,12 +33,16 @@ export class AIScanner {
   async scanRepository(
     repoUrl: string,
     providerToken?: string,
-    options: { useAI?: boolean; model?: string } = {}
+    options: { useAI?: boolean; model?: string } = {},
   ): Promise<AIScanResult> {
     const { useAI = true, model } = options;
 
     // First, run the basic GitHub scan (regex-based)
-    const basicScan = await runGitHubScanWithToken(repoUrl, { ai: false }, providerToken);
+    const basicScan = await runGitHubScanWithToken(
+      repoUrl,
+      { ai: false },
+      providerToken,
+    );
 
     if (!useAI) {
       return {
@@ -66,7 +73,7 @@ export class AIScanner {
 
   private async performAIAnalysis(
     basicScan: any,
-    model?: string
+    model?: string,
   ): Promise<{
     intelligence: any;
     securityAnalysis: any;
@@ -83,7 +90,11 @@ export class AIScanner {
     };
 
     const repositoryStructure = {
-      files: repositoryData.files,
+      files: repositoryData.files.map((f) => ({
+        path: f.path,
+        lines: Math.floor(f.size / 50), // Estimate lines from size
+        complexity: f.size,
+      })),
       dependencies: {},
       patterns: [],
     };
@@ -93,7 +104,11 @@ export class AIScanner {
       await Promise.allSettled([
         aiService.analyzeRepositoryIntelligence(repositoryData, model),
         this.performDeepSecurityAnalysis(basicScan.findings, model),
-        aiService.simulateAttackPath(basicScan.findings, JSON.stringify(repositoryData), model),
+        aiService.simulateAttackPath(
+          basicScan.findings,
+          JSON.stringify(repositoryData),
+          model,
+        ),
         aiService.evaluateArchitectureHealth(repositoryStructure, model),
       ]);
 
@@ -105,13 +120,15 @@ export class AIScanner {
       attackPaths:
         attackPaths.status === "fulfilled" ? attackPaths.value : null,
       architectureHealth:
-        architectureHealth.status === "fulfilled" ? architectureHealth.value : null,
+        architectureHealth.status === "fulfilled"
+          ? architectureHealth.value
+          : null,
     };
   }
 
   private async performDeepSecurityAnalysis(
     findings: any[],
-    model?: string
+    model?: string,
   ): Promise<any> {
     // Group findings by file for more efficient analysis
     const findingsByFile = new Map<string, any[]>();
@@ -124,7 +141,9 @@ export class AIScanner {
     // Analyze high-severity files with AI
     const highRiskFiles = Array.from(findingsByFile.entries()).filter(
       ([, fileFindings]) =>
-        fileFindings.some((f) => f.severity === "high" || f.severity === "critical")
+        fileFindings.some(
+          (f) => f.severity === "high" || f.severity === "critical",
+        ),
     );
 
     if (highRiskFiles.length === 0) {
@@ -138,7 +157,7 @@ export class AIScanner {
     return aiService.analyzeSecurityVulnerabilities(
       codeContext,
       mostCriticalFile,
-      model
+      model,
     );
   }
 
@@ -153,7 +172,7 @@ Severity: ${f.severity}
 Message: ${f.message}
 Snippet: ${f.snippet || "N/A"}
 Suggestion: ${f.suggestion || "N/A"}
-`
+`,
       )
       .join("\n---\n");
   }
@@ -211,7 +230,8 @@ Suggestion: ${f.suggestion || "N/A"}
 
     // Enhance with AI analysis results
     if (aiAnalysis.architectureHealth) {
-      baseSummary.architectureScore = aiAnalysis.architectureHealth.overallScore;
+      baseSummary.architectureScore =
+        aiAnalysis.architectureHealth.overallScore;
     }
 
     if (aiAnalysis.securityAnalysis) {
@@ -225,7 +245,7 @@ Suggestion: ${f.suggestion || "N/A"}
   async generateAISummary(
     findings: any[],
     repositoryContext: string,
-    model?: string
+    model?: string,
   ): Promise<string> {
     const prompt = `Generate a comprehensive security summary for this repository scan:
 
