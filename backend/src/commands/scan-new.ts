@@ -44,7 +44,10 @@ export async function scanCommandNew(
     // Generate report if requested
     if (options.output) {
       progress.start("Generating report...");
-      const reportGenerator = new ReportGenerator(config.output);
+      const reportGenerator = new ReportGenerator({
+        ...config.output,
+        verbose: options.verbose || false
+      });
       await reportGenerator.writeToFile(report, options.output);
       progress.succeed(`Report saved to ${options.output}`);
     }
@@ -84,7 +87,7 @@ function displayResults(report: any, options: ScanOptions): void {
   if (report.findings.length > 0) {
     Logger.subheader("Findings");
 
-    if (options.format === "text") {
+    if (options.format === "text" as any) {
       for (const finding of report.findings.slice(0, 20)) {
         Logger.finding(finding);
       }

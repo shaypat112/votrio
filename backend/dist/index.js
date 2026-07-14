@@ -419,6 +419,70 @@ import path3 from "path";
 import chalk3 from "chalk";
 import ora2 from "ora";
 import { glob } from "glob";
+
+// src/lib/mistral.ts
+var MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+var AI_CONFIG = {
+  defaultModel: "mistral-large-latest",
+  temperature: 0.2,
+  maxTokens: 2e3
+};
+async function callMistralAPI(systemPrompt, userPrompt, model = AI_CONFIG.defaultModel, maxTokens = AI_CONFIG.maxTokens) {
+  if (!MISTRAL_API_KEY) {
+    console.error("MISTRAL_API_KEY not set");
+    return null;
+  }
+  try {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${MISTRAL_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        temperature: AI_CONFIG.temperature,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: maxTokens
+      })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text);
+    }
+    const data = await response.json();
+    return data?.choices?.[0]?.message?.content ?? null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Mistral API error:", message);
+    return null;
+  }
+}
+async function summarizeFindings(findings, model = "mistral-large-latest") {
+  if (!MISTRAL_API_KEY || findings.length === 0) return null;
+  const condensedFindings = findings.slice(0, 50).map((finding) => ({
+    file: finding.file,
+    line: finding.line,
+    severity: finding.severity,
+    type: finding.type,
+    message: finding.message,
+    suggestion: finding.suggestion ?? null,
+    snippet: finding.snippet ?? null
+  }));
+  const userPrompt = `Summarize these findings for a developer:
+${JSON.stringify(condensedFindings, null, 2)}`;
+  return callMistralAPI(
+    "You turn repository scan findings into a concise remediation summary. Do not invent files, lines, or vulnerabilities. Use only the provided findings. Return 2-5 short sentences in plain text with the highest-risk issues first and concrete fixes.",
+    userPrompt,
+    model,
+    300
+  );
+}
+
+// src/commands/scan.ts
 var SEVERITY_SCORE = {
   low: 30,
   medium: 55,
@@ -505,7 +569,7 @@ ${chalk3.bold("votrio")} ${chalk3.dim("scan")}
   });
   const deduped = dedupe(findings);
   const aiSummary = aiEnabled && deduped.length > 0 ? await summarizeFindings(deduped, aiModel) : null;
-  outputResults(deduped, options, aiSummary);
+  outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
   if (options.ci) handleCI(deduped, options);
   if (publishEnabled) {
     await publishScanSummary(deduped);
@@ -738,7 +802,7 @@ async function publishScanSummary(findings, options) {
     return;
   }
   const repo = options?.repoOverride || await inferRepoSlug(process.cwd());
-  const { total, severity, avgScore } = summarizeFindings(findings);
+  const { total, severity, avgScore } = summarizeFindings2(findings);
   const userId = decodeUserId(accessToken);
   const payload = {
     repo,
@@ -772,7 +836,7 @@ async function publishScanSummary(findings, options) {
     spinner.fail(`Publish failed: ${message}`);
   }
 }
-function summarizeFindings(findings) {
+function summarizeFindings2(findings) {
   const total = findings.length;
   const maxScore = findings.reduce((max, item) => Math.max(max, item.score), 0);
   const severity = findings.find((item) => item.score === maxScore)?.severity ?? "low";

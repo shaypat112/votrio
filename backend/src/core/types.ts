@@ -218,3 +218,10 @@ export interface ScannerConfig {
     maxFindings: number;
   };
 }
+
+export interface OutputConfig {
+  format: ReportFormat;
+  includeCodeSnippets: boolean;
+  maxFindings: number;
+  verbose: boolean;
+}

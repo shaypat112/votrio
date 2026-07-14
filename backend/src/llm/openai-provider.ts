@@ -6,7 +6,7 @@
 import type { LLMProviderInterface, LLMResponse } from "./provider.js";
 import type { LLMProvider } from "../core/types.js";
 
-export class OpenAIProvider implements LLMProviderInterface {
+export class OpenAIProvider {
   name = "openai";
   private apiKey: string;
   private model: string;
@@ -20,6 +20,10 @@ export class OpenAIProvider implements LLMProviderInterface {
 
   isAvailable(): boolean {
     return !!this.apiKey;
+  }
+
+  async generate(prompt: string, options?: Record<string, unknown>): Promise<LLMResponse> {
+    return this.generateResponse(prompt);
   }
 
   async generateResponse(prompt: string): Promise<LLMResponse> {
@@ -52,7 +56,15 @@ export class OpenAIProvider implements LLMProviderInterface {
         throw new Error(`OpenAI API error: ${error}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as {
+        choices: Array<{ message: { content: string } }>;
+        model: string;
+        usage: {
+          prompt_tokens: number;
+          completion_tokens: number;
+          total_tokens: number;
+        };
+      };
 
       return {
         content: data.choices[0].message.content,

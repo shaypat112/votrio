@@ -36,7 +36,10 @@ export class VotrioScanner {
     this.securityAnalyzer = new SecurityAnalyzer(config.analyzers.security);
     this.maintainabilityAnalyzer = new MaintainabilityAnalyzer(config.analyzers.maintainability);
     this.llmExplanationLayer = new LLMExplanationLayer(config.llm);
-    this.reportGenerator = new ReportGenerator(config.output);
+    this.reportGenerator = new ReportGenerator({
+      ...config.output,
+      verbose: false
+    });
   }
 
   async scan(options: ScanOptions): Promise<ScanReport> {

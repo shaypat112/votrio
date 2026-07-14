@@ -5,12 +5,33 @@
 
 import { OpenAIProvider } from "./openai-provider.js";
 import { AnthropicProvider } from "./anthropic-provider.js";
-import type { LLMProviderInterface } from "./provider.js";
 import type { LLMProvider } from "../core/types.js";
 
 export interface LLMConfig {
   provider: LLMProvider;
   enableExplanation: boolean;
+}
+
+class LLMProviderInterface {
+  private provider: OpenAIProvider | AnthropicProvider;
+  
+  constructor(provider: OpenAIProvider | AnthropicProvider) {
+    this.provider = provider;
+  }
+  
+  isAvailable(): boolean {
+    return this.provider.isAvailable();
+  }
+  
+  async generateExplanations(context: any, analyses: any, scores: any): Promise<any> {
+    if (this.provider instanceof AnthropicProvider) {
+      return this.provider.generateExplanations(context, analyses, scores);
+    }
+    if (this.provider instanceof OpenAIProvider) {
+      return this.provider.generateExplanations(context, analyses, scores);
+    }
+    throw new Error("Provider not supported");
+  }
 }
 
 export class LLMExplanationLayer {
@@ -25,12 +46,12 @@ export class LLMExplanationLayer {
   private createProvider(config: LLMProvider): LLMProviderInterface {
     switch (config.name) {
       case "openai":
-        return new OpenAIProvider(config);
+        return new LLMProviderInterface(new OpenAIProvider(config));
       case "anthropic":
-        return new AnthropicProvider(config);
+        return new LLMProviderInterface(new AnthropicProvider(config));
       default:
         console.warn(`Unknown provider: ${config.name}, defaulting to OpenAI`);
-        return new OpenAIProvider(config);
+        return new LLMProviderInterface(new OpenAIProvider(config));
     }
   }
 

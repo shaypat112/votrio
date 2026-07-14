@@ -13,6 +13,7 @@ export interface OutputConfig {
   format: ReportFormat;
   includeCodeSnippets: boolean;
   maxFindings: number;
+  verbose: boolean;
 }
 
 export class ReportGenerator {

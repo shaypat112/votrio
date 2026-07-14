@@ -107,7 +107,7 @@ export class AbstractionLayerDetector {
           "Project has data access and controller layers but no service layer",
         suggestion:
           "Consider adding a service layer to separate business logic from data access and presentation",
-        category: "architecture",
+        category: "architecture" as const,
       };
       return missingServiceLayer;
     }

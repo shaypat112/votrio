@@ -6,7 +6,7 @@
 import type { LLMProviderInterface, LLMResponse } from "./provider.js";
 import type { LLMProvider } from "../core/types.js";
 
-export class AnthropicProvider implements LLMProviderInterface {
+export class AnthropicProvider {
   name = "anthropic";
   private apiKey: string;
   private model: string;
@@ -20,6 +20,10 @@ export class AnthropicProvider implements LLMProviderInterface {
 
   isAvailable(): boolean {
     return !!this.apiKey;
+  }
+
+  async generate(prompt: string, options?: Record<string, unknown>): Promise<LLMResponse> {
+    return this.generateResponse(prompt);
   }
 
   async generateResponse(prompt: string): Promise<LLMResponse> {
@@ -52,7 +56,14 @@ export class AnthropicProvider implements LLMProviderInterface {
         throw new Error(`Anthropic API error: ${error}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as {
+        content: Array<{ text: string }>;
+        model: string;
+        usage: {
+          input_tokens: number;
+          output_tokens: number;
+        };
+      };
 
       return {
         content: data.content[0].text,

@@ -3,7 +3,25 @@
  * Abstraction for different LLM providers
  */
 
-import type { LLMResponse, LLMProvider } from "../core/types.js";
+import type { LLMProvider } from "../core/types.js";
+
+export interface LLMResponse {
+  content: string;
+  model: string;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
+
+export interface LLMProviderInterface {
+  name: string;
+  apiKey?: string;
+  model?: string;
+  endpoint?: string;
+  generate(prompt: string, options?: Record<string, unknown>): Promise<LLMResponse>;
+}
 
 export interface LLMProviderInterface {
   name: string;

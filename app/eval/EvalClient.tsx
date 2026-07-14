@@ -183,7 +183,7 @@ export default function EvalClient() {
 
     try {
       console.log("🔍 Starting repository evaluation for:", primaryRepoUrl);
-      
+
       // Fetch real AI-powered dashboard data
       const dashboardResponse = await fetch("/api/eval/dashboard-data", {
         method: "POST",
@@ -224,7 +224,7 @@ export default function EvalClient() {
       setSelectedNodeId(workspace.nodes[0]?.id ?? null);
       setActiveCommand("trace");
       setActiveTab("graph");
-      
+
       console.log("✅ Repository evaluation complete");
     } catch (runError) {
       console.error("❌ Evaluation error:", runError);
@@ -400,6 +400,12 @@ export default function EvalClient() {
       return graph.dashboardData.searchIndex;
     }
     // Fallback to actual graph data
+    const uniqueFolders = new Set<string>();
+    graph?.nodes.forEach((node: EvalNode) => {
+      const folder = node.path.split("/").slice(0, -1).join("/");
+      if (folder) uniqueFolders.add(folder);
+    });
+
     return {
       files:
         graph?.nodes.map((node: EvalNode) => ({
@@ -408,10 +414,12 @@ export default function EvalClient() {
           label: node.path.split("/").pop() || node.path,
           path: node.path,
         })) || [],
-      folders:
-        graph?.nodes
-          .map((node: EvalNode) => node.path.split("/").slice(0, -1).join("/"))
-          .filter(Boolean) || [],
+      folders: Array.from(uniqueFolders).map(folder => ({
+        id: folder,
+        type: "folder" as const,
+        label: folder.split("/").pop() || folder,
+        path: folder,
+      })),
       functions: [],
       classes: [],
       packages: [],
@@ -419,7 +427,12 @@ export default function EvalClient() {
       endpoints: [],
       imports: [],
       dependencies: [],
-      frameworks: metrics.frameworks || [],
+      frameworks: (metrics.frameworks || []).map(fw => ({
+        id: fw,
+        type: "framework" as const,
+        label: fw,
+        path: "root",
+      })),
     };
   }, [graph, metrics]);
 
@@ -512,6 +525,7 @@ export default function EvalClient() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
+      {console.log(searchData)}
       <GlobalSearch data={searchData} onResultClick={handleSearchResultClick} />
 
       <EvalRepoPicker

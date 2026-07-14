@@ -61,19 +61,18 @@ export function GlobalSearch({ data, onResultClick }: GlobalSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
-
   const allResults = useMemo(
     () => [
-      ...data.files,
-      ...data.folders,
-      ...data.functions,
-      ...data.classes,
-      ...data.packages,
-      ...data.vulnerabilities,
-      ...data.endpoints,
-      ...data.imports,
-      ...data.dependencies,
-      ...data.frameworks,
+      ...(data?.files ?? []),
+      ...(data?.folders ?? []),
+      ...(data?.functions ?? []),
+      ...(data?.classes ?? []),
+      ...(data?.packages ?? []),
+      ...(data?.vulnerabilities ?? []),
+      ...(data?.endpoints ?? []),
+      ...(data?.imports ?? []),
+      ...(data?.dependencies ?? []),
+      ...(data?.frameworks ?? []),
     ],
     [data],
   );
@@ -177,15 +176,15 @@ export function GlobalSearch({ data, onResultClick }: GlobalSearchProps) {
   const resultCounts = useMemo(
     () => ({
       all: allResults.length,
-      file: data.files.length,
-      folder: data.folders.length,
-      function: data.functions.length,
-      class: data.classes.length,
-      vulnerability: data.vulnerabilities.length,
-      endpoint: data.endpoints.length,
-      package: data.packages.length,
-      dependency: data.dependencies.length,
-      framework: data.frameworks.length,
+      file: data?.files?.length ?? 0,
+      folder: data?.folders?.length ?? 0,
+      function: data?.functions?.length ?? 0,
+      class: data?.classes?.length ?? 0,
+      vulnerability: data?.vulnerabilities?.length ?? 0,
+      endpoint: data?.endpoints?.length ?? 0,
+      package: data?.packages?.length ?? 0,
+      dependency: data?.dependencies?.length ?? 0,
+      framework: data?.frameworks?.length ?? 0,
     }),
     [allResults, data],
   );
