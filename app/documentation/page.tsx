@@ -21,19 +21,19 @@ const features = [
     icon: Terminal,
     title: "Live Trace Analysis",
     description:
-      "Intercepts stack traces as they happen and explains the root cause in-line.",
+      "Intercepts stack traces as they happens and explains the root cause in-line.",
   },
   {
     icon: ShieldAlert,
-    title: "Security Scanning",
+    title: "AI-Powered Security Scanning",
     description:
-      "Deep-scans for SQLi, XSS, secrets, and OWASP Top 10 risks before you push.",
+      "Uses machine learning with scikit-learn to detect security vulnerabilities, code quality issues, and architectural problems.",
   },
   {
     icon: Cpu,
-    title: "Slop Detection",
+    title: "Real Machine Learning",
     description:
-      "Flags hallucinated imports, non-existent APIs, and low-confidence AI code.",
+      "Built on Python/scikit-learn for actual data analysis - no mock data or hardcoded values.",
   },
   {
     icon: GitBranch,

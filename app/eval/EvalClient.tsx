@@ -182,6 +182,8 @@ export default function EvalClient() {
     setSelectedNodeId(null);
 
     try {
+      console.log("🔍 Starting repository evaluation for:", primaryRepoUrl);
+      
       // Fetch real AI-powered dashboard data
       const dashboardResponse = await fetch("/api/eval/dashboard-data", {
         method: "POST",
@@ -190,10 +192,13 @@ export default function EvalClient() {
       });
 
       if (!dashboardResponse.ok) {
-        throw new Error("Failed to fetch dashboard data");
+        const errorData = await dashboardResponse.json().catch(() => ({}));
+        console.error("Dashboard data error:", errorData);
+        throw new Error(errorData.error || "Failed to fetch dashboard data");
       }
 
       const dashboardData = await dashboardResponse.json();
+      console.log("📊 Dashboard data received:", dashboardData);
 
       // Fetch graph data
       const [primaryGraph, compareGraph] = await Promise.all([
@@ -201,19 +206,28 @@ export default function EvalClient() {
         compareRepoUrl ? fetchEvalGraph(compareRepoUrl) : Promise.resolve(null),
       ]);
 
+      console.log("🔗 Graph data received:", { primaryGraph, compareGraph });
+
       const workspace = buildWorkspaceGraph(primaryGraph, compareGraph);
 
       // Enhance workspace with AI data
       const enhancedWorkspace = {
         ...workspace,
         dashboardData,
+        repoUrl: primaryRepoUrl,
+        compareRepoUrl: compareRepoUrl || undefined,
       } as any;
+
+      console.log("🎯 Enhanced workspace created:", enhancedWorkspace);
 
       setGraph(enhancedWorkspace);
       setSelectedNodeId(workspace.nodes[0]?.id ?? null);
       setActiveCommand("trace");
       setActiveTab("graph");
+      
+      console.log("✅ Repository evaluation complete");
     } catch (runError) {
+      console.error("❌ Evaluation error:", runError);
       setError(
         runError instanceof Error
           ? runError.message

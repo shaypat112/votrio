@@ -4,7 +4,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { glob } from "glob";
 
-import { summarizeFindings } from "../lib/mistral";
+import { summarizeFindings as mistralSummarizeFindings } from "../lib/mistral";
 import { loadConfig } from "../config.js";
 
 type Severity = "low" | "medium" | "high" | "critical";
@@ -163,10 +163,10 @@ export async function scanCommand(
   const deduped = dedupe(findings);
   const aiSummary =
     aiEnabled && deduped.length > 0
-      ? await summarizeFindings(deduped, aiModel)
+      ? await mistralSummarizeFindings(deduped, aiModel)
       : null;
 
-  outputResults(deduped, options, aiSummary);
+  outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
 
   if (options.ci) handleCI(deduped, options);
 

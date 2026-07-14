@@ -18,7 +18,7 @@ export class AbstractionLayerDetector {
     // Detect missing service layer
     const missingServiceLayer = this.detectMissingServiceLayer(context);
     if (missingServiceLayer) {
-      findings.push(missingServiceServiceLayer);
+      findings.push(missingServiceLayer);
     }
 
     // Detect improper layering
@@ -98,7 +98,7 @@ export class AbstractionLayerDetector {
       const missingServiceLayer = {
         id: "missing-service-layer",
         type: "MISSING-SERVICE-LAYER",
-        severity: "medium",
+        severity: "medium" as const,
         score: 55,
         file: "project",
         line: 1,

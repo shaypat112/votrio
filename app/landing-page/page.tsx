@@ -21,17 +21,13 @@ import {
 import { useTheme } from "@/app/components/theme-provider";
 
 const scanLines = [
-  "$ votrio si-hack start",
-  "Mapping attack paths, weak auth, secrets, and unsafe data flows...",
-  "Debunking noisy findings and grouping the real issues by exploit chain...",
+  "$ votrio scan /backend",
+  "Reviewing code files ",
+  "Talking to the AI Agent and reviewing and restructuring unfactored AI slop code",
   "Report ready: issue-by-issue breakdown, suggested fixes, and next steps",
 ];
 
-const metrics = [
-  { label: "Sandbox mode", value: "Contained" },
-  { label: "Issue review", value: "Chain by chain" },
-  { label: "Fix output", value: "Actionable" },
-];
+
 
 const demoSteps = [
   {
@@ -55,7 +51,7 @@ const demoSteps = [
     severity: "low",
   },
   {
-    command: "$ votrio si-hack --suggest-fixes",
+    command: "$ votrio scan /backend",
     output: "Generated patch guidance, validation steps, and owner notes.",
     severity: "info",
   },
@@ -175,21 +171,7 @@ function TerminalCard() {
           </span>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {metrics.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-[1.25rem] border border-border bg-card px-4 py-3"
-            >
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                {item.label}
-              </p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
+
       </motion.div>
     </div>
   );
@@ -271,14 +253,9 @@ function InteractiveScanDemo() {
           <div className="rounded-full bg-primary/10 p-1.5">
             <ScanLine className="h-4 w-4 text-primary" />
           </div>
+
         </div>
-        <button
-          onClick={resetDemo}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium transition hover:bg-muted"
-        >
-          <RefreshCw className="h-3 w-3" />
-          Replay
-        </button>
+
       </div>
 
       <div className="rounded-xl border border-border bg-card/50 font-mono text-sm">
@@ -405,12 +382,10 @@ export default function LandingPage() {
 
             <div className="space-y-5">
               <h1 className="max-w-3xl text-[clamp(3rem,8vw,6rem)] font-semibold tracking-[-0.06em] text-balance">
-                Secure access and ethical hacking sandboxes
+                Review AI Slop and have production ready code get shipped
               </h1>
               <p className="max-w-xl text-lg leading-8 text-muted-foreground">
-                Votrio gives teams just-in-time access with clean temporary
-                controls and runs SI-Hack sandboxes that tear apart a target
-                system, debunk noise, and suggest real fixes.
+                Votrio secures AI-generated code before it reaches production. It analyzes code in the context of your entire application, detecting vulnerabilities, insecure design patterns, and scalability risks that traditional scanners miss. Votrio then generates production-ready fixes so teams can build faster without compromising security.
               </p>
             </div>
 

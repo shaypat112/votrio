@@ -333,7 +333,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href="/eval"
                   className="transition-colors hover:text-foreground"
                 >
-                  Eval
+                 3DView
                 </Link>
                 {/* Teams dropdown (moved from header right) */}
                 {user ? (

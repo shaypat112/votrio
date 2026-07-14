@@ -8,7 +8,9 @@
     "debugging",
     "security",
     "stack-trace",
-    "devtools"
+    "devtools",
+    "code-review",
+    "machine-learning"
   ],
   "homepage": "https://votrio.dev",
   "repository": {
@@ -22,14 +24,18 @@
     "votrio": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "ai_service.py",
+    "requirements.txt",
+    "setup_python.sh"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --watch",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "setup:python": "bash setup_python.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",

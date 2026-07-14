@@ -247,6 +247,11 @@ function ClusterHalos({
   focusNodeIds: Set<string> | null;
   tokens: ReturnType<typeof useEvalSceneTokens>;
 }) {
+  // Ensure we have data to render
+  if (!graph || !graph.nodes || graph.nodes.length === 0) {
+    return null;
+  }
+
   return (
     <>
       {sceneGraph.clusters.slice(0, 10).map((cluster) => {
@@ -1549,8 +1554,9 @@ export function EvalGraphScene({
           </div>
         </>
       ) : (
-        <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-          Choose one or two repositories to generate the 3D workspace.
+        <div className="flex h-full items-center justify-center p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Loading repository data...</p>
         </div>
       )}
     </div>

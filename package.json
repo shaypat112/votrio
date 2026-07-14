@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:backend": "cd backend && npm run build",
+    "install:backend": "cd backend && npm install && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.17",
@@ -27,7 +29,7 @@
     "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",
-    "votrio": "github:shaypat112/votrio"
+    "votrio": "file:./backend"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

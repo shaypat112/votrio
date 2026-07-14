@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 // src/index.ts
+import { pathToFileURL as pathToFileURL2 } from "url";
+
+// src/cli.ts
 import { Command } from "commander";
 import chalk6 from "chalk";
-import { createRequire } from "module";
+import { createRequire as createRequire2 } from "module";
 
 // src/commands/run.ts
 import { spawn } from "child_process";
@@ -52,18 +55,111 @@ function extractTraces(buffer) {
 
 // src/commands/run.ts
 import stripAnsi from "strip-ansi";
+
+// src/config.ts
+import fs from "fs/promises";
+import path from "path";
+import { pathToFileURL } from "url";
+import { createRequire } from "module";
+function defineConfig(config) {
+  return config;
+}
+var CONFIG_FILES = [
+  "votrio.config.mjs",
+  "votrio.config.js",
+  "votrio.config.cjs",
+  "votrio.config.json",
+  ".votrio/config.json"
+];
+var TS_CONFIG = "votrio.config.ts";
+async function loadConfig(cwd = process.cwd()) {
+  const warnings = [];
+  const found = await firstExisting(cwd, CONFIG_FILES);
+  if (!found) {
+    const tsPath = path.join(cwd, TS_CONFIG);
+    if (await exists(tsPath)) {
+      warnings.push(
+        `Found ${TS_CONFIG} but it is not loadable at runtime. Rename to votrio.config.mjs or votrio.config.json.`
+      );
+    }
+    return { config: {}, warnings };
+  }
+  try {
+    const config = await importConfig(found);
+    return { config: config ?? {}, source: found, warnings };
+  } catch (err) {
+    warnings.push(
+      `Failed to load ${path.relative(cwd, found)}: ${err?.message ?? String(err)}`
+    );
+    return { config: {}, source: found, warnings };
+  }
+}
+async function importConfig(filePath) {
+  if (filePath.endsWith(".json")) {
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw);
+  }
+  if (filePath.endsWith(".cjs")) {
+    const require2 = createRequire(import.meta.url);
+    const mod2 = require2(filePath);
+    return mod2?.default ?? mod2;
+  }
+  const mod = await import(pathToFileURL(filePath).href);
+  return mod?.default ?? mod;
+}
+async function firstExisting(cwd, files) {
+  for (const file of files) {
+    const p = path.join(cwd, file);
+    if (await exists(p)) return p;
+  }
+  return void 0;
+}
+async function exists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// src/commands/run.ts
 var HEADER = chalk.dim("\u25CF") + " " + chalk.bold("votrio");
+var DEFAULT_MODEL = "claude-sonnet-4-20250514";
 async function runCommand(userCommand, options) {
+  const { config, warnings, source } = await loadConfig();
+  if (options.verbose && warnings.length) {
+    for (const warning of warnings) {
+      console.log(chalk.yellow(`
+${HEADER} ${warning}
+`));
+    }
+  }
+  if (options.verbose && source) {
+    console.log(chalk.dim(`${HEADER} using config ${source}
+`));
+  }
+  const traceConfig = config.traces ?? {};
+  const envModel = process.env.VOTRIO_TRACE_MODEL || process.env.VOTRIO_MODEL || process.env.ANTHROPIC_MODEL;
+  const model = options.model !== DEFAULT_MODEL ? options.model : envModel || config.model || DEFAULT_MODEL;
   const apiKey = await getApiKey();
-  const aiEnabled = options.ai && !!apiKey;
+  const tracesEnabled = traceConfig.enabled ?? true;
+  const aiEnabled = options.ai && tracesEnabled && !!apiKey;
   console.log(
     `
 ${HEADER} ${chalk.dim("watching")} \u2014 node ${process.version}`
   );
   if (aiEnabled) {
     console.log(
-      `${chalk.dim("\u25CF")} ${chalk.dim("AI trace analysis")} ${chalk.green("enabled")} ${chalk.dim(`(${options.model.split("-")[1]})
+      `${chalk.dim("\u25CF")} ${chalk.dim("AI trace analysis")} ${chalk.green("enabled")} ${chalk.dim(`(${model.split("-")[1] ?? model})
 `)}`
+    );
+  } else if (options.ai && !tracesEnabled) {
+    console.log(
+      chalk.yellow(
+        `${chalk.dim("\u25CF")} AI disabled \u2014 traces are disabled in config
+`
+      )
     );
   } else if (options.ai && !apiKey) {
     console.log(
@@ -92,7 +188,7 @@ ${HEADER} ${chalk.dim("watching")} \u2014 node ${process.version}`
     if (traces.length > 0) {
       stderrBuffer = "";
       for (const trace of traces) {
-        await analyzeTrace(trace, options.model, apiKey);
+        await analyzeTrace(trace, model, apiKey);
       }
     }
   });
@@ -198,8 +294,8 @@ function parseCommand(input) {
 }
 
 // src/commands/init.ts
-import fs from "fs/promises";
-import path from "path";
+import fs2 from "fs/promises";
+import path2 from "path";
 import chalk2 from "chalk";
 import ora from "ora";
 var CONFIG_TEMPLATE = `import { defineConfig } from "votrio";
@@ -235,8 +331,9 @@ export default defineConfig({
 `;
 async function initCommand(options) {
   const cwd = process.cwd();
-  const configPath = path.join(cwd, "votrio.config.ts");
-  const votrioDir = path.join(cwd, ".votrio");
+  const configPath = path2.join(cwd, "votrio.config.mjs");
+  const legacyConfigPath = path2.join(cwd, "votrio.config.ts");
+  const votrioDir = path2.join(cwd, ".votrio");
   console.log(`
 ${chalk2.bold("votrio")} ${chalk2.dim("\u2014")} initializing
 `);
@@ -245,32 +342,32 @@ ${chalk2.bold("votrio")} ${chalk2.dim("\u2014")} initializing
   const detected = await detectStack(cwd);
   spinner.succeed(`Detected: ${chalk2.cyan(detected.join(", "))}`);
   const dirSpinner = ora("Creating .votrio/ directory...").start();
-  await fs.mkdir(votrioDir, { recursive: true });
-  await fs.writeFile(path.join(votrioDir, ".gitkeep"), "");
+  await fs2.mkdir(votrioDir, { recursive: true });
+  await fs2.writeFile(path2.join(votrioDir, ".gitkeep"), "");
   dirSpinner.succeed("Created .votrio/");
-  const configSpinner = ora("Writing votrio.config.ts...").start();
-  const exists = await fileExists(configPath);
-  if (exists) {
-    configSpinner.warn("votrio.config.ts already exists \u2014 skipping");
+  const configSpinner = ora("Writing votrio.config.mjs...").start();
+  const exists3 = await fileExists(configPath) || await fileExists(legacyConfigPath);
+  if (exists3) {
+    configSpinner.warn("votrio.config already exists \u2014 skipping");
   } else {
-    await fs.writeFile(configPath, CONFIG_TEMPLATE, "utf-8");
-    configSpinner.succeed("Created votrio.config.ts");
+    await fs2.writeFile(configPath, CONFIG_TEMPLATE, "utf-8");
+    configSpinner.succeed("Created votrio.config.mjs");
   }
   if (!options.skipGitignore) {
     const gitignoreSpinner = ora("Updating .gitignore...").start();
-    const gitignorePath = path.join(cwd, ".gitignore");
+    const gitignorePath = path2.join(cwd, ".gitignore");
     const entry = "\n# votrio\n.votrio/\n";
     const giExists = await fileExists(gitignorePath);
     if (giExists) {
-      const content = await fs.readFile(gitignorePath, "utf-8");
+      const content = await fs2.readFile(gitignorePath, "utf-8");
       if (!content.includes(".votrio/")) {
-        await fs.appendFile(gitignorePath, entry);
+        await fs2.appendFile(gitignorePath, entry);
         gitignoreSpinner.succeed("Added .votrio/ to .gitignore");
       } else {
         gitignoreSpinner.succeed(".gitignore already up to date");
       }
     } else {
-      await fs.writeFile(gitignorePath, entry.trim() + "\n");
+      await fs2.writeFile(gitignorePath, entry.trim() + "\n");
       gitignoreSpinner.succeed("Created .gitignore with .votrio/");
     }
   }
@@ -298,7 +395,7 @@ async function detectStack(cwd) {
     ["go.mod", "Go"]
   ];
   for (const [file, label] of checks) {
-    if (await fileExists(path.join(cwd, file))) {
+    if (await fileExists(path2.join(cwd, file))) {
       if (!detected.includes(label)) detected.push(label);
     }
   }
@@ -306,7 +403,7 @@ async function detectStack(cwd) {
 }
 async function fileExists(p) {
   try {
-    await fs.access(p);
+    await fs2.access(p);
     return true;
   } catch {
     return false;
@@ -317,49 +414,11 @@ function sleep(ms) {
 }
 
 // src/commands/scan.ts
-import fs2 from "fs/promises";
-import path2 from "path";
+import fs3 from "fs/promises";
+import path3 from "path";
 import chalk3 from "chalk";
 import ora2 from "ora";
 import { glob } from "glob";
-
-// src/lib/mistral.ts
-var MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-async function analyzeCode(prompt, model = "mistral-large-latest") {
-  if (!MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY not set");
-  try {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${MISTRAL_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages: [
-          {
-            role: "system",
-            content: "You are a security reviewer. Return concise findings and refactoring advice."
-          },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 500
-      })
-    });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text);
-    }
-    const data = await response.json();
-    return data?.choices?.[0]?.message?.content ?? null;
-  } catch (err) {
-    console.error("Mistral API error:", err.message);
-    return null;
-  }
-}
-
-// src/commands/scan.ts
 var SEVERITY_SCORE = {
   low: 30,
   medium: 55,
@@ -403,7 +462,23 @@ var QUICK_PATTERNS = [
   }
 ];
 async function scanCommand(scanPath = ".", options) {
-  const resolved = path2.resolve(process.cwd(), scanPath);
+  const { config, warnings } = await loadConfig();
+  if (warnings.length) {
+    for (const warning of warnings) {
+      console.log(chalk3.yellow(`
+${warning}
+`));
+    }
+  }
+  const scanConfig = config.scan ?? {};
+  const rulesPath = options.rules || scanConfig.rules || await defaultRulesPath(process.cwd());
+  const rules = await loadRules(rulesPath);
+  for (const warning of rules.warnings) {
+    console.log(chalk3.yellow(`
+${warning}
+`));
+  }
+  const resolved = path3.resolve(process.cwd(), scanPath);
   console.log(`
 ${chalk3.bold("votrio")} ${chalk3.dim("scan")}
 `);
@@ -414,13 +489,27 @@ ${chalk3.bold("votrio")} ${chalk3.dim("scan")}
     "dist/**",
     "build/**",
     "**/*.min.js",
+    ...scanConfig.ignore ?? [],
+    ...rules.ignore ?? [],
     ...options.ignore ?? []
   ];
+  const aiEnabled = options.ai || scanConfig.ai || process.env.VOTRIO_SCAN_AI === "true";
+  const aiModel = options.aiModel || scanConfig.aiModel || process.env.VOTRIO_SCAN_AI_MODEL || "mistral-large-latest";
+  const publishEnabled = options.publish || scanConfig.publish || process.env.VOTRIO_PUBLISH === "true";
   const files = await discoverFiles(resolved, ignore);
-  const findings = await scanFiles(files, options);
+  const findings = await scanFiles(files, {
+    ...options,
+    aiModel,
+    fix: options.fix || scanConfig.autoFix || false,
+    extraPatterns: rules.patterns
+  });
   const deduped = dedupe(findings);
-  outputResults(deduped, options);
+  const aiSummary = aiEnabled && deduped.length > 0 ? await summarizeFindings(deduped, aiModel) : null;
+  outputResults(deduped, options, aiSummary);
   if (options.ci) handleCI(deduped, options);
+  if (publishEnabled) {
+    await publishScanSummary(deduped);
+  }
 }
 async function discoverFiles(root, ignore) {
   const spinner = ora2("Discovering files").start();
@@ -435,23 +524,24 @@ async function discoverFiles(root, ignore) {
 async function scanFiles(files, options) {
   const spinner = ora2("Scanning").start();
   const findings = [];
+  const checks = [...QUICK_PATTERNS, ...options.extraPatterns ?? []];
   let index = 0;
   for (const file of files) {
     index++;
     spinner.text = `Scanning ${index}/${files.length}`;
     let content;
     try {
-      content = await fs2.readFile(file, "utf8");
+      content = await fs3.readFile(file, "utf8");
     } catch {
       continue;
     }
     const lines = content.split("\n");
-    for (const check of QUICK_PATTERNS) {
+    for (const check of checks) {
       const matches = [...content.matchAll(check.pattern)];
       for (const match of matches) {
         const line = content.slice(0, match.index).split("\n").length;
         findings.push({
-          file: path2.relative(process.cwd(), file),
+          file: path3.relative(process.cwd(), file),
           line,
           severity: check.severity,
           score: SEVERITY_SCORE[check.severity],
@@ -463,39 +553,54 @@ async function scanFiles(files, options) {
         });
       }
     }
-    if (options.ai) {
-      const ai = await runAIAnalysis(content, options.aiModel);
-      if (ai) {
-        findings.push({
-          file: path2.relative(process.cwd(), file),
-          line: 1,
-          severity: "medium",
-          score: 60,
-          type: "AI_ANALYSIS",
-          message: "AI detected potential issues",
-          snippet: ai.slice(0, 200),
-          suggestion: "Review AI suggestions",
-          source: "ai"
-        });
-      }
-    }
   }
   spinner.succeed(`Scanned ${files.length} files`);
   return findings;
 }
-async function runAIAnalysis(code, model) {
+async function defaultRulesPath(cwd) {
+  const p = path3.join(cwd, ".votrio", "rules.json");
+  return await exists2(p) ? p : void 0;
+}
+async function loadRules(rulesPath) {
+  const warnings = [];
+  if (!rulesPath) {
+    return { patterns: [], ignore: [], warnings };
+  }
+  const absolute = path3.isAbsolute(rulesPath) ? rulesPath : path3.join(process.cwd(), rulesPath);
+  if (!await exists2(absolute)) {
+    warnings.push(`Rules file not found: ${rulesPath}`);
+    return { patterns: [], ignore: [], warnings };
+  }
   try {
-    const prompt = `
-Analyze this code for vulnerabilities, inefficiencies, or insecure patterns.
-
-Respond briefly.
-
-${code.slice(0, 6e3)}
-`;
-    const result = await analyzeCode(prompt, model);
-    return result;
-  } catch {
-    return null;
+    const raw = await fs3.readFile(absolute, "utf8");
+    const data = JSON.parse(raw);
+    const patterns = [];
+    for (const rule of data.patterns ?? []) {
+      if (!rule.pattern || !rule.severity || !rule.type || !rule.message) {
+        warnings.push(`Invalid rule in ${rulesPath} \u2014 missing required fields.`);
+        continue;
+      }
+      try {
+        patterns.push({
+          pattern: new RegExp(rule.pattern, rule.flags),
+          severity: rule.severity,
+          type: rule.type,
+          message: rule.message,
+          suggestion: rule.suggestion
+        });
+      } catch {
+        warnings.push(`Invalid regex in ${rulesPath}: ${rule.pattern}`);
+      }
+    }
+    return {
+      patterns,
+      ignore: data.ignore ?? [],
+      warnings
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    warnings.push(`Failed to parse ${rulesPath}: ${message}`);
+    return { patterns: [], ignore: [], warnings };
   }
 }
 function dedupe(findings) {
@@ -508,9 +613,9 @@ function dedupe(findings) {
     (a, b) => SEVERITY_SCORE[b.severity] - SEVERITY_SCORE[a.severity]
   );
 }
-function outputResults(findings, options) {
+function outputResults(findings, options, aiSummary) {
   if (options.format === "json") {
-    console.log(JSON.stringify(findings, null, 2));
+    console.log(JSON.stringify({ findings, aiSummary: aiSummary ?? null }, null, 2));
     return;
   }
   if (options.format === "markdown") {
@@ -522,6 +627,16 @@ function outputResults(findings, options) {
         `| ${f.severity} | ${f.file} | ${f.line} | ${f.type} | ${f.message} |`
       );
     }
+    if (aiSummary) {
+      console.log(`
+## AI Summary
+
+${aiSummary}`);
+    }
+    return;
+  }
+  if (options.format === "sarif") {
+    console.log(JSON.stringify(toSarif(findings), null, 2));
     return;
   }
   console.log();
@@ -542,13 +657,175 @@ function outputResults(findings, options) {
       console.log(`  ${chalk3.dim("fix")} ${chalk3.dim(f.suggestion)}`);
     console.log();
   }
+  if (aiSummary) {
+    console.log(chalk3.cyan("AI summary"));
+    console.log(`  ${chalk3.dim(aiSummary)}
+`);
+  }
   console.log(`${findings.length} issue(s) detected
 `);
+}
+function toSarif(findings) {
+  const rules = [];
+  const ruleIndex = /* @__PURE__ */ new Map();
+  for (const f of findings) {
+    if (ruleIndex.has(f.type)) continue;
+    ruleIndex.set(f.type, rules.length);
+    rules.push({
+      id: f.type,
+      name: f.type,
+      shortDescription: { text: f.message },
+      properties: { severity: f.severity, score: f.score }
+    });
+  }
+  const results = findings.map((f) => ({
+    ruleId: f.type,
+    level: sarifLevel(f.severity),
+    message: { text: f.message },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: f.file },
+          region: { startLine: Math.max(1, f.line) }
+        }
+      }
+    ],
+    properties: { severity: f.severity, score: f.score }
+  }));
+  return {
+    $schema: "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "votrio",
+            informationUri: "https://votrio.dev",
+            rules
+          }
+        },
+        results
+      }
+    ]
+  };
+}
+function sarifLevel(severity) {
+  switch (severity) {
+    case "critical":
+    case "high":
+      return "error";
+    case "medium":
+      return "warning";
+    default:
+      return "note";
+  }
 }
 function handleCI(findings, options) {
   const threshold = SEVERITY_SCORE[options.failOn];
   const fail = findings.some((f) => SEVERITY_SCORE[f.severity] >= threshold);
   if (fail) process.exit(1);
+}
+async function publishScanSummary(findings, options) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!supabaseUrl || !supabaseAnonKey || !accessToken) {
+    console.log(
+      chalk3.yellow(
+        "\nPublish skipped: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_ACCESS_TOKEN are required.\n"
+      )
+    );
+    return;
+  }
+  const repo = options?.repoOverride || await inferRepoSlug(process.cwd());
+  const { total, severity, avgScore } = summarizeFindings(findings);
+  const userId = decodeUserId(accessToken);
+  const payload = {
+    repo,
+    created_at: (/* @__PURE__ */ new Date()).toISOString(),
+    severity,
+    issues: total,
+    score: avgScore,
+    findings: { list: findings }
+  };
+  if (userId) payload.user_id = userId;
+  const spinner = ora2("Publishing scan summary...").start();
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/scan_history`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      spinner.fail(`Publish failed: ${text}`);
+      return;
+    }
+    spinner.succeed("Published scan summary");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    spinner.fail(`Publish failed: ${message}`);
+  }
+}
+function summarizeFindings(findings) {
+  const total = findings.length;
+  const maxScore = findings.reduce((max, item) => Math.max(max, item.score), 0);
+  const severity = findings.find((item) => item.score === maxScore)?.severity ?? "low";
+  const avgScore = total > 0 ? Math.round(findings.reduce((sum, item) => sum + item.score, 0) / total) : 0;
+  return { total, severity, avgScore };
+}
+function decodeUserId(token) {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const json = Buffer.from(payload, "base64url").toString("utf8");
+    const data = JSON.parse(json);
+    return data.sub ?? data.user_id ?? null;
+  } catch {
+    return null;
+  }
+}
+async function inferRepoSlug(cwd) {
+  const gitConfigPath = path3.join(cwd, ".git", "config");
+  if (await exists2(gitConfigPath)) {
+    try {
+      const content = await fs3.readFile(gitConfigPath, "utf8");
+      const match = content.match(/\[remote "origin"\][^\[]*?url = (.+)/);
+      if (match?.[1]) {
+        const url = match[1].trim();
+        const slug = parseRepoSlug(url);
+        if (slug) return slug;
+      }
+    } catch {
+    }
+  }
+  return path3.basename(cwd);
+}
+function parseRepoSlug(remoteUrl) {
+  if (remoteUrl.startsWith("git@")) {
+    const match = remoteUrl.match(/:(.+?)(\.git)?$/);
+    return match?.[1] ?? null;
+  }
+  try {
+    const url = new URL(remoteUrl);
+    const slug = url.pathname.replace(/^\/+/, "").replace(/\.git$/, "");
+    return slug || null;
+  } catch {
+    return null;
+  }
+}
+async function exists2(p) {
+  try {
+    await fs3.access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // src/commands/auth.ts
@@ -575,10 +852,10 @@ ${chalk4.green("\u2713")} ANTHROPIC_API_KEY found in environment \u2014 votrio w
     return;
   }
   console.log(`
-${chalk4.bold("votrio")} ${chalk4.dim("\u2014 authenticate")}
+${chalk4.bold("votrio")} ${chalk4.dim("\u2014 Enable AI Logic ")}
 `);
   console.log(
-    chalk4.dim("  Your key is stored locally and never transmitted to votrio servers.\n")
+    chalk4.dim("  Your key is stored locally and never accesed publicly.\n")
   );
   const { apiKey } = await inquirer.prompt([
     {
@@ -635,29 +912,40 @@ ${chalk5.dim("\u25CF")} ${chalk5.bold(pkgName)} update available ${chalk5.dim(
   }
 }
 
-// src/index.ts
-var require2 = createRequire(import.meta.url);
-var pkg = require2("../package.json");
-checkUpdate(pkg.name, pkg.version);
-var program = new Command();
-program.name("votrio").description(
-  chalk6.bold("votrio") + " \u2014 AI-powered terminal trace analysis & security scanning"
-).version(pkg.version, "-v, --version", "print current version").helpOption("-h, --help", "display help");
-program.command("init").description("initialize votrio in the current project").option("--skip-gitignore", "do not modify .gitignore").action(initCommand);
-program.command("run <command>").description('wrap a process and analyze its output (e.g. votrio run "npm start")').option("--no-ai", "disable AI analysis, just pipe output").option("--model <model>", "Anthropic model to use", "claude-sonnet-4-20250514").option("--verbose", "print debug info from votrio itself").allowUnknownOption().action(runCommand);
-program.command("scan [path]").description("scan a directory for security vulnerabilities (default: .)").option("--fix", "auto-apply safe patches where possible").option("--ci", "exit with code 1 if issues found (for CI pipelines)").option("--fail-on <severity>", "fail on: low | medium | high | critical", "high").option("--format <fmt>", "output format: text | json | markdown | sarif", "text").option("--ignore <patterns...>", "glob patterns to ignore").option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)").option("--watch", "daemon mode: rescan on file changes").option("--publish", "publish scan summary to Supabase scan_history").option("--ai", "enable AI refactoring suggestions via Mistral").option("--ai-model <model>", "Mistral model name", "mistral-large-latest").action(scanCommand);
-program.command("auth").description("configure your Anthropic API key").option("--clear", "remove stored credentials").action(authCommand);
-program.on("command:*", (operands) => {
-  console.error(
-    chalk6.red(`
+// src/cli.ts
+function runCli() {
+  const require2 = createRequire2(import.meta.url);
+  const pkg = require2("../package.json");
+  checkUpdate(pkg.name, pkg.version);
+  const program = new Command();
+  program.name("votrio").description(
+    chalk6.bold("votrio") + " \u2014 AI-powered terminal trace analysis & security scanning"
+  ).version(pkg.version, "-v, --version", "print current version").helpOption("-h, --help", "display help");
+  program.command("init").description("initialize votrio in the current project").option("--skip-gitignore", "do not modify .gitignore").action(initCommand);
+  program.command("run <command>").description('wrap a process and analyze its output (e.g. votrio run "npm start")').option("--no-ai", "disable AI analysis, just pipe output").option("--model <model>", "Anthropic model to use", "claude-sonnet-4-20250514").option("--verbose", "print debug info from votrio itself").allowUnknownOption().action(runCommand);
+  program.command("scan [path]").description("scan a directory for security vulnerabilities (default: .)").option("--fix", "auto-apply safe patches where possible").option("--ci", "exit with code 1 if issues found (for CI pipelines)").option("--fail-on <severity>", "fail on: low | medium | high | critical", "high").option("--format <fmt>", "output format: text | json | markdown | sarif", "text").option("--ignore <patterns...>", "glob patterns to ignore").option("--rules <path>", "path to custom rules JSON (default: .votrio/rules.json)").option("--watch", "daemon mode: rescan on file changes").option("--publish", "publish scan summary to Supabase scan_history").option("--ai", "enable AI refactoring suggestions via Mistral").option("--ai-model <model>", "Mistral model name", "mistral-large-latest").action(scanCommand);
+  program.command("auth").description("configure your Anthropic API key").option("--clear", "remove stored credentials").action(authCommand);
+  program.on("command:*", (operands) => {
+    console.error(
+      chalk6.red(`
 Error: unknown command '${operands[0]}'
 `)
-  );
-  console.log(`Run ${chalk6.cyan("votrio --help")} to see available commands.
+    );
+    console.log(`Run ${chalk6.cyan("votrio --help")} to see available commands.
 `);
-  process.exit(1);
-});
-program.parse(process.argv);
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
+    process.exit(1);
+  });
+  program.parse(process.argv);
+  if (!process.argv.slice(2).length) {
+    program.outputHelp();
+  }
 }
+
+// src/index.ts
+var isMain = process.argv[1] && pathToFileURL2(process.argv[1]).href === import.meta.url;
+if (isMain) {
+  runCli();
+}
+export {
+  defineConfig
+};
