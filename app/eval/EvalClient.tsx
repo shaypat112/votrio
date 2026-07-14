@@ -23,6 +23,7 @@ import type {
   EvalWorkspaceGraph,
 } from "./lib/types";
 import { buildWorkspaceGraph } from "./lib/workspace";
+import { Z_UNKNOWN } from "node:zlib";
 
 async function fetchEvalGraph(repoUrl: string) {
   const res = await fetch("/api/eval/repo", {
@@ -427,7 +428,9 @@ export default function EvalClient() {
       endpoints: [],
       imports: [],
       dependencies: [],
-      frameworks: (metrics.frameworks || []).map(fw => ({
+      frameworks: (metrics.frameworks || []).map(						(
+							fw: unknown
+						)=> ({
         id: fw,
         type: "framework" as const,
         label: fw,

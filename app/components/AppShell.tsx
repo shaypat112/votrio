@@ -335,6 +335,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                  3DView
                 </Link>
+                <Link
+                  href="/partners"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Partners
+                </Link>
                 {/* Teams dropdown (moved from header right) */}
                 {user ? (
                   <DropdownMenu>
