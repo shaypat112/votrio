@@ -99,6 +99,38 @@ export default function DocsLayout({
                 </li>
               </ul>
             </div>
+
+            <div>
+              <h4 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                Features & Analysis
+              </h4>
+              <ul className="space-y-3 text-sm">
+                <li>
+                  <Link
+                    href="/documentation/stack-traces"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Stack Traces
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/ai-detection"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    AI Detection & Architecture
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/documentation/config"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Configuration
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </aside>
