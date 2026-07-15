@@ -7,6 +7,7 @@ import TeamProvider from "./components/TeamProvider";
 import { Geist } from "next/font/google";
 import { cn } from "./lib/utils";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -39,6 +40,7 @@ export default function RootLayout({
           <TeamProvider>
             <SettingsProvider>
               <AppShell>{children}</AppShell>
+              <Analytics />
             </SettingsProvider>
           </TeamProvider>
         </ThemeProvider>
