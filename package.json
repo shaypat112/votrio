@@ -11,6 +11,7 @@
     "install:backend": "cd backend && npm install && npm run build"
   },
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "@radix-ui/react-tabs": "^1.1.17",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
