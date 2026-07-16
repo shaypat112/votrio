@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, CreditCard } from "lucide-react";
 
 function getDisplayName(user: User) {
   const meta = user.user_metadata ?? {};
@@ -473,7 +473,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     className="bg-card text-foreground"
                   >
                     <DropdownMenuLabel>{displayName}</DropdownMenuLabel>
-
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/billing" className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Billing
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
                       Sign out
                     </DropdownMenuItem>

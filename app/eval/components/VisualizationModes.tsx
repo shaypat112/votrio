@@ -195,12 +195,7 @@ export function VisualizationModes({
     icon: any;
     description: string;
   }> = [
-    {
-      id: "force-directed",
-      label: "Force Directed",
-      icon: Network,
-      description: "Physics-based layout",
-    },
+
     {
       id: "layered",
       label: "Layered",

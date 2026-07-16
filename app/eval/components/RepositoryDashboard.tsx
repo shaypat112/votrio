@@ -23,6 +23,7 @@ import {
   Download,
   Share2,
 } from "lucide-react";
+import { AIExecutiveSummary } from "./AIExecutiveSummary";
 
 interface RepositoryMetrics {
   totalFiles: number;
@@ -512,29 +513,12 @@ export function RepositoryDashboard({
       </Card>
 
       {/* AI Executive Summary */}
-      {aiSummary && (
-        <Card className="subtle-border bg-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Cpu className="h-5 w-5" />
-              AI Executive Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{aiSummary}</p>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export Report
-              </Button>
-              <Button variant="outline" size="sm">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <AIExecutiveSummary
+        security={security}
+        codeQuality={codeQuality}
+        metrics={metrics}
+        aiSummary={aiSummary}
+      />
     </div>
   );
 }

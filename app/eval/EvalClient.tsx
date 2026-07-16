@@ -555,7 +555,6 @@ export default function EvalClient() {
             <TabsTrigger value="dashboard">Intelligence</TabsTrigger>
             <TabsTrigger value="3d">3D Visualization</TabsTrigger>
             <TabsTrigger value="inspector">File Inspector</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="graph" className="mt-6">
@@ -603,49 +602,6 @@ export default function EvalClient() {
                   />
                 </div>
               )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="settings" className="mt-6">
-            <div className="subtle-border bg-card rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                Visualization Settings
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Auto-layout nodes</p>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically arrange nodes in the graph
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Color scheme</p>
-                    <p className="text-sm text-muted-foreground">
-                      Choose how nodes are colored
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Edge visibility</p>
-                    <p className="text-sm text-muted-foreground">
-                      Control which connections are shown
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-              </div>
             </div>
           </TabsContent>
         </Tabs>

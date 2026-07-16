@@ -343,17 +343,7 @@ export function FileInspector({ file, onClose }: FileInspectorProps) {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-4">
-          <Button variant="outline" size="sm" className="flex-1">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            View Source
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1">
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Path
-          </Button>
-        </div>
+
       </CardContent>
     </Card>
   );

@@ -22,7 +22,6 @@ const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
   { id: "security", label: "Security", icon: Shield },
   { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "scanning", label: "Scanning", icon: Zap },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },

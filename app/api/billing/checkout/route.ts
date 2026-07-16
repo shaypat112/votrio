@@ -31,12 +31,13 @@ export async function POST(request: Request) {
     // Map plan IDs to Stripe price IDs
     const priceMap: Record<string, string> = {
       pro: pricePro || "",
+      team: priceTeam || "",
       premium: pricePremium || "",
     };
 
     const priceId = priceMap[planId];
     if (!priceId) {
-      return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid plan ID or Stripe not configured" }, { status: 400 });
     }
 
     const env = getSupabaseEnv();

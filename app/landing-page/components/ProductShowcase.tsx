@@ -13,9 +13,7 @@ export function ProductShowcase() {
   return (
     <section id="product" className="border-t border-border py-24">
       <FadeIn className="text-center">
-        <div className="flex justify-center">
-          <Eyebrow icon={Play}>Live sandbox</Eyebrow>
-        </div>
+
         <h2 className="mx-auto mt-4 max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
           An AI security engineer that already knows your codebase.
         </h2>

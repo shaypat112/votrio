@@ -95,7 +95,7 @@ export function SecuritySection() {
             Cancel
           </GhostButton>
         </div>
-        
+
         {status && (
           <p className="text-xs text-green-600 dark:text-green-400">{status}</p>
         )}

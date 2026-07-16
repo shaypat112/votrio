@@ -64,9 +64,7 @@ export function ScanTerminal() {
     setLines((prev) => [...prev, { id: nextId(), kind, text, severity }]);
   }, []);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [lines]);
+
 
   const printLines = useCallback(
     async (entries: { text: string; severity?: Severity; delay?: number }[]) => {
