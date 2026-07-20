@@ -1,4 +1,4 @@
-import { runGitHubScan, type ScanOptions, type Finding } from "@/app/services/githubScanner";
+import { runGitHubScan, type ScanOptions, type Finding, type ScanProgress } from "@/app/services/githubScanner";
 import { decodeUserId, getSupabaseEnv, supabaseFetch } from "@/app/lib/server/supabaseRest";
 import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { createNotification } from "@/app/lib/server/notifications";
@@ -20,12 +20,14 @@ export async function handleGitHubScan(input: {
   options?: ScanOptions;
   accessToken?: string;
   teamId?: string | null;
+  onProgress?: ScanProgress;
 }) {
   const env = getSupabaseEnv();
-  const accessToken: any = input.accessToken;
+  const accessToken = input.accessToken;
+  if (!accessToken) throw new Error("Unauthorized");
   const userId = accessToken ? decodeUserId(accessToken) : null;
 
-  const result = await runGitHubScan(input.repoUrl, input.options ?? {});
+  const result = await runGitHubScan(input.repoUrl, input.options ?? {}, input.onProgress);
   const { total, severity, avgScore } = summarizeFindings(result.findings);
 
   const scanPayload: Record<string, unknown> = {

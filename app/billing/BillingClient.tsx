@@ -1,512 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { AlertCircle, CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  CreditCard,
-  CheckCircle,
-  AlertCircle,
-  Calendar,
-  FileText,
-  ArrowRight,
-  Loader2,
-  Crown,
-  Users,
-  Zap,
-  LogIn,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-type BillingSummary = {
-  configured: boolean;
-  customer: { stripeCustomerId: string } | null;
-  subscription: {
-    status: string;
-    priceId: string | null;
-    planName: string;
-    currentPeriodEnd: string | null;
-  } | null;
-  invoices: Array<{
-    id: string;
-    month: string;
-    amount: number;
-    status: string;
-  }>;
-};
+type BillingSummary = { configured: boolean; subscription: { status: string; planName: string; currentPeriodEnd: string | null } | null; invoices: Array<{ id: string; month: string; amount: number; status: string }> };
+type Plan = { id: string; name: string; description: string; amount: number; currency: string; interval: string; features: string[] };
 
-type Plan = {
-  id: string;
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-  popular?: boolean;
-  priceId?: string;
-};
-
-const PLANS: Plan[] = [
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$29",
-    description: "For individual developers",
-    features: [
-      "Unlimited repository scans",
-      "AI-powered security analysis",
-      "Priority support",
-      "Advanced threat detection",
-      "Custom integrations",
-    ],
-    popular: true,
-    priceId: "pro",
-  },
-  {
-    id: "team",
-    name: "Team",
-    price: "$99",
-    description: "For small teams",
-    features: [
-      "Everything in Pro",
-      "Up to 10 team members",
-      "Team dashboard",
-      "Shared billing",
-      "Role-based access",
-      "Team analytics",
-    ],
-    priceId: "team",
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: "Custom",
-    description: "For large organizations",
-    features: [
-      "Everything in Team",
-      "Unlimited team members",
-      "SSO/SAML integration",
-      "Dedicated support",
-      "Custom contracts",
-      "SLA guarantees",
-    ],
-  },
-];
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
+declare global {
+  interface Window { Stripe?: (key: string) => { initEmbeddedCheckout: (options: { fetchClientSecret: () => Promise<string> }) => Promise<{ mount: (target: string) => void; destroy: () => void }> }; }
 }
 
-function formatPlanName(planName: string) {
-  switch (planName.toLowerCase()) {
-    case "pro":
-      return "Pro Plan";
-    case "team":
-      return "Team Plan";
-    case "premium":
-      return "Premium Plan";
-    default:
-      return planName;
-  }
-}
+function currency(amount: number, code: string) { return new Intl.NumberFormat("en-US", { style: "currency", currency: code.toUpperCase() }).format(amount / 100); }
 
-function getSubscriptionStatusColor(status: string) {
-  switch (status.toLowerCase()) {
-    case "active":
-      return "bg-green-500/10 text-green-500 border-green-500/20";
-    case "trialing":
-      return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-    case "past_due":
-      return "bg-red-500/10 text-red-500 border-red-500/20";
-    case "canceled":
-      return "bg-gray-500/10 text-gray-500 border-gray-500/20";
-    default:
-      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-  }
-}
+function EmbeddedCheckout({ clientSecret, publishableKey, onClose }: { clientSecret: string; publishableKey: string; onClose: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let checkout: { mount: (target: string) => void; destroy: () => void } | null = null;
+    const mount = async () => {
+      try {
+        if (!window.Stripe) {
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement("script"); script.src = "https://js.stripe.com/clover/stripe.js"; script.async = true;
+            script.onload = () => resolve(); script.onerror = () => reject(new Error("Unable to load Stripe's secure payment form.")); document.head.appendChild(script);
+          });
+        }
+        if (!window.Stripe) throw new Error("Stripe payment form is unavailable.");
+        checkout = await window.Stripe(publishableKey).initEmbeddedCheckout({ fetchClientSecret: async () => clientSecret });
+        checkout.mount("#votrio-embedded-checkout");
+      } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load checkout."); }
+    };
+    void mount();
+    return () => checkout?.destroy();
+  }, [clientSecret, publishableKey]);
 
-function getSubscriptionStatusIcon(status: string) {
-  switch (status.toLowerCase()) {
-    case "active":
-      return <CheckCircle className="h-4 w-4" />;
-    case "trialing":
-      return <Zap className="h-4 w-4" />;
-    case "past_due":
-      return <AlertCircle className="h-4 w-4" />;
-    case "canceled":
-      return <AlertCircle className="h-4 w-4" />;
-    default:
-      return <AlertCircle className="h-4 w-4" />;
-  }
+  return <Card className="border-primary/30"><CardHeader><div className="flex items-center justify-between gap-3"><div><CardTitle>Secure checkout</CardTitle><CardDescription>Payment fields are securely hosted by Stripe inside Votrio.</CardDescription></div><Button variant="ghost" onClick={onClose}>Close</Button></div></CardHeader><CardContent>{error ? <p role="alert" className="text-sm text-destructive">{error}</p> : <div id="votrio-embedded-checkout" className="min-h-96" />}</CardContent></Card>;
 }
 
 export function BillingClient() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [summary, setSummary] = useState<BillingSummary | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = unknown yet
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [checkoutLoadingPlanId, setCheckoutLoadingPlanId] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [checkout, setCheckout] = useState<{ clientSecret: string; publishableKey: string } | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadBillingSummary();
-  }, []);
+  const token = useCallback(async () => (await supabase.auth.getSession()).data.session?.access_token ?? null, [supabase]);
+  const load = useCallback(async () => {
+    const accessToken = await token();
+    if (!accessToken) { setError("Sign in to view plans and make a payment."); setLoading(false); return; }
+    const headers = buildAuthHeaders(accessToken);
+    const [summaryResponse, plansResponse] = await Promise.all([fetch("/api/billing/summary", { headers }), fetch("/api/billing/plans", { headers })]);
+    const [summaryData, plansData] = await Promise.all([summaryResponse.json().catch(() => ({})), plansResponse.json().catch(() => ({}))]);
+    if (!summaryResponse.ok || !plansResponse.ok) setError(summaryData.error ?? plansData.error ?? "Unable to load billing.");
+    else { setSummary(summaryData as BillingSummary); setPlans(plansData.plans ?? []); }
+    setLoading(false);
+  }, [token]);
+  useEffect(() => { void load(); }, [load]);
 
-  const getAccessToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
-  };
-
-  const loadBillingSummary = async () => {
-    setLoading(true);
-    setError(null);
+  const beginCheckout = async (planId: string) => {
+    const accessToken = await token(); if (!accessToken) { setError("Sign in to make a payment."); return; }
+    setLoadingPlan(planId); setError(null);
     try {
-      const accessToken = await getAccessToken();
-
-      // No session is a valid, expected state for a public page — not an error.
-      if (!accessToken) {
-        setIsAuthenticated(false);
-        setSummary(null);
-        setLoading(false);
-        return;
-      }
-
-      setIsAuthenticated(true);
-
-      const res = await fetch("/api/billing/summary", {
-        headers: buildAuthHeaders(accessToken),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        setError(data?.error ?? "Unable to load billing summary.");
-        setLoading(false);
-        return;
-      }
-
-      setSummary(data as BillingSummary);
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load billing information.");
-      setLoading(false);
-    }
+      const response = await fetch("/api/billing/checkout", { method: "POST", headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }), body: JSON.stringify({ planId, billingCycle: "monthly" }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.clientSecret || !data.publishableKey) throw new Error(data.error ?? "Checkout could not be started.");
+      setCheckout({ clientSecret: data.clientSecret, publishableKey: data.publishableKey });
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Checkout could not be started."); }
+    finally { setLoadingPlan(null); }
   };
 
-  const goToSignIn = (redirectTo: string) => {
-    const params = new URLSearchParams({ redirect: redirectTo });
-    window.location.href = `/login?${params.toString()}`;
-  };
+  if (loading) return <div role="status" className="flex min-h-80 items-center justify-center"><Loader2 className="animate-spin" /><span className="sr-only">Loading billing</span></div>;
+  return <div className="mx-auto max-w-6xl space-y-8"><header><Badge variant="outline">Test mode</Badge><h1 className="mt-3 text-3xl font-semibold">Billing</h1><p className="mt-2 text-muted-foreground">Subscriptions and invoices are synchronized from Stripe to your Supabase billing record through verified webhooks.</p></header>
+    {error && <div role="alert" className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
+    {summary?.subscription && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-medium">{summary.subscription.planName}</p><p className="text-sm text-muted-foreground">{summary.subscription.currentPeriodEnd ? `Renews ${new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()}` : "Subscription period pending sync"}</p></div><Badge variant="outline">{summary.subscription.status}</Badge></CardContent></Card>}
+    {checkout ? <EmbeddedCheckout {...checkout} onClose={() => setCheckout(null)} /> : <section><h2 className="text-xl font-semibold">Choose a plan</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{plans.map((plan) => <Card key={plan.id} className="relative"><CardHeader><CardTitle>{plan.name}</CardTitle><CardDescription>{plan.description}</CardDescription><p className="mt-3 text-3xl font-semibold">{currency(plan.amount, plan.currency)}<span className="text-sm font-normal text-muted-foreground">/{plan.interval}</span></p></CardHeader><CardContent><ul className="space-y-2 text-sm">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />{feature}</li>)}</ul><Button className="mt-6 w-full" onClick={() => void beginCheckout(plan.id)} disabled={loadingPlan !== null}>{loadingPlan === plan.id ? <Loader2 className="animate-spin" /> : <CreditCard />} Subscribe securely</Button></CardContent></Card>)}</div>{plans.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">No Stripe plans are configured for this environment.</CardContent></Card>}</section>}
 
-  const startCheckout = async (planId: string) => {
-    if (planId === "enterprise") {
-      contactEnterprise();
-      return;
-    }
-
-    try {
-      setCheckoutLoadingPlanId(planId);
-      setError(null);
-
-      const accessToken = await getAccessToken();
-
-      if (!accessToken) {
-        // Anonymous visitor selected a plan — send them to sign in, then back here.
-        goToSignIn(`/billing?plan=${planId}`);
-        return;
-      }
-
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: buildAuthHeaders(accessToken, {
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify({ planId, billingCycle: "monthly" }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Unable to start checkout process.");
-        return;
-      }
-
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError("Checkout session could not be created.");
-      }
-    } catch (err) {
-      setError("Failed to start checkout process.");
-    } finally {
-      setCheckoutLoadingPlanId(null);
-    }
-  };
-
-  const openBillingPortal = async () => {
-    try {
-      setPortalLoading(true);
-      setError(null);
-
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        goToSignIn("/billing");
-        return;
-      }
-
-      const res = await fetch("/api/billing/portal", {
-        method: "POST",
-        headers: buildAuthHeaders(accessToken, {
-          "Content-Type": "application/json",
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error ?? "Unable to open billing portal.");
-        return;
-      }
-
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError("Billing portal link could not be created.");
-      }
-    } catch (err) {
-      setError("Failed to open billing portal.");
-    } finally {
-      setPortalLoading(false);
-    }
-  };
-
-  const contactEnterprise = () => {
-    window.location.href = "mailto:sales@votrio.com?subject=Enterprise Plan Inquiry";
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]" role="status" aria-live="polite">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="sr-only">Loading billing information…</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Billing & Plans</h1>
-        <p className="text-muted-foreground">
-          {isAuthenticated
-            ? "Manage your subscription and payment methods"
-            : "Compare plans and find the right fit — sign in to manage an existing subscription"}
-        </p>
-      </div>
-
-      {error && (
-        <Card className="border-destructive/50 bg-destructive/10" role="alert">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <p className="text-sm">{error}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Signed-out prompt (page itself stays public) */}
-      {isAuthenticated === false && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-6 flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-2 text-sm">
-              <LogIn className="h-4 w-4" />
-              <span>Sign in to view or manage an existing subscription.</span>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => goToSignIn("/billing")}>
-              Sign in
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Current Subscription (signed-in only) */}
-      {isAuthenticated && summary?.subscription && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Current Subscription
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <Badge
-                  variant="outline"
-                  className={getSubscriptionStatusColor(summary.subscription.status)}
-                >
-                  <span className="flex items-center gap-1">
-                    {getSubscriptionStatusIcon(summary.subscription.status)}
-                    {summary.subscription.status.charAt(0).toUpperCase() +
-                      summary.subscription.status.slice(1)}
-                  </span>
-                </Badge>
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {formatPlanName(summary.subscription.planName)}
-                  </h3>
-                  {summary.subscription.currentPeriodEnd && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Renews on {new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button variant="outline" onClick={openBillingPortal} disabled={portalLoading}>
-                {portalLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Manage Subscription
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Pricing Plans — always visible, public or signed in */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Choose Your Plan</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => {
-            const isCurrentPlan =
-              isAuthenticated &&
-              summary?.subscription?.planName.toLowerCase() === plan.name.toLowerCase();
-            const isLoadingThisPlan = checkoutLoadingPlanId === plan.id;
-
-            return (
-              <Card
-                key={plan.id}
-                className={`relative ${plan.popular ? "border-primary shadow-lg" : ""}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary">Most Popular</Badge>
-                  </div>
-                )}
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    {plan.id === "team" && <Users className="h-5 w-5 text-primary" />}
-                    {plan.id === "pro" && <Zap className="h-5 w-5 text-primary" />}
-                    {plan.id === "enterprise" && <Crown className="h-5 w-5 text-primary" />}
-                    <CardTitle>{plan.name}</CardTitle>
-                  </div>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    {plan.price !== "Custom" && (
-                      <span className="text-muted-foreground">/month</span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                    onClick={() => startCheckout(plan.id)}
-                    disabled={isLoadingThisPlan || isCurrentPlan}
-                    aria-label={`${plan.id === "enterprise" ? "Contact sales about" : "Get started with"} the ${plan.name} plan`}
-                  >
-                    {isLoadingThisPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {isCurrentPlan
-                      ? "Current Plan"
-                      : plan.id === "enterprise"
-                      ? "Contact Sales"
-                      : isAuthenticated === false
-                      ? "Sign in to get started"
-                      : "Get Started"}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Invoices (signed-in only) */}
-      {isAuthenticated && summary?.invoices && summary.invoices.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Recent Invoices
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {summary.invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{invoice.month}</p>
-                      <p className="text-xs text-muted-foreground">{invoice.id}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="outline"
-                      className={
-                        invoice.status === "paid"
-                          ? "bg-green-500/10 text-green-500 border-green-500/20"
-                          : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                      }
-                    >
-                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                    </Badge>
-                    <span className="font-semibold">{formatCurrency(invoice.amount)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Button variant="outline" className="mt-4" onClick={openBillingPortal} disabled={portalLoading}>
-              {portalLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              View All Invoices
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stripe Configuration Notice */}
-      {isAuthenticated && !summary?.configured && (
-        <Card className="border-yellow-500/50 bg-yellow-500/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
-              <AlertCircle className="h-4 w-4" />
-              <p className="text-sm">
-                Stripe is not configured for this environment yet. Please contact the administrator.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+  </div>;
 }

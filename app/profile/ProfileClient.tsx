@@ -6,6 +6,7 @@ import { createClient } from "@/app/lib/supabase";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProfileHeader from "./components/ProfileHeader";
 import ScanTable, { type ScanRow } from "./components/ScanTable";
 import StatsRow from "./components/StatsRow";
@@ -244,8 +245,10 @@ export default function ProfileClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl py-10 text-sm text-zinc-500">
-        Loading scans...
+      <div className="mx-auto max-w-5xl space-y-6 py-10" aria-label="Loading scans">
+        <Skeleton className="h-28" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-72" />
       </div>
     );
   }

@@ -416,6 +416,8 @@ function sleep(ms) {
 // src/commands/scan.ts
 import fs3 from "fs/promises";
 import path3 from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import chalk3 from "chalk";
 import ora2 from "ora";
 import { glob } from "glob";
@@ -483,6 +485,7 @@ ${JSON.stringify(condensedFindings, null, 2)}`;
 }
 
 // src/commands/scan.ts
+var execFileAsync = promisify(execFile);
 var SEVERITY_SCORE = {
   low: 30,
   medium: 55,
@@ -495,36 +498,6 @@ var SEVERITY_COLOR = {
   high: chalk3.red,
   critical: chalk3.bgRed.white
 };
-var QUICK_PATTERNS = [
-  {
-    pattern: /eval\s*\(/g,
-    severity: "high",
-    type: "EVAL",
-    message: "eval() detected \u2014 possible code injection",
-    suggestion: "Avoid eval() and use safer parsing."
-  },
-  {
-    pattern: /dangerouslySetInnerHTML/g,
-    severity: "medium",
-    type: "XSS_RISK",
-    message: "dangerouslySetInnerHTML usage detected",
-    suggestion: "Sanitize user input before rendering."
-  },
-  {
-    pattern: /child_process.*exec\s*\(/g,
-    severity: "high",
-    type: "CMD_INJECTION",
-    message: "exec() usage detected",
-    suggestion: "Use spawn with arguments instead."
-  },
-  {
-    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"']{6,}/gi,
-    severity: "high",
-    type: "HARDCODED_SECRET",
-    message: "Possible hardcoded credential",
-    suggestion: "Move secrets to environment variables."
-  }
-];
 async function scanCommand(scanPath = ".", options) {
   const { config, warnings } = await loadConfig();
   if (warnings.length) {
@@ -561,12 +534,17 @@ ${chalk3.bold("votrio")} ${chalk3.dim("scan")}
   const aiModel = options.aiModel || scanConfig.aiModel || process.env.VOTRIO_SCAN_AI_MODEL || "mistral-large-latest";
   const publishEnabled = options.publish || scanConfig.publish || process.env.VOTRIO_PUBLISH === "true";
   const files = await discoverFiles(resolved, ignore);
-  const findings = await scanFiles(files, {
+  const rulesFindings = await scanFiles(files, {
     ...options,
     aiModel,
     fix: options.fix || scanConfig.autoFix || false,
     extraPatterns: rules.patterns
   });
+  const engineResult = await runSecurityEngines(resolved);
+  for (const warning of engineResult.warnings) console.log(chalk3.yellow(`
+${warning}
+`));
+  const findings = [...rulesFindings, ...engineResult.findings];
   const deduped = dedupe(findings);
   const aiSummary = aiEnabled && deduped.length > 0 ? await summarizeFindings(deduped, aiModel) : null;
   outputResults(deduped, options, aiSummary ? JSON.stringify(aiSummary) : null);
@@ -588,7 +566,7 @@ async function discoverFiles(root, ignore) {
 async function scanFiles(files, options) {
   const spinner = ora2("Scanning").start();
   const findings = [];
-  const checks = [...QUICK_PATTERNS, ...options.extraPatterns ?? []];
+  const checks = options.extraPatterns ?? [];
   let index = 0;
   for (const file of files) {
     index++;
@@ -613,13 +591,66 @@ async function scanFiles(files, options) {
           message: check.message,
           snippet: lines[line - 1]?.trim(),
           suggestion: check.suggestion,
-          source: "regex"
+          source: "rules"
         });
       }
     }
   }
   spinner.succeed(`Scanned ${files.length} files`);
   return findings;
+}
+async function runSecurityEngines(root) {
+  const [semgrep, npmAudit] = await Promise.all([runSemgrep(root), runNpmAudit(root)]);
+  return { findings: [...semgrep.findings, ...npmAudit.findings], warnings: [...semgrep.warnings, ...npmAudit.warnings] };
+}
+async function runSemgrep(root) {
+  try {
+    const { stdout } = await execFileAsync("semgrep", ["scan", "--config", "auto", "--json", "--quiet", root], { maxBuffer: 20 * 1024 * 1024 });
+    return parseSemgrep(stdout, root);
+  } catch (error) {
+    const output = typeof error === "object" && error && "stdout" in error ? String(error.stdout ?? "") : "";
+    if (output) return parseSemgrep(output, root);
+    return { findings: [], warnings: ["Semgrep is unavailable; install Semgrep or provide .votrio/rules.json for code-rule scanning."] };
+  }
+}
+function parseSemgrep(output, root) {
+  try {
+    const payload = JSON.parse(output);
+    const findings = (payload.results ?? []).map((result) => {
+      const severity = normalizeSeverity(result.extra?.severity);
+      return { file: path3.relative(process.cwd(), result.path ?? root), line: result.start?.line ?? 1, severity, score: SEVERITY_SCORE[severity], type: result.check_id ?? "SEMGREP", message: result.extra?.message ?? "Semgrep finding", snippet: result.extra?.lines?.trim(), suggestion: result.extra?.metadata?.remediation, source: "semgrep" };
+    });
+    return { findings, warnings: [] };
+  } catch {
+    return { findings: [], warnings: ["Semgrep returned unreadable output; no Semgrep findings were accepted."] };
+  }
+}
+async function runNpmAudit(root) {
+  if (!await exists2(path3.join(root, "package-lock.json"))) return { findings: [], warnings: [] };
+  try {
+    const { stdout } = await execFileAsync("npm", ["audit", "--json", "--omit=dev"], { cwd: root, maxBuffer: 20 * 1024 * 1024 });
+    return parseNpmAudit(stdout);
+  } catch (error) {
+    const output = typeof error === "object" && error && "stdout" in error ? String(error.stdout ?? "") : "";
+    if (output) return parseNpmAudit(output);
+    return { findings: [], warnings: ["npm audit could not run; dependency vulnerability checks were skipped."] };
+  }
+}
+function parseNpmAudit(output) {
+  try {
+    const payload = JSON.parse(output);
+    const findings = Object.entries(payload.vulnerabilities ?? {}).map(([name, vulnerability]) => {
+      const severity = normalizeSeverity(vulnerability.severity);
+      const advisory = vulnerability.via?.find((item) => typeof item === "object");
+      return { file: "package-lock.json", line: 1, severity, score: SEVERITY_SCORE[severity], type: `NPM_AUDIT_${name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`, message: advisory?.title ?? `npm audit reported a vulnerability in ${name}`, suggestion: advisory?.url, source: "npm-audit" };
+    });
+    return { findings, warnings: [] };
+  } catch {
+    return { findings: [], warnings: ["npm audit returned unreadable output; no dependency findings were accepted."] };
+  }
+}
+function normalizeSeverity(value) {
+  return value === "critical" || value === "high" || value === "medium" || value === "low" ? value : "medium";
 }
 async function defaultRulesPath(cwd) {
   const p = path3.join(cwd, ".votrio", "rules.json");

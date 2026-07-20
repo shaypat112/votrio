@@ -3,8 +3,6 @@
 import { useSearchParams } from "next/navigation";
 
 import { AccountSection } from "./profile/account";
-import { SecuritySection } from "./profile/security";
-import { NotificationsSection } from "./profile/notifications";
 
 import { AppearanceSection } from "./profile/appearance";
 import { WebhooksSection } from "./profile/webhooks";
@@ -14,11 +12,10 @@ import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
 import { AdminSection } from "./profile/admin";
 import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SECTION_MAP = {
   account: AccountSection,
-  security: SecuritySection,
-  notifications: NotificationsSection,
   billing: BillingSection,
   appearance: AppearanceSection,
   webhooks: WebhooksSection,
@@ -32,7 +29,7 @@ type SectionKey = keyof typeof SECTION_MAP;
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Loading...</div>}>
+    <Suspense fallback={<div className="space-y-4 p-10"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>}>
       <SettingsContent />
     </Suspense>
   );

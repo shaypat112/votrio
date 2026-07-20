@@ -28,7 +28,21 @@ export type Finding = {
   snippet?: string;
   suggestion?: string;
   source: "regex" | "ai";
+  category?: "code" | "secrets";
+  confidence?: "high";
+  advisoryId?: string;
+  technicalDetails?: string;
 };
+
+export type ScanStage =
+  | "validating"
+  | "cloning"
+  | "detecting"
+  | "reading"
+  | "analyzing"
+  | "recommendations";
+
+export type ScanProgress = (stage: ScanStage, detail: string) => void;
 
 const MAX_FILE_SIZE = 1024 * 1024;
 const MAX_FILES = 2000;
@@ -122,13 +136,15 @@ async function walk(dir: string, ignore: Set<string>, files: string[] = []) {
   return files;
 }
 
-async function scanFiles(root: string, options: ScanOptions) {
+async function scanFiles(root: string, options: ScanOptions, onProgress?: ScanProgress) {
   const ignore = new Set(DEFAULT_IGNORE);
   for (const entry of options.ignore ?? []) {
     ignore.add(entry);
   }
 
   const files = await walk(root, ignore);
+  onProgress?.("reading", `Reading ${files.length} supported source file${files.length === 1 ? "" : "s"}.`);
+  onProgress?.("analyzing", "Reviewing supported source files for risky code and exposed credentials.");
   const findings: Finding[] = [];
 
   for (const file of files) {
@@ -154,6 +170,10 @@ async function scanFiles(root: string, options: ScanOptions) {
           snippet: lines[line - 1]?.trim(),
           suggestion: check.suggestion,
           source: "regex",
+          category: check.type === "HARDCODED_SECRET" ? "secrets" : "code",
+          confidence: "high",
+          advisoryId: `VOTRIO-${check.type}`,
+          technicalDetails: `Matched Votrio's ${check.type} static rule in ${path.relative(root, file)}:${line}.`,
         });
       }
     }
@@ -170,18 +190,25 @@ async function scanFiles(root: string, options: ScanOptions) {
   );
 }
 
-export async function runGitHubScan(repoUrl: string, options: ScanOptions = {}) {
-  return runGitHubScanWithToken(repoUrl, options);
+export async function runGitHubScan(
+  repoUrl: string,
+  options: ScanOptions = {},
+  onProgress?: ScanProgress,
+) {
+  return runGitHubScanWithToken(repoUrl, options, undefined, onProgress);
 }
 
 export async function runGitHubScanWithToken(
   repoUrl: string,
   options: ScanOptions = {},
   providerToken?: string,
+  onProgress?: ScanProgress,
 ) {
   if (!isValidGitHubUrl(repoUrl)) {
     throw new Error("Invalid GitHub repository URL.");
   }
+
+  onProgress?.("validating", "Repository URL validated. Preparing an isolated read-only clone.");
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "votrio-scan-"));
   const repoName = extractRepoName(repoUrl);
@@ -189,6 +216,7 @@ export async function runGitHubScanWithToken(
 
   try {
     await execFileAsync("git", ["--version"], { timeout: 10_000 });
+    onProgress?.("cloning", "Cloning the default branch with history and blob limits.");
     const cloneArgs = [
       ...(providerToken
         ? [
@@ -212,7 +240,33 @@ export async function runGitHubScanWithToken(
       maxBuffer: 5 * 1024 * 1024,
     });
 
-    const findings = await scanFiles(repoPath, options);
+    onProgress?.("detecting", "Detecting package managers and repository manifests.");
+    const rootEntries = await fs.readdir(repoPath);
+    const manifests = ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "requirements.txt", "poetry.lock", "go.mod", "Cargo.toml"]
+      .filter((name) => rootEntries.includes(name));
+    onProgress?.(
+      "detecting",
+      manifests.length > 0
+        ? `Found ${manifests.join(", ")}. Dependency advisories are not enabled in this scanner.`
+        : "No supported manifest found at the repository root; continuing with source analysis.",
+    );
+    if (rootEntries.includes("package.json")) {
+      try {
+        const packageJson = JSON.parse(await fs.readFile(path.join(repoPath, "package.json"), "utf8")) as {
+          dependencies?: Record<string, string>;
+          devDependencies?: Record<string, string>;
+        };
+        const dependencyCount = Object.keys({
+          ...packageJson.dependencies,
+          ...packageJson.devDependencies,
+        }).length;
+        onProgress?.("reading", `Parsed package.json with ${dependencyCount} declared dependency entries.`);
+      } catch {
+        onProgress?.("reading", "package.json could not be parsed; continuing with source analysis.");
+      }
+    }
+    const findings = await scanFiles(repoPath, options, onProgress);
+    onProgress?.("recommendations", "Ranking findings and generating remediation guidance.");
 
     return {
       repoUrl,
@@ -226,6 +280,17 @@ export async function runGitHubScanWithToken(
         ? String((error as { code?: unknown }).code ?? "")
         : "";
 
+    const lowerMessage = message.toLowerCase();
+    if (
+      lowerMessage.includes("authentication") ||
+      lowerMessage.includes("could not read username") ||
+      lowerMessage.includes("repository not found")
+    ) {
+      throw new Error("GitHub authorization is required to access this repository.");
+    }
+    if (lowerMessage.includes("rate limit")) {
+      throw new Error("GitHub rate limit reached. Wait and try the scan again.");
+    }
     if (message.includes("not found") || code === "ENOENT") {
       throw new Error("Git is not available on the server.");
     }

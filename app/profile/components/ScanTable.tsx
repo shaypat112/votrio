@@ -1,4 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -27,8 +30,10 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent scans</CardTitle>
-        <CardDescription>Your latest security scans.</CardDescription>
+        <div className="flex items-start justify-between gap-4">
+          <div><CardTitle>Recent scans</CardTitle><CardDescription>Your latest security scans.</CardDescription></div>
+          <Button asChild size="sm"><Link href="/scan"><Plus /> New scan</Link></Button>
+        </div>
       </CardHeader>
       <CardContent>
         {scans.length === 0 ? (

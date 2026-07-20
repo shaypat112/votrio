@@ -250,16 +250,16 @@ export function AIExecutiveSummary({
                   <div className="text-xs text-muted-foreground">Total Files</div>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
-                  <div className="text-2xl font-bold">{metrics.totalLines.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground">Lines of Code</div>
+                  <div className="text-2xl font-bold">{metrics.totalLines > 0 ? metrics.totalLines.toLocaleString() : "—"}</div>
+                  <div className="text-xs text-muted-foreground">Lines of Code (not measured)</div>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <div className="text-2xl font-bold">{security.securityScore}</div>
                   <div className="text-xs text-muted-foreground">Security Score</div>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
-                  <div className="text-2xl font-bold">{codeQuality.testCoverage}%</div>
-                  <div className="text-xs text-muted-foreground">Test Coverage</div>
+                  <div className="text-2xl font-bold">{codeQuality.testCoverage == null ? "—" : `${codeQuality.testCoverage}%`}</div>
+                  <div className="text-xs text-muted-foreground">Test Coverage (not measured)</div>
                 </div>
               </div>
             </div>

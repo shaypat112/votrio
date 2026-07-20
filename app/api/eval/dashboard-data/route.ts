@@ -79,15 +79,26 @@ async function fetchGitHubRepoData(owner: string, repo: string) {
 
     // Get languages
     const languagesResponse = await octokit.repos.listLanguages({ owner, repo });
-    const languages = Object.keys(languagesResponse.data || {});
+    const languageBytes = languagesResponse.data || {};
+    const languages = Object.keys(languageBytes);
 
-    // Get topics/tags
+    // Get topics/tags and repository inventory from GitHub. These values are
+    // used directly by the dashboard; do not synthesize metrics from stars.
     const topicsResponse = await octokit.repos.getAllTopics({ owner, repo }).catch(() => ({ data: { names: [] } }));
     const topics = topicsResponse.data.names || [];
 
     // Get recent commits
     const commitsResponse = await octokit.repos.listCommits({ owner, repo, per_page: 10 });
     const recentCommits = commitsResponse.data || [];
+    const [branchesResponse, releasesResponse, contributorsResponse, treeResponse] = await Promise.all([
+      octokit.repos.listBranches({ owner, repo, per_page: 100 }).catch(() => ({ data: [] })),
+      octokit.repos.listReleases({ owner, repo, per_page: 100 }).catch(() => ({ data: [] })),
+      octokit.repos.listContributors({ owner, repo, per_page: 100 }).catch(() => ({ data: [] })),
+      octokit.git.getTree({ owner, repo, tree_sha: repoInfo.default_branch, recursive: "true" }).catch(() => ({ data: { tree: [] } })),
+    ]);
+    const repositoryFiles = (treeResponse.data.tree ?? []).filter((entry) => entry.type === "blob");
+    const directories = new Set(repositoryFiles.map((entry) => entry.path?.split("/").slice(0, -1).join("/") ?? "").filter(Boolean));
+    const totalBytes = repositoryFiles.reduce((sum, entry) => sum + (entry.size ?? 0), 0);
 
     // Get package.json or other config to detect frameworks
     let frameworks: string[] = [];
@@ -129,6 +140,7 @@ async function fetchGitHubRepoData(owner: string, repo: string) {
       pushedAt: repoInfo.pushed_at,
       language: repoInfo.language,
       languages,
+      languageBytes,
       topics,
       frameworks,
       packageManager,
@@ -142,6 +154,14 @@ async function fetchGitHubRepoData(owner: string, repo: string) {
         author: c.commit.author?.name,
         date: c.commit.author?.date,
       })),
+      inventory: {
+        totalFiles: repositoryFiles.length,
+        totalFolders: directories.size,
+        totalBytes,
+        contributors: contributorsResponse.data.length,
+        branches: branchesResponse.data.length,
+        releases: releasesResponse.data.length,
+      },
     };
   } catch (error) {
     console.error("Failed to fetch GitHub repo data:", error);
@@ -378,27 +398,26 @@ function buildDashboardData(repoData: any, securityFindings: any[], aiInsights: 
   securityScore -= lowIssues * 2;
   securityScore = Math.max(20, Math.min(100, securityScore));
 
-  // Estimate metrics based on repository data
-  const totalFiles = Math.max(100, repoData.stars * 5 + Math.random() * 500);
-  const totalFolders = Math.max(10, repoData.stars + Math.random() * 50);
-  const totalLines = Math.max(5000, repoData.stars * 500 + Math.random() * 50000);
+  const languageBytes = repoData.languages.reduce((sum: number, language: string) => sum + (repoData.languageBytes?.[language] ?? 0), 0);
 
   return {
     metrics: {
-      totalFiles: Math.round(totalFiles),
-      totalFolders: Math.round(totalFolders),
-      totalLines: Math.round(totalLines),
+      totalFiles: repoData.inventory.totalFiles,
+      totalFolders: repoData.inventory.totalFolders,
+      totalLines: 0,
+      totalBytes: repoData.inventory.totalBytes,
+      lineCountAvailable: false,
       languages: repoData.languages.map((lang: string) => ({
         name: lang,
-        percentage: 100 / Math.max(1, repoData.languages.length),
-        files: Math.round(totalFiles / Math.max(1, repoData.languages.length)),
+        percentage: Math.round(((repoData.languageBytes?.[lang] ?? 0) / Math.max(1, languageBytes)) * 100),
+        files: null,
       })),
       frameworks: repoData.frameworks,
       packageManagers: [repoData.packageManager],
-      contributors: Math.max(1, Math.round(repoData.watchers / 10)),
+      contributors: repoData.inventory.contributors,
       commits: repoData.recentCommits.length,
-      branches: 5,
-      releases: Math.max(1, Math.round(repoData.stars / 50)),
+      branches: repoData.inventory.branches,
+      releases: repoData.inventory.releases,
     },
     security: {
       exposedSecrets: securityFindings.filter(f => f.type === "EXPOSED_SECRETS").length,
@@ -415,19 +434,19 @@ function buildDashboardData(repoData: any, securityFindings: any[], aiInsights: 
       insecureDeserialization: securityFindings.filter(f => f.type === "INSECURE_DESERIALIZATION").length,
       pathTraversal: securityFindings.filter(f => f.type === "PATH_TRAVERSAL").length,
       privilegeEscalation: securityFindings.filter(f => f.type === "PRIVILEGE_ESCALATION").length,
-      dependencyVulnerabilities: repoData.openIssues,
+      dependencyVulnerabilities: 0,
       supplyChainRisks: securityFindings.filter(f => f.type === "SUPPLY_CHAIN_RISKS").length,
       securityScore,
     },
     codeQuality: {
-      complexity: Math.max(1, 100 - repoData.stars),
-      deadCode: Math.max(0, repoData.openIssues * 0.5),
-      duplicatedCode: Math.max(0, totalLines * 0.05),
-      maintainability: Math.max(20, 100 - repoData.stars / 2),
-      testCoverage: Math.max(10, securityScore - 20),
-      documentationCoverage: repoData.license ? 75 : 40,
-      lintIssues: Math.max(0, 50 - repoData.stars),
-      performanceBottlenecks: Math.max(0, 20 - repoData.stars / 10),
+      complexity: null,
+      deadCode: null,
+      duplicatedCode: null,
+      maintainability: null,
+      testCoverage: null,
+      documentationCoverage: null,
+      lintIssues: null,
+      performanceBottlenecks: null,
     },
     architecture: {
       framework: repoData.frameworks[0] || "Unknown",

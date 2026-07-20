@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   RequestAuthError,
   getSupabaseEnv,
+  isValidHttpsUrl,
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
@@ -14,6 +15,7 @@ type SettingsPayload = Record<string, unknown> & {
   avatarUrl?: string | null;
   webhookEnabled?: boolean;
   webhookUrl?: string | null;
+  webhookSecret?: string | null;
   webhookEvents?: string[];
   emailNotifications?: boolean;
   scanDepth?: number;
@@ -65,12 +67,17 @@ export async function POST(request: Request) {
       webhookEnabled,
       webhookUrl,
       webhookEvents,
+      webhookSecret,
       ...rest
     } = settings ?? {};
 
     void fullName;
     void username;
     void avatarUrl;
+
+    if (webhookEnabled && (!webhookUrl || !isValidHttpsUrl(webhookUrl))) {
+      return NextResponse.json({ error: "A valid HTTPS webhook URL is required when delivery is enabled." }, { status: 400 });
+    }
 
     const normalized = {
       ...rest,
@@ -128,6 +135,7 @@ export async function POST(request: Request) {
       events: Array.isArray(webhookEvents) && webhookEvents.length > 0
         ? webhookEvents
         : ["scan.completed"],
+      secret: webhookSecret?.trim() || null,
       updated_at: new Date().toISOString(),
     };
 

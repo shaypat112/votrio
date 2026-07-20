@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, FolderGit2 } from "lucide-react";
+import { ArrowUpRight, FolderGit2, Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { useTeam } from "@/app/components/TeamProvider";
@@ -117,39 +118,31 @@ export function ReportsIndexClient() {
               </p>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Repositories
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{repos.length}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Latest severity
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {repos[0]?.latest.severity?.toUpperCase?.() ?? "-"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-background/80 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Latest score
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {repos[0]?.latest.score ?? "-"}
-              </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <Button asChild><Link href="/scan"><Plus /> New scan</Link></Button>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Repositories</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{repos.length}</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Latest severity</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{repos[0]?.latest.severity?.toUpperCase?.() ?? "-"}</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-background/80 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Latest score</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{repos[0]?.latest.score ?? "-"}</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {loading ? (
-        <Card className="border-border bg-card">
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Loading reports...
-          </CardContent>
-        </Card>
+        <div className="space-y-4" aria-label="Loading reports">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
       ) : error ? (
         <Card className="border-border bg-card">
           <CardContent className="p-6 text-sm text-destructive">

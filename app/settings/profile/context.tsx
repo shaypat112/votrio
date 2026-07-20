@@ -10,25 +10,9 @@ export type SettingsState = {
   fullName: string;
   username: string;
   avatarUrl: string;
-  emailNotifications: boolean;
-  notifyHigh: boolean;
-  notifyMedium: boolean;
-  notifyLow: boolean;
-  dailyDigest: boolean;
-  weeklyDigest: boolean;
-  scanOnPush: boolean;
-  scanOnPr: boolean;
-  failOnHigh: boolean;
-  failOnMedium: boolean;
-  ignoredPaths: string;
-  riskThreshold: "low" | "medium" | "high";
-  reportFormat: "json" | "markdown" | "terminal";
-  aiModel: "mistral-large-latest" | "mistral-medium-latest";
-  require2fa: boolean;
-  sessionTimeoutHours: number;
-  securityAlerts: boolean;
   webhookEnabled: boolean;
   webhookUrl: string;
+  webhookSecret: string;
   webhookEvents: string[];
   retentionDays: number;
 };
@@ -43,25 +27,9 @@ const defaultSettings: SettingsState = {
   fullName: "",
   username: "",
   avatarUrl: "",
-  emailNotifications: true,
-  notifyHigh: true,
-  notifyMedium: true,
-  notifyLow: false,
-  dailyDigest: false,
-  weeklyDigest: true,
-  scanOnPush: true,
-  scanOnPr: true,
-  failOnHigh: true,
-  failOnMedium: false,
-  ignoredPaths: "node_modules/**, dist/**, .next/**",
-  riskThreshold: "medium",
-  reportFormat: "markdown",
-  aiModel: "mistral-large-latest",
-  require2fa: false,
-  sessionTimeoutHours: 12,
-  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
+  webhookSecret: "",
   webhookEvents: ["scan.completed"],
   retentionDays: 30,
 };
@@ -74,7 +42,7 @@ type SettingsContextValue = {
     key: K,
     value: SettingsState[K],
   ) => void;
-  save: () => Promise<void>;
+  save: () => Promise<boolean>;
   saving: boolean;
   loading: boolean;
   error: string | null;
@@ -171,7 +139,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   };
 
   const save = async () => {
-    if (!supabase) return;
+    if (!supabase) return false;
     setSaving(true);
     setStatus(null);
     setError(null);
@@ -182,7 +150,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     if (!token) {
       setError("Please sign in to save settings.");
       setSaving(false);
-      return;
+      return false;
     }
 
     const res = await fetch("/api/settings/save", {
@@ -193,12 +161,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     if (res.ok) {
       setStatus("Changes saved.");
+      setSaving(false);
+      return true;
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data?.error ?? "Unable to save settings.");
     }
 
     setSaving(false);
+    return false;
   };
 
   return (

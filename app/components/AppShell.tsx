@@ -315,6 +315,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   Scans
                 </Link>
+                <Link
+                  href="/reports"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Reports
+                </Link>
 
                 <Link
                   href="/documentation"
@@ -329,18 +335,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Settings
                 </Link>
 
-                <Link
-                  href="/eval"
-                  className="transition-colors hover:text-foreground"
-                >
-                 3DView
-                </Link>
-                <Link
-                  href="/partners"
-                  className="transition-colors hover:text-foreground"
-                >
-                  Partners
-                </Link>
                 {/* Teams dropdown (moved from header right) */}
                 {user ? (
                   <DropdownMenu>

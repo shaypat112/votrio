@@ -13,6 +13,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export async function POST(request: Request) {
+  const wantsEvents = request.headers.get("accept")?.includes("text/event-stream");
   try {
     const body = await request.json();
     const repoUrl = body?.repoUrl as string | undefined;
@@ -24,12 +25,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
 
-    const result = await handleGitHubScan({
-      repoUrl,
-      options,
-      accessToken,
-      teamId: selectedTeamId,
-    });
+    if (wantsEvents) {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          const send = (event: string, data: unknown) => {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          };
+          try {
+            const result = await handleGitHubScan({
+              repoUrl,
+              options,
+              accessToken,
+              teamId: selectedTeamId,
+              onProgress: (stage, detail) => send("progress", { stage, detail }),
+            });
+            send("complete", result);
+          } catch (error) {
+            send("error", { error: getErrorMessage(error) });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -39,6 +67,12 @@ export async function POST(request: Request) {
     const message = getErrorMessage(error);
     if (message.includes("Invalid GitHub repository URL")) {
       return NextResponse.json({ error: message }, { status: 400 });
+    }
+    if (message.includes("authorization is required")) {
+      return NextResponse.json({ error: message }, { status: 403 });
+    }
+    if (message.includes("rate limit")) {
+      return NextResponse.json({ error: message }, { status: 429 });
     }
     if (message.includes("Git is not available")) {
       return NextResponse.json({ error: message }, { status: 500 });

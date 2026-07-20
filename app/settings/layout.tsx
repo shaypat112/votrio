@@ -3,11 +3,9 @@ import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   User,
-  Bell,
-  Shield,
-  Zap,
   CreditCard,
   Webhook,
   Database,
@@ -20,8 +18,6 @@ import { SettingsProvider, useSettings } from "./profile/context";
 
 const NAV_SECTIONS = [
   { id: "account", label: "Account", icon: User },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
@@ -121,7 +117,7 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="w-full max-w-2xl space-y-4"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>
       </div>
     );
   }
@@ -153,7 +149,7 @@ export default function SettingsLayout({
       <Suspense
         fallback={
           <div className="flex min-h-screen items-center justify-center bg-background">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="w-full max-w-2xl space-y-4"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>
           </div>
         }
       >

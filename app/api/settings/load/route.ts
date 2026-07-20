@@ -18,26 +18,10 @@ type WebhookRow = {
   url?: string | null;
   enabled?: boolean | null;
   events?: string[] | null;
+  secret?: string | null;
 };
 
 const DEFAULT_SETTINGS = {
-  emailNotifications: true,
-  notifyHigh: true,
-  notifyMedium: true,
-  notifyLow: false,
-  dailyDigest: false,
-  weeklyDigest: true,
-  scanOnPush: true,
-  scanOnPr: true,
-  failOnHigh: true,
-  failOnMedium: false,
-  ignoredPaths: "node_modules/**, dist/**, .next/**",
-  riskThreshold: "medium",
-  reportFormat: "markdown",
-  aiModel: "mistral-large-latest",
-  require2fa: false,
-  sessionTimeoutHours: 12,
-  securityAlerts: true,
   webhookEnabled: false,
   webhookUrl: "",
   webhookEvents: ["scan.completed"],
@@ -57,7 +41,7 @@ export async function POST(request: Request) {
       supabaseFetch(env, `user_settings?user_id=eq.${userId}&select=data`, {
         accessToken,
       }),
-      supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events`, {
+      supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events,secret`, {
         accessToken,
       }),
     ]);
@@ -114,6 +98,7 @@ export async function POST(request: Request) {
       avatarUrl: profile.avatar_url ?? "",
       webhookEnabled: webhook.enabled ?? storedSettings.webhookEnabled ?? DEFAULT_SETTINGS.webhookEnabled,
       webhookUrl: webhook.url ?? storedSettings.webhookUrl ?? DEFAULT_SETTINGS.webhookUrl,
+      webhookSecret: webhook.secret ?? "",
       webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
       retentionDays: 30,
     };

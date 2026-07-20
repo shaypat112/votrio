@@ -9,6 +9,7 @@ import { useTeam } from "@/app/components/TeamProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ScanFinding = {
   title?: string;
@@ -88,8 +89,10 @@ export function ReportDetailClient({ repo }: { repo: string }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4">
-        <p className="text-sm text-muted-foreground">Loading report...</p>
+      <div className="mx-auto max-w-6xl space-y-4" aria-label="Loading report">
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-72" />
+        <Skeleton className="h-80" />
       </div>
     );
   }

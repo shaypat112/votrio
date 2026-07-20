@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import {
   RequestAuthError,
   getSupabaseEnv,
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const { webhookUrl } = await request.json();
+    const { webhookUrl, webhookSecret } = await request.json();
     const { accessToken, userId } = requireRequestAuth(request);
 
     if (!webhookUrl) {
@@ -33,13 +34,15 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     };
 
+    const serializedPayload = JSON.stringify(payload);
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "votrio-webhooks",
+        ...(typeof webhookSecret === "string" && webhookSecret.length > 0 ? { "x-votrio-signature": createHmac("sha256", webhookSecret).update(serializedPayload).digest("hex") } : {}),
       },
-      body: JSON.stringify(payload),
+      body: serializedPayload,
     });
 
     if (!res.ok) {

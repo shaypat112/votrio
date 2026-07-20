@@ -24,36 +24,6 @@ import { useRouter } from "next/navigation";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { useTeam } from "@/app/components/TeamProvider";
 
-const fallbackScans = [
-  {
-    repo: "shaypat112/votrio",
-    date: "Today",
-    severity: "high",
-    issues: 4,
-    score: 74,
-  },
-  {
-    repo: "votrio/docs",
-    date: "Yesterday",
-    severity: "medium",
-    issues: 2,
-    score: 62,
-  },
-  {
-    repo: "votrio/cli",
-    date: "2 days ago",
-    severity: "low",
-    issues: 1,
-    score: 38,
-  },
-];
-
-const metrics = [
-  { label: "Repo health", value: "78", suffix: "/100" },
-  { label: "Active scans", value: "3" },
-  { label: "High risk", value: "1" },
-];
-
 type ScanRow = {
   repo: string;
   created_at: string;
@@ -73,13 +43,18 @@ function formatDate(value: string) {
 }
 
 export default function DashboardPage() {
-  const [scans, setScans] = useState(fallbackScans);
+  const [scans, setScans] = useState<Array<{ repo: string; date: string; severity: string; issues: number; score: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
   const { selectedTeamId } = useTeam();
 
   const router = useRouter();
+  const metrics = [
+    { label: "Repo health", value: scans.length ? String(Math.round(scans.reduce((sum, scan) => sum + (100 - scan.score), 0) / scans.length)) : "—", suffix: scans.length ? "/100" : "" },
+    { label: "Recent scans", value: String(scans.length), suffix: "" },
+    { label: "High risk", value: String(scans.filter((scan) => scan.severity === "critical" || scan.severity === "high").length), suffix: "" },
+  ];
 
   useEffect(() => {
     let mounted = true;
@@ -172,7 +147,7 @@ export default function DashboardPage() {
         <AlertTitle>AI refactor suggestions ready</AlertTitle>
         <AlertDescription>
           {aiInsight ??
-            "3 improvements detected in your last scan. Review fixes before your next release."}
+            (scans.length ? "Review the latest scan findings before your next release." : "Run a repository scan to generate recommendations.")}
         </AlertDescription>
       </Alert>
 
@@ -195,7 +170,7 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {scans.map((scan) => (
+              {scans.length === 0 && !loading ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No scans have been recorded for this team.</TableCell></TableRow> : scans.map((scan) => (
                 <TableRow
                   key={`${scan.repo}-${scan.date}`}
                   className="cursor-pointer hover:bg-zinc-950/60"

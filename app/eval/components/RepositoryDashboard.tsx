@@ -145,7 +145,7 @@ export function RepositoryDashboard({
                 Lines of Code
               </div>
               <p className="text-2xl font-bold">
-                {metrics.totalLines.toLocaleString()}
+                {metrics.totalLines > 0 ? metrics.totalLines.toLocaleString() : "—"}
               </p>
             </div>
             <div className="space-y-1">
