@@ -25,7 +25,13 @@ export const metadata: Metadata = {
     title: "Votrio — AI-Powered Code Intelligence & Security Platform",
     description:
       "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",
-    images: ["/votrio_logo.jpeg"],
+    images: [{ url: "/og.png", width: 1731, height: 909, alt: "Votrio repository security intelligence" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Votrio — AI-Powered Code Intelligence & Security Platform",
+    description: "Ship AI-generated code without shipping its vulnerabilities.",
+    images: ["/og.png"],
   },
 };
 

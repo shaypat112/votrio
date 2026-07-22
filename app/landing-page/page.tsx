@@ -4,8 +4,6 @@ import { Hero } from "./components/Hero";
 import { Problem } from "./components/Problem";
 import { SolutionFlow } from "./components/SolutionFlow";
 import { ProductShowcase } from "./components/ProductShowcase";
-import { Features } from "./components/Features";
-import { Trust } from "./components/Trust";
 import { Founder } from "./components/Founder";
 import { FinalCTA } from "./components/FinalCTA";
 import { Footer } from "./components/Footer";
@@ -17,13 +15,11 @@ export default function LandingPage() {
 
       <Nav />
 
-      <div className="mx-auto max-w-6xl px-6 sm:px-10">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
         <Hero />
         <Problem />
         <SolutionFlow />
         <ProductShowcase />
-        <Features />
-        <Trust />
         <Founder />
         <FinalCTA />
         <Footer />

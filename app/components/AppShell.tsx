@@ -247,6 +247,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Docs
                 </Link>
                 <Link
+                  href="/partners"
+                  className="transition-colors hover:text-foreground"
+                >
+                  Partners
+                </Link>
+                <Link
                   href="/settings"
                   className="transition-colors hover:text-foreground"
                 >

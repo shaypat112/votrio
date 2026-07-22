@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import MultiStepLoaderDemo from "@/components/multi-step-loader-demo";
 
 type Severity = "low" | "medium" | "high" | "critical";
 type Finding = {
@@ -150,8 +151,8 @@ export function ScanWorkspace() {
   const severityChart = (["critical", "high", "medium", "low"] as Severity[]).map((level) => ({ name: level, value: counts[level], color: { critical: "#fb7185", high: "#fb923c", medium: "#fbbf24", low: "#38bdf8" }[level] }));
 
   return <main className="mx-auto max-w-7xl space-y-6 pb-12">
+    <MultiStepLoaderDemo loading={phase === "scanning"} />
     <section className="overflow-hidden rounded-3xl border border-border bg-[radial-gradient(circle_at_10%_0%,rgba(14,165,233,.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(168,85,247,.12),transparent_28%),var(--card)] p-6 sm:p-8">
-      <Badge variant="outline" className="border-sky-500/30 text-sky-300">Repository security scan</Badge>
       <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find the risks worth fixing first.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Votrio reads supported files through the GitHub API and performs a static source review. Repository credentials are never included in scan output.</p></div>{result && <Button variant="outline" onClick={() => { setResult(null); setPhase("idle"); }}><RotateCw /> New scan</Button>}</div>
       <div className="mt-7 grid gap-3 lg:grid-cols-[1fr_150px_auto]"><div><label htmlFor="repo-url" className="mb-2 block text-sm font-medium">GitHub repository URL</label><div className="relative"><FolderGit2 className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input id="repo-url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/owner/repository" disabled={phase === "scanning"} className="h-9 pl-9" aria-describedby="repo-help" /></div><p id="repo-help" className="mt-2 text-xs text-muted-foreground">Public GitHub HTTPS URLs only. Private repositories are scanned from the connected repositories workflow.</p></div><div><label htmlFor="fail-on" className="mb-2 block text-sm font-medium">Fail threshold</label><select id="fail-on" value={failOn} onChange={(event) => setFailOn(event.target.value as Severity)} className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" disabled={phase === "scanning"}><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div><Button size="lg" onClick={startScan} disabled={phase === "scanning"} className="self-end">{phase === "scanning" ? <LoaderCircle className="animate-spin" /> : <ShieldAlert />} {phase === "scanning" ? "Scanning" : result ? "Rescan" : "Start scan"}</Button></div>
       {error && <div role="alert" className="mt-5 flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}

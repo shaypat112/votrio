@@ -2,6 +2,7 @@
 
 import { FadeIn } from "../shared/FadeIn";
 import { Eyebrow } from "../shared/Eyebrow";
+import { Tooltip } from "@/components/ui/tooltip-card";
 
 // NOTE: Swap the name, title, and initials below for your actual founder details.
 const FOUNDER_NAME = "Shivang patel";
@@ -27,8 +28,8 @@ export function Founder() {
 
         <FadeIn delay={0.1} className="space-y-5 text-lg leading-8 text-muted-foreground">
           <p>
-            Software development changed faster than security did. AI
-            assistants made it possible for a two-person team to ship what
+            Software development changed faster than security did. AI assistants
+            made it possible for a two-person team to ship what
             used to take a department — but the review process for that code
             still assumes a human wrote every line and had time to think
             about it.
@@ -41,8 +42,15 @@ export function Founder() {
             can keep up with the new one.
           </p>
           <p>
-            Votrio exists so that shipping fast and shipping secure stop
-            being a trade-off. That&apos;s the whole bet.
+            Votrio exists so that {" "}
+            <Tooltip content="Short feedback loops, automated checks, and fixes that fit the way modern teams already ship." containerClassName="text-foreground">
+              <span className="cursor-help border-b border-dashed border-foreground/40 font-medium">shipping fast</span>
+            </Tooltip>{" "}
+            and {" "}
+            <Tooltip content="Repository-aware analysis that traces risk through architecture—not just isolated lines of code." containerClassName="text-foreground">
+              <span className="cursor-help border-b border-dashed border-foreground/40 font-medium">shipping secure</span>
+            </Tooltip>{" "}
+            stop being a trade-off. That&apos;s the whole bet.
           </p>
         </FadeIn>
       </div>

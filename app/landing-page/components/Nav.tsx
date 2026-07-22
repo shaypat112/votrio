@@ -7,8 +7,6 @@ import { ThemeToggle } from "./ThemeToggle";
 const links = [
   { href: "#product", label: "Product" },
   { href: "#flow", label: "How it works" },
-  { href: "#features", label: "Features" },
-  { href: "#trust", label: "Security" },
 ];
 
 export function Nav() {
@@ -27,7 +25,7 @@ export function Nav() {
         scrolled ? "border-b border-border bg-background/80 backdrop-blur-md" : "border-b border-transparent"
       }`}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8 lg:px-10">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
 
           <span className="text-[15px]">
