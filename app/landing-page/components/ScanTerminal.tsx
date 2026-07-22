@@ -107,7 +107,7 @@ export function ScanTerminal() {
       }
 
       if (normalized === "whoami") {
-        await printLines([{ text: "guest @ votrio-sandbox (read-only demo)", delay: 200 }]);
+        await printLines([{ text: "guest @ votrio-sandbox (read-only scan)", delay: 200 }]);
         return;
       }
 
@@ -192,7 +192,6 @@ export function ScanTerminal() {
 
     setBusyBoth(false);
     inputRef.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [push, typeIntoInput]);
 
   useEffect(() => {

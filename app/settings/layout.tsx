@@ -11,7 +11,7 @@ import {
   Database,
   Palette,
   Users,
-  LockKeyhole,
+  MessageSquareText,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
@@ -23,22 +23,18 @@ const NAV_SECTIONS = [
   { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
+  { id: "feedback", label: "Feedback", icon: MessageSquareText },
 ] as const;
 
-const ADMIN_SECTION = { id: "admin", label: "Admin", icon: LockKeyhole } as const;
-
-export type SectionId =
-  | (typeof NAV_SECTIONS)[number]["id"]
-  | typeof ADMIN_SECTION.id;
+export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
 
 function Sidebar({ active }: { active: SectionId }) {
-  const { save, saving, admin } = useSettings();
-  const sections = admin.isAdmin ? [...NAV_SECTIONS, ADMIN_SECTION] : NAV_SECTIONS;
+  const { save, saving } = useSettings();
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-background sm:flex">
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {sections.map(({ id, label, icon: Icon }) => (
+        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={`/settings?section=${id}`}

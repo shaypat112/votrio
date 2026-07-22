@@ -10,7 +10,7 @@ import { BillingSection } from "./profile/billing";
 
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
-import { AdminSection } from "./profile/admin";
+import { FeedbackSection } from "./profile/feedback";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,7 +22,7 @@ const SECTION_MAP = {
 
   retention: RetentionSection,
   teams: TeamsSection,
-  admin: AdminSection,
+  feedback: FeedbackSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;

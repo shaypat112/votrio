@@ -1,124 +1,205 @@
 # Votrio CLI
 
-> AI-powered terminal trace analyzer, security scanner, and code quality tool with real machine learning
+Security scanning and terminal trace analysis from your command line.
 
-## Features
+Votrio scans source code locally, reports risky patterns in multiple formats, can fail CI at a configured severity, and optionally adds AI-assisted explanations using your own API credentials.
 
-- **Live trace analysis** — wraps any process and explains stack traces in real time using Claude AI
-- **Machine Learning Security Scanning** — uses Python/scikit-learn for real vulnerability detection and code analysis
-- **Real AI Code Review** — no mock data, actual ML-powered analysis of your codebase
-- **Git-aware** — knows which commit introduced the error
-- **Zero egress** — your code never leaves your machine (AI calls go directly to Anthropic's API using your own key)
-- **Works with any stack** — Node.js, Python, Go, Rust, and more
-
-## Quick Start
+## Install
 
 ```bash
-# Install globally
-npm install -g votrio
+npm install --global votrio
+```
 
-# Initialize in your project
+Votrio requires Node.js 18 or newer.
+
+## Quick start
+
+```bash
+cd your-project
 votrio init
+votrio scan
+```
 
-# Setup Python ML dependencies (optional but recommended)
-cd backend && bash setup_python.sh
+Run `votrio --help` or `votrio scan --help` for the complete command reference.
 
-# Wrap your start command
-votrio run "npm start"
+## Security scanning
 
-# Scan for security issues
+```bash
+# Scan the current directory
 votrio scan
 
-# Scan with AI-powered analysis
+# Scan another path
+votrio scan ./src
+
+# Produce machine-readable output
+votrio scan --format json
+votrio scan --format sarif
+
+# Fail CI when high or critical findings are present
+votrio scan --ci --fail-on high
+
+# Add project-specific ignore patterns
+votrio scan --ignore "generated/**" "fixtures/**"
+```
+
+The scanner supports TypeScript, JavaScript, Python, Go, Rust, Java, C#, and PHP source files. Default exclusions include dependencies, Git metadata, generated builds, minified JavaScript, and common coverage directories.
+
+Supported output formats:
+
+- `text`
+- `json`
+- `markdown`
+- `sarif`
+
+The base scan runs locally. AI features send the relevant analysis context to the configured model provider and are disabled unless explicitly enabled.
+
+## CI example
+
+```yaml
+name: Security scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  votrio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --global votrio
+      - run: votrio scan --ci --fail-on high --format sarif
+```
+
+## AI-assisted scanning
+
+Set a Mistral API key and opt in for AI-assisted remediation summaries:
+
+```bash
+export MISTRAL_API_KEY="your-key"
 votrio scan --ai
 ```
 
-## Commands
-
-| Command              | Description                                   |
-| -------------------- | --------------------------------------------- |
-| `votrio init`        | Initialize votrio in the current project      |
-| `votrio run "<cmd>"` | Wrap a process and analyze its output         |
-| `votrio scan [path]` | Scan a directory for security vulnerabilities |
-| `votrio scan --ai`   | Scan with ML-powered AI analysis               |
-| `votrio auth`        | Configure your Anthropic API key              |
-
-## AI/ML Setup
-
-For advanced AI code review capabilities, set up the Python ML service:
+Choose a model with `--ai-model` or `VOTRIO_SCAN_AI_MODEL`:
 
 ```bash
-# Install Python dependencies
-cd backend
-bash setup_python.sh
-
-# This installs:
-# - scikit-learn for machine learning
-# - numpy for numerical operations
-# - scipy for scientific computing
+votrio scan --ai --ai-model mistral-large-latest
 ```
 
-The AI service includes:
-- **Real vulnerability detection** using pattern matching and ML anomaly detection
-- **Code quality analysis** with complexity metrics and technical debt assessment
-- **Architecture analysis** using clustering algorithms
-- **Security scoring** based on actual code analysis
+## Terminal trace analysis
+
+Wrap a development command to analyze terminal failures:
+
+```bash
+votrio auth
+votrio run "npm start"
+```
+
+`votrio auth` stores the Anthropic key in the operating system's local configuration store. You can also provide `ANTHROPIC_API_KEY` directly. Remove stored credentials with:
+
+```bash
+votrio auth --clear
+```
+
+Disable AI while preserving command output:
+
+```bash
+votrio run "npm test" --no-ai
+```
 
 ## Configuration
 
-After running `votrio init`, a `votrio.config.ts` file is created:
+`votrio init` creates `votrio.config.ts` in the current project:
 
 ```ts
 import { defineConfig } from "votrio";
 
 export default defineConfig({
-  model: "claude-sonnet-4-20250514",
   traces: {
     enabled: true,
     minConfidence: 70,
     showFix: true,
   },
   scan: {
-    ignore: ["node_modules/**", "dist/**"],
+    ignore: ["generated/**", "fixtures/**"],
     autoFix: false,
-    ai: true, // Enable AI-powered scanning
+    ai: false,
     aiModel: "mistral-large-latest",
   },
 });
 ```
 
-## Authentication
+Command-line options override project configuration.
 
-Votrio uses the Anthropic API for AI features. Set your key via:
+## Custom rules
 
-```bash
-votrio auth
-# or
-export ANTHROPIC_API_KEY=sk-ant-...
+Pass a JSON rules file with `--rules` or place it at `.votrio/rules.json`:
+
+```json
+{
+  "ignore": ["legacy/**"],
+  "patterns": [
+    {
+      "pattern": "dangerousFunction\\(",
+      "severity": "high",
+      "type": "CUSTOM_DANGEROUS_CALL",
+      "message": "Avoid dangerousFunction in production code.",
+      "suggestion": "Use the validated safe wrapper instead."
+    }
+  ]
+}
 ```
 
-Your key is stored locally and never sent to Votrio's servers.
+## Publishing scan summaries
 
-## Scan publish to Supabase
-
-To write scan summaries to the `scan_history` table, set these environment variables:
+Votrio can publish an authenticated scan summary to a Supabase `scan_history` table:
 
 ```bash
-export SUPABASE_URL="https://<your-project>.supabase.co"
-export SUPABASE_ANON_KEY="<anon-key>"
-export SUPABASE_ACCESS_TOKEN="<user-access-token>"
-```
-
-Then run:
-
-```bash
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_ANON_KEY="your-anon-key"
+export SUPABASE_ACCESS_TOKEN="signed-in-user-jwt"
 votrio scan --publish
 ```
 
-Notes:
-- `SUPABASE_ACCESS_TOKEN` must be a **user session JWT** so RLS can write to `scan_history`.
-- The CLI uses the current folder name as the repo value.
+The access token must be a user session JWT accepted by the table's Row Level Security policy. Source file contents and credentials are not included in the published summary.
+
+## Command reference
+
+| Command | Description |
+| --- | --- |
+| `votrio init` | Create project configuration and update `.gitignore` |
+| `votrio scan [path]` | Scan a directory for security findings |
+| `votrio run "<command>"` | Run a process with terminal trace analysis |
+| `votrio auth` | Configure or clear the Anthropic credential |
+
+Important scan options:
+
+| Option | Description |
+| --- | --- |
+| `--ci` | Exit non-zero when findings meet the failure threshold |
+| `--fail-on <severity>` | Set `low`, `medium`, `high`, or `critical` |
+| `--format <format>` | Set `text`, `json`, `markdown`, or `sarif` |
+| `--ignore <patterns...>` | Add glob patterns to exclude |
+| `--rules <path>` | Load custom JSON rules |
+| `--watch` | Rescan when files change |
+| `--ai` | Enable AI-assisted summaries |
+| `--publish` | Publish a summary to Supabase |
+
+## Updating the npm documentation
+
+The npm registry displays the README included in the published package. To release documentation changes:
+
+```bash
+npm version patch
+npm publish
+```
+
+Run `npm pack --dry-run` first to confirm that `README.md`, compiled files, and runtime assets are included.
 
 ## License
 
-MIT © Votrio, Inc.
+MIT

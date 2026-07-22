@@ -12,6 +12,7 @@ import { Analytics } from "@vercel/analytics/next"
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "Votrio — AI-Powered Code Intelligence & Security Platform",
   description:
     "Enterprise-grade code analysis, security scanning, and repository intelligence. Transform your development workflow with AI-powered insights.",

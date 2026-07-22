@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ShieldHalf } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
@@ -53,7 +52,7 @@ export function Nav() {
             Sign in
           </Link>
           <Link
-            href="/demo"
+            href="/scan"
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background transition hover:opacity-85"
           >
             Get started

@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  logging: {
+    browserToTerminal: "warn",
+    fetches: { fullUrl: false },
+  },
 };
 
 export default nextConfig;

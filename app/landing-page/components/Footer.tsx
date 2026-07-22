@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ShieldHalf } from "lucide-react";
 
 export function Footer() {
   return (
@@ -14,7 +13,7 @@ export function Footer() {
         </p>
         <div className="flex gap-6 font-mono text-xs text-muted-foreground">
           <Link href="/documentation" className="transition hover:text-foreground">Docs</Link>
-          <Link href="/demo" className="transition hover:text-foreground">Demo</Link>
+          <Link href="/scan" className="transition hover:text-foreground">Scan</Link>
           <Link href="/auth" className="transition hover:text-foreground">Sign in</Link>
         </div>
       </div>

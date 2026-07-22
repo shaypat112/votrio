@@ -24,26 +24,20 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import {
-  CheckCircle2,
-  Github,
-  Loader2,
-  AlertCircle,
-  Shield,
-} from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 type Status = "idle" | "loading" | "success" | "error";
 
 interface FormState {
   repoUrl: string;
   description: string;
-  scanType: string;
+  category: string;
 }
 
 const INITIAL_FORM: FormState = {
   repoUrl: "",
   description: "",
-  scanType: "full",
+  category: "scanning",
 };
 
 export function FeedBackForm() {
@@ -78,6 +72,7 @@ export function FeedBackForm() {
       body: JSON.stringify({
         message: form.repoUrl.trim(),
         details: form.description.trim() || null,
+        category: form.category,
       }),
     });
 
@@ -102,9 +97,9 @@ export function FeedBackForm() {
       <Card>
         <CardContent className="py-12 flex flex-col items-center gap-4 text-center">
           <div className="space-y-1">
-            <p className="font-semibold text-sm">Form Submitted </p>
+            <p className="font-semibold text-sm">Feedback submitted</p>
             <p className="text-xs text-muted-foreground max-w-xs">
-              We'll review your feedback and reach back out to you soon
+              Thanks for helping us improve Votrio. Your feedback is ready for review.
             </p>
           </div>
           <Button
@@ -124,29 +119,43 @@ export function FeedBackForm() {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          Feedback
+          Submit feedback
         </CardTitle>
         <CardDescription className="text-xs">
-          Enter any feedback you have about the site right. here
+          Tell us what would make repository scanning more useful or reliable.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="repo-url" className="text-sm">
-            Leave Specific Feedback <span className="text-destructive">*</span>
+            Feedback <span className="text-destructive">*</span>
           </Label>
           <div className="relative">
             <Input
               id="repo-url"
-              placeholder="suggestions here"
+              placeholder="What should we improve?"
               value={form.repoUrl}
               onChange={(e) => setField("repoUrl", e.target.value)}
               className="pl-9 font-mono text-sm h-9"
               autoComplete="off"
-              spellCheck={false}
+              minLength={10}
+              maxLength={2000}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="feedback-category">Category</Label>
+          <Select value={form.category} onValueChange={(value) => setField("category", value)}>
+            <SelectTrigger id="feedback-category"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="scanning">Scanning</SelectItem>
+              <SelectItem value="bug">Bug</SelectItem>
+              <SelectItem value="feature">Feature request</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Separator />
@@ -160,11 +169,12 @@ export function FeedBackForm() {
           </Label>
           <Textarea
             id="description"
-            placeholder="Anything specific to check — e.g. focus on /api, recently added auth code, etc."
+            placeholder="Steps to reproduce, expected behavior, or any other context."
             value={form.description}
             onChange={(e) => setField("description", e.target.value)}
             rows={3}
             className="text-sm resize-none"
+            maxLength={4000}
           />
         </div>
 
@@ -179,7 +189,7 @@ export function FeedBackForm() {
       <CardFooter className="flex items-center justify-between gap-3 pt-2">
         <Button
           onClick={handleSubmit}
-          disabled={!form.repoUrl.trim() || status === "loading"}
+          disabled={form.repoUrl.trim().length < 10 || status === "loading"}
           size="sm"
           className="text-xs min-w-28 gap-1.5"
         >
@@ -188,7 +198,7 @@ export function FeedBackForm() {
               <Loader2 size={13} className="animate-spin" /> Submitting...
             </>
           ) : (
-            "Submit Form"
+            "Submit feedback"
           )}
         </Button>
       </CardFooter>

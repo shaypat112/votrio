@@ -5,6 +5,7 @@ import {
   RequestAuthError,
   requireRequestAuth,
 } from "@/app/lib/server/supabaseRest";
+import { logServerError, logServerInfo } from "@/app/lib/server/logger";
 
 export const runtime = "nodejs";
 
@@ -18,12 +19,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const repoUrl = body?.repoUrl as string | undefined;
     const options = body?.options;
+    const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
     const { accessToken } = requireRequestAuth(request);
     const selectedTeamId = extractSelectedTeamId(request);
 
     if (!repoUrl) {
       return NextResponse.json({ error: "Missing repoUrl." }, { status: 400 });
     }
+
+    logServerInfo("scan.started", { transport: wantsEvents ? "sse" : "json" });
 
     if (wantsEvents) {
       const encoder = new TextEncoder();
@@ -38,10 +42,13 @@ export async function POST(request: Request) {
               options,
               accessToken,
               teamId: selectedTeamId,
+              providerToken,
               onProgress: (stage, detail) => send("progress", { stage, detail }),
             });
             send("complete", result);
+            logServerInfo("scan.completed", { findings: result.totalFindings });
           } catch (error) {
+            logServerError("scan.failed", error);
             send("error", { error: getErrorMessage(error) });
           } finally {
             controller.close();
@@ -57,7 +64,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId });
+    const result = await handleGitHubScan({ repoUrl, options, accessToken, teamId: selectedTeamId, providerToken });
+    logServerInfo("scan.completed", { findings: result.totalFindings });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -65,6 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const message = getErrorMessage(error);
+    logServerError("scan.request_failed", error);
     if (message.includes("Invalid GitHub repository URL")) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
@@ -74,10 +83,7 @@ export async function POST(request: Request) {
     if (message.includes("rate limit")) {
       return NextResponse.json({ error: message }, { status: 429 });
     }
-    if (message.includes("Git is not available")) {
-      return NextResponse.json({ error: message }, { status: 500 });
-    }
-    if (message.includes("Clone failed")) {
+    if (message.includes("too large")) {
       return NextResponse.json({ error: message }, { status: 500 });
     }
     if (message.includes("Scan failed")) {

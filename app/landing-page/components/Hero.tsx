@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, Play, ShieldHalf } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { FadeIn } from "../shared/FadeIn";
 import { ThreatGraph } from "./ThreatGraph";
 
@@ -34,18 +33,18 @@ export function Hero() {
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href="/demo"
+            href="/scan"
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             <Play className="h-3.5 w-3.5" />
-            View demo
+            Start scanning
           </Link>
         </div>
 
         <div className="flex items-center gap-6 pt-2 font-mono text-xs text-muted-foreground">
           <span>Scans in minutes, not sprints</span>
           <span className="hidden h-1 w-1 rounded-full bg-border sm:block" />
-          <span className="hidden sm:block">No code leaves your environment</span>
+          <span className="hidden sm:block">Read-only repository access</span>
         </div>
       </FadeIn>
 
