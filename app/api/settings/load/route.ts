@@ -7,6 +7,7 @@ import {
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
 import { purgeUserData } from "@/app/lib/server/retention";
+import { normalizeApiLimits, planFromPriceId } from "@/app/lib/api-rate-limits";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 
     const env = getSupabaseEnv();
 
-    const [profileRes, settingsRes, webhookRes] = await Promise.all([
+    const [profileRes, settingsRes, webhookRes, billingRes] = await Promise.all([
       supabaseFetch(env, `profiles?id=eq.${userId}&select=full_name,username,avatar_url`, {
         accessToken,
       }),
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
         accessToken,
       }),
       supabaseFetch(env, `webhook_endpoints?user_id=eq.${userId}&select=url,enabled,events,secret`, {
+        accessToken,
+      }),
+      supabaseFetch(env, `billing_customers?user_id=eq.${userId}&select=price_id,status&limit=1`, {
         accessToken,
       }),
     ]);
@@ -89,6 +93,12 @@ export async function POST(request: Request) {
     const profile = profileRows?.[0] ?? {};
     const storedSettings = settingsRows?.[0]?.data ?? {};
     const webhook = webhookRows?.[0] ?? {};
+    const billingRows = billingRes.ok ? await billingRes.json() : [];
+    const billing = billingRows?.[0] as { price_id?: string | null; status?: string | null } | undefined;
+    const apiPlan = billing?.status === "active" || billing?.status === "trialing"
+      ? planFromPriceId(billing?.price_id)
+      : "free";
+    const apiLimits = normalizeApiLimits(storedSettings, apiPlan);
 
     const settings = {
       ...DEFAULT_SETTINGS,
@@ -101,6 +111,7 @@ export async function POST(request: Request) {
       webhookSecret: webhook.secret ?? "",
       webhookEvents: webhook.events ?? storedSettings.webhookEvents ?? DEFAULT_SETTINGS.webhookEvents,
       retentionDays: 30,
+      ...apiLimits,
     };
 
     await purgeUserData({ env, accessToken, userId, days: 30 });
@@ -110,6 +121,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       settings,
+      apiPlan,
       admin: {
         isAdmin,
         profileUsername: adminConfig.profileUsername,

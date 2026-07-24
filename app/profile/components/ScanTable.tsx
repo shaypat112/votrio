@@ -50,16 +50,10 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
             </TableHeader>
             <TableBody>
               {scans.map((scan) => (
-                <TableRow
-                  key={`${scan.repo}-${scan.created_at}`}
-                  className="cursor-pointer hover:bg-zinc-950/60"
-                  onClick={() => {
-                    window.location.href = `/reports/${encodeURIComponent(scan.repo)}`;
-                  }}
-                >
-                  <TableCell className="font-medium text-zinc-100">
+                <TableRow key={`${scan.repo}-${scan.created_at}`}>
+                  <TableCell className="font-medium text-foreground">
                     <div className="space-y-1">
-                      <div>{scan.repo}</div>
+                      <Link className="underline-offset-4 hover:underline" href={`/reports/${encodeURIComponent(scan.repo)}`}>{scan.repo}</Link>
                       {scan.summary ? (
                         <div className="text-xs text-zinc-500">
                           {scan.summary}

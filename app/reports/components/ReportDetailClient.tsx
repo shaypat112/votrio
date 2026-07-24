@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SystemDesignOverview } from "@/app/components/SystemDesignOverview";
 
 type ScanFinding = {
   title?: string;
@@ -49,6 +50,19 @@ type ScanRow = {
   findings?: {
     ai_summary?: string;
     list?: ScanFinding[] | null;
+    systemDesign?: {
+      summary: string;
+      disclaimer: string;
+      scenarios: Array<{
+        id: string;
+        title: string;
+        status: "ready" | "watch" | "risk" | "unknown";
+        confidence: "low" | "medium";
+        reflection: string;
+        evidence: string[];
+        nextStep: string;
+      }>;
+    };
   } | null;
 };
 
@@ -138,9 +152,9 @@ export function ReportDetailClient({ repo }: { repo: string }) {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <Button asChild variant="ghost" className="px-0">
-          <Link href="/reports">
+          <Link href="/scan?view=history">
             <ArrowLeft className="h-4 w-4" />
-            Back to reports
+            Back to scan history
           </Link>
         </Button>
         <Card className="border-border bg-card">
@@ -176,9 +190,9 @@ export function ReportDetailClient({ repo }: { repo: string }) {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <Button asChild variant="ghost" className="px-0">
-        <Link href="/reports">
+        <Link href="/scan?view=history">
           <ArrowLeft className="h-4 w-4" />
-          Back to reports
+          Back to scan history
         </Link>
       </Button>
 
@@ -266,6 +280,10 @@ export function ReportDetailClient({ repo }: { repo: string }) {
           </CardContent>
         </Card>
       </section>
+
+      {latest.findings?.systemDesign ? (
+        <SystemDesignOverview result={latest.findings.systemDesign} docsHref="/documentation/system-design" />
+      ) : null}
 
       <Card className="border-border bg-card">
         <CardHeader><CardTitle>Risk and issue trend</CardTitle><p className="text-sm text-muted-foreground">How repository risk changed across the last {history.length} scans.</p></CardHeader>

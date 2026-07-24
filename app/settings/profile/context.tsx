@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/app/lib/supabase";
 import { buildAuthHeaders } from "@/app/lib/http";
+import { apiPlanCatalog, type ApiPlanId } from "@/app/lib/api-rate-limits";
+import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +17,8 @@ export type SettingsState = {
   webhookSecret: string;
   webhookEvents: string[];
   retentionDays: number;
+  apiRequestsPerMinute: number;
+  expensiveRequestsPerMinute: number;
 };
 
 export type AdminState = {
@@ -32,6 +36,8 @@ const defaultSettings: SettingsState = {
   webhookSecret: "",
   webhookEvents: ["scan.completed"],
   retentionDays: 30,
+  apiRequestsPerMinute: apiPlanCatalog.free.limits.apiRequestsPerMinute,
+  expensiveRequestsPerMinute: apiPlanCatalog.free.limits.expensiveRequestsPerMinute,
 };
 
 // ─── Context shape ─────────────────────────────────────────────────────────────
@@ -51,6 +57,7 @@ type SettingsContextValue = {
   setStatus: (msg: string | null) => void;
   accessToken: string | null;
   admin: AdminState;
+  apiPlan: ApiPlanId;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -69,14 +76,25 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const [status, setStatusState] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [admin, setAdmin] = useState<AdminState>({
     isAdmin: false,
     profileUsername: null,
     githubLogin: null,
   });
+  const [apiPlan, setApiPlan] = useState<ApiPlanId>("free");
+
+  const setStatus = useCallback((message: string | null) => {
+    setStatusState(message);
+    if (message) toast.success(message);
+  }, []);
+
+  const setError = useCallback((message: string | null) => {
+    setErrorState(message);
+    if (message) toast.error(message);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -120,6 +138,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               ? data.admin.githubLogin
               : null,
         });
+        setApiPlan(data?.apiPlan === "pro" || data?.apiPlan === "team" ? data.apiPlan : "free");
       }
 
       setLoading(false);
@@ -129,7 +148,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [supabase]);
+  }, [setError, supabase]);
 
   const update = <K extends keyof SettingsState>(
     key: K,
@@ -186,6 +205,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setStatus,
         accessToken,
         admin,
+        apiPlan,
       }}
     >
       {children}

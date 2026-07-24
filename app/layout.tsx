@@ -2,12 +2,13 @@ import "./globals.css";
 
 import AppShell from "./components/AppShell";
 import { ThemeProvider } from "./components/theme-provider";
-import { SettingsProvider } from "./settings/profile/context";
 import TeamProvider from "./components/TeamProvider";
 import { Geist } from "next/font/google";
 import { cn } from "./lib/utils";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -44,12 +45,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={cn(geist.variable)}>
       <body className="bg-background text-foreground antialiased">
         <ThemeProvider defaultTheme="dark">
-          <TeamProvider>
-            <SettingsProvider>
+          <TooltipProvider delayDuration={350} skipDelayDuration={150}>
+            <TeamProvider>
               <AppShell>{children}</AppShell>
               <Analytics />
-            </SettingsProvider>
-          </TeamProvider>
+            </TeamProvider>
+            <Toaster position="bottom-right" richColors closeButton />
+          </TooltipProvider>
+
         </ThemeProvider>
       </body>
     </html>

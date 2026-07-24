@@ -45,7 +45,7 @@ export async function handleGitHubScan(input: {
     severity,
     issues: total,
     score: avgScore,
-    findings: { list: result.findings, profile: result.profile, intelligence, team_id: input.teamId ?? null },
+    findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
   };
 
   if (userId && accessToken) scanPayload.user_id = userId;
@@ -64,7 +64,7 @@ export async function handleGitHubScan(input: {
       severity,
       issues: total,
       score: avgScore,
-      findings: { list: result.findings, profile: result.profile, intelligence, team_id: input.teamId ?? null },
+      findings: { list: result.findings, profile: result.profile, systemDesign: result.systemDesign, intelligence, team_id: input.teamId ?? null },
     };
     scanInsertRes = await supabaseFetch(env, "scan_history", {
       method: "POST",
@@ -104,6 +104,7 @@ export async function handleGitHubScan(input: {
       accessToken,
       userId,
       type: "scan.completed",
+      teamId: input.teamId ?? null,
       data: {
         repo_name: result.repoName,
         repo_url: result.repoUrl,
@@ -126,6 +127,7 @@ export async function handleGitHubScan(input: {
     totalFindings: total,
     findings: result.findings,
     profile: result.profile,
+    systemDesign: result.systemDesign,
     intelligence,
     scan: scanRows?.[0] ?? null,
   };

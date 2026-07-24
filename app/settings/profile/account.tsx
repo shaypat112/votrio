@@ -1,20 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useSettings } from "./context";
 import { SectionCard, FieldGroup, StyledInput, GhostButton } from "./primitives";
 import { Loader2, Save, X } from "lucide-react";
 
 export function AccountSection() {
-  const { settings, update, save, saving, error, status, setStatus } = useSettings();
-  const router = useRouter();
+  const { settings, update, save, saving, setStatus } = useSettings();
 
   const handleSave = async () => {
     setStatus(null);
     await save();
-    if (!error) {
-      setTimeout(() => setStatus(null), 3000);
-    }
   };
 
   const handleCancel = () => {
@@ -73,22 +68,6 @@ export function AccountSection() {
             Cancel
           </GhostButton>
         </div>
-        
-        {status && (
-          <p className="text-xs text-green-600 dark:text-green-400">{status}</p>
-        )}
-        {error && (
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        )}
-      </div>
-
-      <div className="pt-2">
-        <button
-          onClick={() => router.push("/settings?section=feedback")}
-          className="text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-        >
-          Submit feedback →
-        </button>
       </div>
     </SectionCard>
   );

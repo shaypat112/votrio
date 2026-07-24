@@ -1,4 +1,5 @@
 import path from "path";
+import { scannerPolicy, securityRuleRegistry } from "@/app/lib/scanner/rules/registry";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -52,6 +53,22 @@ export type RepositoryProfile = {
   manifests: string[];
 };
 
+export type SystemDesignScenario = {
+  id: "traffic-spike" | "data-growth" | "dependency-failure" | "multi-region" | "cost-pressure";
+  title: string;
+  status: "ready" | "watch" | "risk" | "unknown";
+  confidence: "low" | "medium";
+  reflection: string;
+  evidence: string[];
+  nextStep: string;
+};
+
+export type SystemDesignAssessment = {
+  summary: string;
+  disclaimer: string;
+  scenarios: SystemDesignScenario[];
+};
+
 export type ScanStage =
   | "validating"
   | "cloning"
@@ -62,122 +79,13 @@ export type ScanStage =
 
 export type ScanProgress = (stage: ScanStage, detail: string) => void;
 
-const MAX_FILE_SIZE = 1024 * 1024;
-const MAX_FILES = 500;
-const MAX_SCAN_BYTES = 25 * 1024 * 1024;
-const SCAN_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".py",
-  ".go",
-  ".rs",
-  ".java",
-  ".cs",
-  ".php",
-  ".rb",
-  ".sh",
-  ".yaml",
-  ".yml",
-]);
-const SECURITY_CONFIG_FILES = new Set([
-  ".env",
-  ".npmrc",
-  ".pypirc",
-  "dockerfile",
-]);
-
-const DEFAULT_IGNORE = new Set([
-  "node_modules",
-  ".git",
-  ".next",
-  "dist",
-  "build",
-  "coverage",
-  "vendor",
-]);
-
-const SEVERITY_SCORE: Record<Severity, number> = {
-  low: 30,
-  medium: 55,
-  high: 75,
-  critical: 90,
-};
-
-const QUICK_PATTERNS = [
-  {
-    pattern: /eval\s*\(/g,
-    severity: "high" as Severity,
-    type: "EVAL",
-    message: "eval() detected — possible code injection",
-    suggestion: "Avoid eval() and use safer parsing.",
-  },
-  {
-    pattern: /dangerouslySetInnerHTML/g,
-    severity: "medium" as Severity,
-    type: "XSS_RISK",
-    message: "dangerouslySetInnerHTML usage detected",
-    suggestion: "Sanitize user input before rendering.",
-  },
-  {
-    pattern: /child_process.*exec\s*\(/g,
-    severity: "high" as Severity,
-    type: "CMD_INJECTION",
-    message: "exec() usage detected",
-    suggestion: "Use spawn with arguments instead.",
-  },
-  {
-    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"'${}\s][^"']{5,}/gi,
-    severity: "high" as Severity,
-    type: "HARDCODED_SECRET",
-    message: "Possible hardcoded credential",
-    suggestion: "Move secrets to environment variables.",
-  },
-  {
-    pattern: /\b(?:md5|sha1)\s*\(/gi,
-    severity: "medium" as Severity,
-    type: "WEAK_CRYPTO",
-    message: "Weak cryptographic hash usage detected",
-    suggestion: "Use SHA-256 or a password-specific KDF such as Argon2id, scrypt, or bcrypt.",
-  },
-  {
-    pattern: /\bMath\.random\s*\(/g,
-    severity: "medium" as Severity,
-    type: "INSECURE_RANDOMNESS",
-    message: "Math.random() is not cryptographically secure",
-    suggestion: "Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive values.",
-  },
-  {
-    pattern: /\brejectUnauthorized\s*:\s*false\b/g,
-    severity: "high" as Severity,
-    type: "TLS_VALIDATION_DISABLED",
-    message: "TLS certificate validation is disabled",
-    suggestion: "Keep certificate validation enabled and configure a trusted CA when necessary.",
-  },
-  {
-    pattern: /\b(?:verify|ssl_verify)\s*[:=]\s*(?:false|False)\b/g,
-    severity: "high" as Severity,
-    type: "TLS_VALIDATION_DISABLED",
-    message: "TLS certificate validation may be disabled",
-    suggestion: "Keep certificate validation enabled and configure a trusted CA when necessary.",
-  },
-  {
-    pattern: /\b(?:pickle\.loads?|yaml\.load)\s*\(/g,
-    severity: "high" as Severity,
-    type: "UNSAFE_DESERIALIZATION",
-    message: "Potentially unsafe deserialization detected",
-    suggestion: "Use a safe loader and never deserialize untrusted input.",
-  },
-];
-
 function isValidGitHubUrl(repoUrl: string) {
-  const pattern = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/)?$/;
+  const pattern = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?\/?$/;
   return pattern.test(repoUrl.trim());
 }
 
 function extractRepoName(repoUrl: string) {
-  const trimmed = repoUrl.replace(/\/$/, "");
+  const trimmed = repoUrl.replace(/\/$/, "").replace(/\.git$/, "");
   const parts = trimmed.split("/");
   return parts.slice(-2).join("/");
 }
@@ -270,13 +178,88 @@ function shouldScanFile(filePath: string, ignore: Set<string>) {
   const baseName = segments.at(-1)?.toLowerCase() ?? "";
   return (
     !segments.some((segment) => ignore.has(segment)) &&
-    (SCAN_EXTENSIONS.has(path.extname(filePath).toLowerCase()) ||
-      SECURITY_CONFIG_FILES.has(baseName))
+    (scannerPolicy.extensions.has(path.extname(filePath).toLowerCase()) ||
+      scannerPolicy.securityConfigFiles.has(baseName))
   );
 }
 
+function buildSystemDesignAssessment(
+  files: RepositoryFile[],
+  tree: Array<{ path: string; type: string }>,
+  manifests: string[],
+): SystemDesignAssessment {
+  const paths = tree.map((entry) => entry.path.toLowerCase());
+  const searchable = files.map((file) => `${file.path}\n${file.content}`).join("\n").toLowerCase();
+  const evidenceFor = (signals: Array<[string, boolean]>) => signals.filter(([, present]) => present).map(([label]) => label);
+  const hasRuntime = manifests.length > 0 || paths.some((file) => /(?:server|api|route|handler|controller)/.test(file));
+
+  const trafficEvidence = evidenceFor([
+    ["Caching or Redis references", /\b(redis|cache-control|unstable_cache|memcached)\b/.test(searchable)],
+    ["Rate-limiting references", /\b(rate.?limit|throttl)/.test(searchable)],
+    ["Queue or worker references", /\b(queue|worker|bullmq|celery|sidekiq|kafka|sqs)\b/.test(searchable)],
+  ]);
+  const dataEvidence = evidenceFor([
+    ["Database schema or migrations", paths.some((file) => /(?:migration|schema|prisma|drizzle)/.test(file))],
+    ["Pagination references", /\b(cursor|pagination|page.?size|limit\s*[:=(])/.test(searchable)],
+    ["Index definitions", /\b(create\s+(?:unique\s+)?index|@@index|index\s*[:(])/.test(searchable)],
+  ]);
+  const failureEvidence = evidenceFor([
+    ["Health-check route", paths.some((file) => /health|readiness|liveness/.test(file))],
+    ["Retry or backoff logic", /\b(retr(?:y|ies)|backoff|circuit.?breaker)\b/.test(searchable)],
+    ["Structured logging or error monitoring", /\b(sentry|datadog|opentelemetry|pino|winston|structlog)\b/.test(searchable)],
+  ]);
+  const regionEvidence = evidenceFor([
+    ["Infrastructure configuration", paths.some((file) => /(?:terraform|pulumi|kubernetes|k8s|cloudformation|vercel\.json)/.test(file))],
+    ["External session or cache store", /\b(redis|database.?session|session.?store)\b/.test(searchable)],
+    ["Object storage references", /\b(s3|blob storage|cloudinary|supabase\.storage)\b/.test(searchable)],
+  ]);
+  const costEvidence = evidenceFor([
+    ["Background jobs or queues", /\b(queue|worker|cron|scheduler)\b/.test(searchable)],
+    ["Usage limits or budgets", /\b(budget|quota|usage.?limit|max_tokens)\b/.test(searchable)],
+    ["Request caching", /\b(cache-control|unstable_cache|redis)\b/.test(searchable)],
+  ]);
+
+  const scenario = (
+    id: SystemDesignScenario["id"],
+    title: string,
+    evidence: string[],
+    riskReflection: string,
+    readyReflection: string,
+    nextStep: string,
+  ): SystemDesignScenario => ({
+    id,
+    title,
+    status: !hasRuntime ? "unknown" : evidence.length >= 2 ? "ready" : evidence.length === 1 ? "watch" : "risk",
+    confidence: evidence.length > 0 ? "medium" : "low",
+    reflection: !hasRuntime
+      ? "This repository does not expose enough runtime structure for a useful static assessment."
+      : evidence.length >= 2 ? readyReflection : riskReflection,
+    evidence: evidence.length > 0 ? evidence : ["No clear implementation signal found in supported files"],
+    nextStep,
+  });
+
+  const scenarios = [
+    scenario("traffic-spike", "10× traffic spike", trafficEvidence, "A sudden traffic spike may reach application or database limits directly because protective capacity signals were not clear.", "The repository shows multiple traffic-control primitives, but load testing is still needed to find the real ceiling.", "Add a request limit to your busiest API route, then run a basic load test."),
+    scenario("data-growth", "100× data growth", dataEvidence, "Large tables and list endpoints may slow down as data grows; pagination and index strategy are not evident.", "Schema, pagination, or indexing signals suggest data growth has been considered, but query plans remain unverified.", "Show long lists one page at a time, then add an index for the field users search most."),
+    scenario("dependency-failure", "Upstream outage", failureEvidence, "A slow or unavailable dependency may cascade into user-facing failures because resilience and observability signals are limited.", "Health, retry, or observability primitives are present, reducing—but not eliminating—cascade risk.", "Make external requests stop after 10 seconds and retry no more than twice."),
+    scenario("multi-region", "Multi-region deployment", regionEvidence, "State placement and infrastructure topology are unclear, so adding regions could introduce session, storage, or consistency failures.", "The repository contains some portable infrastructure or external-state signals; consistency requirements still need an explicit design.", "Stay in one region for now and write down where logins, uploads, and database writes live."),
+    scenario("cost-pressure", "10× usage cost", costEvidence, "Usage may scale cost linearly because caching, quotas, and asynchronous work controls are not obvious.", "The repository contains cost-control primitives, but production usage and unit economics must confirm their effect.", "Turn on a cloud spending alert and track the cost of one successful user request."),
+  ];
+  const risks = scenarios.filter((item) => item.status === "risk").length;
+
+  return {
+    summary: !hasRuntime
+      ? "System-design readiness is unknown because this repository exposes limited runtime structure."
+      : risks > 0
+        ? `${risks} of ${scenarios.length} growth scenarios lack clear safeguards in the scanned repository.`
+        : "The repository contains useful scalability signals across the assessed scenarios.",
+    disclaimer: "This is a static, repository-evidence review—not a capacity test. Infrastructure, production traffic, data shape, and managed-service configuration may change the outcome.",
+    scenarios,
+  };
+}
+
 async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgress?: ScanProgress) {
-  const ignore = new Set(DEFAULT_IGNORE);
+  const ignore = new Set(scannerPolicy.defaultIgnoreDirectories);
   for (const entry of options.ignore ?? []) {
     ignore.add(entry);
   }
@@ -289,24 +272,26 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
   for (const file of selectedFiles) {
     const content = file.content;
     const lines = content.split("\n");
-    for (const check of QUICK_PATTERNS) {
-      const matches = [...content.matchAll(check.pattern)];
+    for (const rule of securityRuleRegistry.rules) {
+      const matches = [...content.matchAll(rule.pattern)];
       for (const match of matches) {
         const line = content.slice(0, match.index ?? 0).split("\n").length;
+        const sourceLine = lines[line - 1]?.trim() ?? "";
+        if (rule.validator && !rule.validator(match, sourceLine)) continue;
         findings.push({
           file: file.path,
           line,
-          severity: check.severity,
-          score: SEVERITY_SCORE[check.severity],
-          type: check.type,
-          message: check.message,
-          snippet: lines[line - 1]?.trim(),
-          suggestion: check.suggestion,
+          severity: rule.severity,
+          score: rule.score,
+          type: rule.id,
+          message: rule.message,
+          snippet: sourceLine,
+          suggestion: rule.suggestion,
           source: "regex",
-          category: check.type === "HARDCODED_SECRET" ? "secrets" : "code",
+          category: rule.category,
           confidence: "high",
-          advisoryId: `VOTRIO-${check.type}`,
-          technicalDetails: `Matched Votrio's ${check.type} static rule in ${file.path}:${line}.`,
+          advisoryId: rule.advisoryId,
+          technicalDetails: `Matched Votrio ruleset ${securityRuleRegistry.rulesetVersion}, rule ${rule.id}, in ${file.path}:${line}.`,
         });
       }
     }
@@ -319,7 +304,7 @@ async function scanFiles(files: RepositoryFile[], options: ScanOptions, onProgre
   }
 
   return [...map.values()].sort(
-    (a, b) => SEVERITY_SCORE[b.severity] - SEVERITY_SCORE[a.severity],
+    (a, b) => b.score - a.score,
   );
 }
 
@@ -382,7 +367,7 @@ export async function runGitHubScanWithToken(
 
     onProgress?.("detecting", "Detecting package managers and repository manifests.");
     const rootEntries = tree.tree.filter((entry) => !entry.path.includes("/")).map((entry) => entry.path);
-    const manifests = ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "requirements.txt", "poetry.lock", "go.mod", "Cargo.toml"]
+    const manifests = scannerPolicy.manifestFiles
       .filter((name) => rootEntries.includes(name));
     onProgress?.(
       "detecting",
@@ -390,17 +375,17 @@ export async function runGitHubScanWithToken(
         ? `Found ${manifests.join(", ")}. Dependency advisories are not enabled in this scanner.`
         : "No supported manifest found at the repository root; continuing with source analysis.",
     );
-    const ignore = new Set([...DEFAULT_IGNORE, ...(options.ignore ?? [])]);
+    const ignore = new Set([...scannerPolicy.defaultIgnoreDirectories, ...(options.ignore ?? [])]);
     const eligibleBlobs = tree.tree.filter((entry) =>
       entry.type === "blob" &&
-      (entry.size ?? MAX_FILE_SIZE + 1) <= MAX_FILE_SIZE &&
+      (entry.size ?? scannerPolicy.limits.maxFileBytes + 1) <= scannerPolicy.limits.maxFileBytes &&
       shouldScanFile(entry.path, ignore),
     );
     const blobs: typeof eligibleBlobs = [];
     let selectedBytes = 0;
     for (const blob of eligibleBlobs) {
       const blobBytes = blob.size ?? 0;
-      if (blobs.length >= MAX_FILES || selectedBytes + blobBytes > MAX_SCAN_BYTES) break;
+      if (blobs.length >= scannerPolicy.limits.maxFiles || selectedBytes + blobBytes > scannerPolicy.limits.maxScanBytes) break;
       blobs.push(blob);
       selectedBytes += blobBytes;
     }
@@ -416,6 +401,7 @@ export async function runGitHubScanWithToken(
     }
     const findings = await scanFiles(files, options, onProgress);
     const profile = buildRepositoryProfile({ repository, tree: tree.tree, files, manifests, languageBytes });
+    const systemDesign = buildSystemDesignAssessment(files, tree.tree, manifests);
     onProgress?.("recommendations", "Ranking findings and generating remediation guidance.");
 
     return {
@@ -423,6 +409,7 @@ export async function runGitHubScanWithToken(
       repoName,
       findings,
       profile,
+      systemDesign,
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);

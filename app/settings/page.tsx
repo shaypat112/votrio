@@ -10,7 +10,9 @@ import { BillingSection } from "./profile/billing";
 
 import { RetentionSection } from "./profile/retention";
 import { TeamsSection } from "./profile/teams";
-import { FeedbackSection } from "./profile/feedback";
+import { IntegrationsSection } from "./profile/integrations";
+import { NotificationsSection } from "./profile/notifications";
+import { ApiSection } from "./profile/api";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,7 +24,9 @@ const SECTION_MAP = {
 
   retention: RetentionSection,
   teams: TeamsSection,
-  feedback: FeedbackSection,
+  integrations: IntegrationsSection,
+  notifications: NotificationsSection,
+  api: ApiSection,
 } satisfies Record<string, React.ComponentType>;
 
 type SectionKey = keyof typeof SECTION_MAP;
@@ -37,7 +41,10 @@ export default function SettingsPage() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const active = (searchParams?.get("section") as SectionKey) ?? "account";
+  const requestedSection = searchParams?.get("section");
+  const active: SectionKey = requestedSection && requestedSection in SECTION_MAP
+    ? requestedSection as SectionKey
+    : "account";
 
   const Component = SECTION_MAP[active] ?? AccountSection;
 

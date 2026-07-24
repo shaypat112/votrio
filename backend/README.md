@@ -10,6 +10,7 @@ Votrio scans source code locally, reports risky patterns in multiple formats, ca
 npm install --global votrio
 ```
 
+
 Votrio requires Node.js 18 or newer.
 
 ## Quick start

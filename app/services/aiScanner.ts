@@ -5,12 +5,18 @@ import {
   repositoryAnalyzer,
   RepositoryStructure,
 } from "@/app/lib/repository-analyzer";
-import { runGitHubScanWithToken } from "./githubScanner";
+import {
+  runGitHubScanWithToken,
+  type RepositoryProfile,
+  type SystemDesignAssessment,
+} from "./githubScanner";
 
 export interface AIScanResult {
   repositoryUrl: string;
   repositoryName: string;
   findings: any[];
+  profile: RepositoryProfile;
+  systemDesign: SystemDesignAssessment;
   aiAnalysis: {
     intelligence: any;
     securityAnalysis: any;
@@ -49,6 +55,8 @@ export class AIScanner {
         repositoryUrl: basicScan.repoUrl,
         repositoryName: basicScan.repoName,
         findings: basicScan.findings,
+        profile: basicScan.profile,
+        systemDesign: basicScan.systemDesign,
         aiAnalysis: {
           intelligence: null,
           securityAnalysis: null,
@@ -66,6 +74,8 @@ export class AIScanner {
       repositoryUrl: basicScan.repoUrl,
       repositoryName: basicScan.repoName,
       findings: basicScan.findings,
+      profile: basicScan.profile,
+      systemDesign: basicScan.systemDesign,
       aiAnalysis,
       summary: this.generateEnhancedSummary(basicScan.findings, aiAnalysis),
     };

@@ -11,7 +11,9 @@ import {
   Database,
   Palette,
   Users,
-  MessageSquareText,
+  Plug,
+  BellRing,
+  Braces,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { SettingsProvider, useSettings } from "./profile/context";
@@ -23,7 +25,9 @@ const NAV_SECTIONS = [
   { id: "webhooks", label: "Webhooks", icon: Webhook },
   { id: "retention", label: "Data", icon: Database },
   { id: "teams", label: "Teams", icon: Users },
-  { id: "feedback", label: "Feedback", icon: MessageSquareText },
+  { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "notifications", label: "Notifications", icon: BellRing },
+  { id: "api", label: "API", icon: Braces },
 ] as const;
 
 export type SectionId = (typeof NAV_SECTIONS)[number]["id"];
@@ -86,20 +90,37 @@ function Sidebar({ active }: { active: SectionId }) {
   );
 }
 
-function Banners() {
-  const { status, error } = useSettings();
+function MobileSettingsNav({ active }: { active: SectionId }) {
+  const { save, saving } = useSettings();
+
   return (
-    <div className="space-y-2">
-      {status && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
-          <Check className="h-4 w-4 shrink-0" /> {status}
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-          <span className="h-4 w-4 shrink-0 text-red-500">!</span> {error}
-        </div>
-      )}
+    <div className="border-b border-border bg-background p-3 sm:hidden">
+      <div className="flex gap-2 overflow-x-auto pb-2" aria-label="Settings sections">
+        {NAV_SECTIONS.map(({ id, label, icon: Icon }) => (
+          <Link
+            key={id}
+            href={`/settings?section=${id}`}
+            aria-current={active === id ? "page" : undefined}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm",
+              active === id
+                ? "border-foreground/20 bg-foreground text-background"
+                : "border-border bg-card text-muted-foreground",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </Link>
+        ))}
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-foreground py-2 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        {saving ? "Saving…" : "Save changes"}
+      </button>
     </div>
   );
 }
@@ -108,7 +129,10 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const { loading } = useSettings();
 
-  const active = (searchParams?.get("section") as SectionId) ?? "account";
+  const requestedSection = searchParams?.get("section");
+  const active = NAV_SECTIONS.some((section) => section.id === requestedSection)
+    ? requestedSection as SectionId
+    : "account";
 
   if (loading) {
     return (
@@ -124,13 +148,15 @@ function SettingsInner({ children }: { children: React.ReactNode }) {
       style={{ fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}
     >
       <Sidebar active={active} />
+      <div className="min-w-0 flex-1">
+        <MobileSettingsNav active={active} />
 
-      <main className="flex-1 bg-background px-6 py-10 sm:px-10">
+      <div className="bg-background px-4 py-8 sm:px-10 sm:py-10">
         <div className="mx-auto max-w-2xl space-y-6">
-          <Banners />
           {children}
         </div>
-      </main>
+      </div>
+      </div>
     </div>
   );
 }

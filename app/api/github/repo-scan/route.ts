@@ -10,16 +10,11 @@ import { deliverWebhooks } from "@/app/lib/server/webhooks";
 import { logActivity } from "@/app/lib/server/activity";
 import { createNotification } from "@/app/lib/server/notifications";
 import { purgeUserData } from "@/app/lib/server/retention";
-import { runGitHubScanWithToken } from "@/app/services/githubScanner";
 import { aiScanner } from "@/app/services/aiScanner";
 
 export const runtime = "nodejs";
 
 type ErrorWithStatus = Error & { status?: number };
-type MistralResponse = {
-  choices?: Array<{ message?: { content?: string } }>;
-};
-
 export async function POST(request: Request) {
   const body = await request.json();
   const providerToken =
@@ -56,6 +51,7 @@ export async function POST(request: Request) {
     const findings = scanResult.findings;
     const aiAnalysis = scanResult.aiAnalysis;
     const summary = scanResult.summary;
+    const systemDesign = scanResult.systemDesign;
 
     const highestSeverity =
       findings.find((item) => item.severity === "critical")?.severity ??
@@ -95,6 +91,8 @@ export async function POST(request: Request) {
         list: findings,
         ai_analysis: aiAnalysis,
         scan_summary: summary,
+        profile: scanResult.profile,
+        systemDesign,
         team_id: selectedTeamId,
       },
       created_at: now,
@@ -158,6 +156,7 @@ export async function POST(request: Request) {
       accessToken,
       userId,
       type: "scan.completed",
+      teamId: selectedTeamId,
       data: {
         repo_name: repoFullName,
         repo_url: repoFullName,
@@ -181,6 +180,7 @@ export async function POST(request: Request) {
       issues,
       aiAnalysis,
       scanSummary: summary,
+      systemDesign,
       scan: inserted?.[0] ?? null,
       findings,
     });

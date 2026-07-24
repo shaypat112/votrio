@@ -15,11 +15,22 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AlertCircle, Bell, CheckCircle2, Database, FolderGit2, ScanSearch, ShieldAlert } from "lucide-react";
+import { AlertCircle, Bell, CheckCircle2, Database, FolderGit2, ScanSearch, ShieldAlert, Trash2 } from "lucide-react";
 
 import { buildAuthHeaders } from "@/app/lib/http";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSettings } from "./context";
 import { DangerButton, SectionCard } from "./primitives";
 
@@ -58,6 +69,9 @@ export function RetentionSection() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [clearing, setClearing] = useState<ClearScope | null>(null);
+  const [confirmation, setConfirmation] = useState<
+    { action: "clear"; scope: ClearScope } | { action: "delete" } | null
+  >(null);
 
   const loadSummary = useCallback(async () => {
     if (!accessToken) return;
@@ -91,12 +105,6 @@ export function RetentionSection() {
 
   const clearData = async (scope: ClearScope) => {
     if (!accessToken) return;
-    const labels: Record<ClearScope, string> = {
-      scan_history: "scan history",
-      notifications: "notifications",
-      all: "scan history and notifications",
-    };
-    if (!window.confirm(`Clear your ${labels[scope]}? This cannot be undone.`)) return;
     setError(null);
     setClearing(scope);
     const res = await fetch("/api/settings/clear-data", {
@@ -116,10 +124,6 @@ export function RetentionSection() {
 
   const deleteAccount = async () => {
     if (!accessToken) return;
-    const confirmed = window.confirm(
-      "Delete your account permanently? This removes your profile, scans, notifications, and sign-in access.",
-    );
-    if (!confirmed) return;
     setError(null);
     const res = await fetch("/api/settings/delete-account", {
       method: "POST",
@@ -198,10 +202,54 @@ export function RetentionSection() {
 
       <SectionCard title="Data retention" description="Account data is automatically removed after 30 days.">
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3"><div><p className="text-sm font-medium">Retention window</p><p className="mt-0.5 text-xs text-muted-foreground">Applies to scan history and notifications.</p></div><span className="rounded-md border border-border bg-background px-2.5 py-1 font-mono text-xs">30 days</span></div>
-        <div className="pt-2"><p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">Danger zone</p><div className="flex flex-wrap gap-2"><DangerButton disabled={clearing !== null} onClick={() => void clearData("scan_history")}>{clearing === "scan_history" ? "Clearing…" : "Clear scan history"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => void clearData("notifications")}>{clearing === "notifications" ? "Clearing…" : "Clear notifications"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => void clearData("all")}>{clearing === "all" ? "Clearing…" : "Clear all data"}</DangerButton></div>
-          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="text-sm font-semibold text-red-500">Delete account</p><p className="mt-1 text-xs text-red-500/80">Permanently removes your profile, feedback, notifications, scans, linked repositories, and sign-in access.</p><DangerButton onClick={() => void deleteAccount()} className="mt-4 w-full bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 hover:text-white">Delete my account permanently</DangerButton></div>
+        <div className="pt-2"><p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">Danger zone</p><div className="flex flex-wrap gap-2"><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "scan_history" })}>{clearing === "scan_history" ? "Clearing…" : "Clear scan history"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "notifications" })}>{clearing === "notifications" ? "Clearing…" : "Clear notifications"}</DangerButton><DangerButton disabled={clearing !== null} onClick={() => setConfirmation({ action: "clear", scope: "all" })}>{clearing === "all" ? "Clearing…" : "Clear all data"}</DangerButton></div>
+          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="text-sm font-semibold text-red-500">Delete account</p><p className="mt-1 text-xs text-red-500/80">Permanently removes your profile, notifications, scans, linked repositories, and sign-in access.</p><DangerButton onClick={() => setConfirmation({ action: "delete" })} className="mt-4 w-full bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 hover:text-white">Delete my account permanently</DangerButton></div>
         </div>
       </SectionCard>
+
+      <AlertDialog
+        open={confirmation !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>
+              {confirmation?.action === "delete"
+                ? "Permanently delete your account?"
+                : "Clear this account data?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmation?.action === "delete"
+                ? "Your profile, scans, notifications, linked repositories, and sign-in access will be permanently removed. This cannot be undone."
+                : confirmation?.scope === "all"
+                  ? "Your scan history and notifications will be permanently removed. Your account will remain active."
+                  : `Your ${confirmation?.scope === "scan_history" ? "scan history" : "notifications"} will be permanently removed. This cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep my data</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirmation?.action === "delete") {
+                  void deleteAccount();
+                } else if (confirmation?.action === "clear") {
+                  void clearData(confirmation.scope);
+                }
+              }}
+            >
+              {confirmation?.action === "delete"
+                ? "Delete account"
+                : "Clear data"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
