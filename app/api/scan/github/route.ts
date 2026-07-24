@@ -6,6 +6,8 @@ import {
   requireRequestAuth,
 } from "@/app/lib/server/supabaseRest";
 import { logServerError, logServerInfo } from "@/app/lib/server/logger";
+import { deliverWebhooks } from "@/app/lib/server/webhooks";
+import { getSupabaseEnv } from "@/app/lib/server/supabaseRest";
 
 export const runtime = "nodejs";
 
@@ -15,12 +17,29 @@ function getErrorMessage(error: unknown) {
 
 export async function POST(request: Request) {
   const wantsEvents = request.headers.get("accept")?.includes("text/event-stream");
+  let repoUrlForFailure: string | undefined;
+  let accessTokenForFailure: string | undefined;
+
+  const notifyFailure = async (message: string) => {
+    if (!repoUrlForFailure || !accessTokenForFailure) return;
+    try {
+      await deliverWebhooks(getSupabaseEnv(), accessTokenForFailure, {
+        userId: requireRequestAuth(request).userId,
+        event: "scan.failed",
+        payload: { repo_url: repoUrlForFailure, error: message },
+      });
+    } catch {
+      // Webhook failure must never obscure the original scan failure.
+    }
+  };
   try {
     const body = await request.json();
     const repoUrl = body?.repoUrl as string | undefined;
+    repoUrlForFailure = repoUrl;
     const options = body?.options;
     const providerToken = typeof body?.providerToken === "string" ? body.providerToken : undefined;
     const { accessToken } = requireRequestAuth(request);
+    accessTokenForFailure = accessToken;
     const selectedTeamId = extractSelectedTeamId(request);
 
     if (!repoUrl) {
@@ -49,6 +68,7 @@ export async function POST(request: Request) {
             logServerInfo("scan.completed", { findings: result.totalFindings });
           } catch (error) {
             logServerError("scan.failed", error);
+            await notifyFailure(getErrorMessage(error));
             send("error", { error: getErrorMessage(error) });
           } finally {
             controller.close();
@@ -74,6 +94,7 @@ export async function POST(request: Request) {
     }
     const message = getErrorMessage(error);
     logServerError("scan.request_failed", error);
+    await notifyFailure(message);
     if (message.includes("Invalid GitHub repository URL")) {
       return NextResponse.json({ error: message }, { status: 400 });
     }

@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import {
   RequestAuthError,
   getSupabaseEnv,
-  isValidHttpsUrl,
   requireRequestAuth,
   supabaseFetch,
 } from "@/app/lib/server/supabaseRest";
+import { validatePublicHttpsUrl } from "@/app/lib/server/outboundRequests";
 
 export const runtime = "nodejs";
 
@@ -75,9 +75,14 @@ export async function POST(request: Request) {
     void username;
     void avatarUrl;
 
-    if (webhookEnabled && (!webhookUrl || !isValidHttpsUrl(webhookUrl))) {
-      return NextResponse.json({ error: "A valid HTTPS webhook URL is required when delivery is enabled." }, { status: 400 });
-    }
+    const validatedWebhookUrl = webhookEnabled
+      ? await validatePublicHttpsUrl(webhookUrl)
+      : null;
+
+    const allowedEvents = new Set(["scan.completed", "scan.failed"]);
+    const events = Array.isArray(webhookEvents)
+      ? webhookEvents.filter((event): event is string => allowedEvents.has(event))
+      : [];
 
     const normalized = {
       ...rest,
@@ -130,11 +135,9 @@ export async function POST(request: Request) {
 
     const webhookPayload = {
       user_id: userId,
-      url: webhookUrl ?? "",
-      enabled: Boolean(webhookEnabled) && Boolean(webhookUrl),
-      events: Array.isArray(webhookEvents) && webhookEvents.length > 0
-        ? webhookEvents
-        : ["scan.completed"],
+      url: validatedWebhookUrl ?? "https://invalid.local/disabled",
+      enabled: Boolean(webhookEnabled) && Boolean(validatedWebhookUrl),
+      events: events.length > 0 ? events : ["scan.completed"],
       secret: webhookSecret?.trim() || null,
       updated_at: new Date().toISOString(),
     };
@@ -157,6 +160,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof RequestAuthError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.includes("Webhook URL")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
   }

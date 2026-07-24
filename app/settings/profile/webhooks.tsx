@@ -14,6 +14,7 @@ import {
 
 const WEBHOOK_EVENTS = [
   { id: "scan.completed", label: "Scan completed" },
+  { id: "scan.failed", label: "Scan failed" },
 ] as const;
 
 export function WebhooksSection() {

@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Zap } from "lucide-react";
 
@@ -21,7 +20,7 @@ export default function StackTraces() {
   return (
     <div className="max-w-4xl space-y-8">
       <div>
-        <Badge className="mb-5">Stack Traces</Badge>
+        <p className="mb-5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Stack Traces</p>
         <h2 className="text-2xl font-semibold text-foreground mb-3">
           Live Trace Analysis
         </h2>

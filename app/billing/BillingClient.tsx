@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { AlertCircle, CheckCircle2, CreditCard, Loader2, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -76,9 +75,9 @@ export function BillingClient() {
   };
 
   if (loading) return <div role="status" className="flex min-h-80 items-center justify-center"><Loader2 className="animate-spin" /><span className="sr-only">Loading billing</span></div>;
-  return <div className="mx-auto max-w-6xl space-y-8"><header><Badge variant="outline">Test mode</Badge><h1 className="mt-3 text-3xl font-semibold">Billing</h1><p className="mt-2 text-muted-foreground">Subscriptions and invoices are synchronized from Stripe to your Supabase billing record through verified webhooks.</p></header>
+  return <div className="mx-auto max-w-6xl space-y-8"><header><span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Test mode</span><h1 className="mt-3 text-3xl font-semibold">Billing</h1><p className="mt-2 text-muted-foreground">Subscriptions and invoices are synchronized from Stripe to your Supabase billing record through verified webhooks.</p></header>
     {error && <div role="alert" className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
-    {summary?.subscription && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-medium">{summary.subscription.planName}</p><p className="text-sm text-muted-foreground">{summary.subscription.currentPeriodEnd ? `Renews ${new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()}` : "Subscription period pending sync"}</p></div><Badge variant="outline">{summary.subscription.status}</Badge></CardContent></Card>}
+    {summary?.subscription && <Card><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-medium">{summary.subscription.planName}</p><p className="text-sm text-muted-foreground">{summary.subscription.currentPeriodEnd ? `Renews ${new Date(summary.subscription.currentPeriodEnd).toLocaleDateString()}` : "Subscription period pending sync"}</p></div><span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{summary.subscription.status}</span></CardContent></Card>}
     {checkout ? <EmbeddedCheckout {...checkout} onClose={() => setCheckout(null)} /> : <section><h2 className="text-xl font-semibold">Choose a plan</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{plans.map((plan) => <Card key={plan.id} className="relative"><CardHeader><CardTitle>{plan.name}</CardTitle><CardDescription>{plan.description}</CardDescription><p className="mt-3 text-3xl font-semibold">{currency(plan.amount, plan.currency)}<span className="text-sm font-normal text-muted-foreground">/{plan.interval}</span></p></CardHeader><CardContent><ul className="space-y-2 text-sm">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />{feature}</li>)}</ul><Button className="mt-6 w-full" onClick={() => void beginCheckout(plan.id)} disabled={loadingPlan !== null}>{loadingPlan === plan.id ? <Loader2 className="animate-spin" /> : <CreditCard />} Subscribe securely</Button></CardContent></Card>)}</div>{plans.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground">No Stripe plans are configured for this environment.</CardContent></Card>}</section>}
 
   </div>;

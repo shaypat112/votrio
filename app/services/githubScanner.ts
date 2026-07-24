@@ -63,7 +63,8 @@ export type ScanStage =
 export type ScanProgress = (stage: ScanStage, detail: string) => void;
 
 const MAX_FILE_SIZE = 1024 * 1024;
-const MAX_FILES = 2000;
+const MAX_FILES = 500;
+const MAX_SCAN_BYTES = 25 * 1024 * 1024;
 const SCAN_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
@@ -75,6 +76,16 @@ const SCAN_EXTENSIONS = new Set([
   ".java",
   ".cs",
   ".php",
+  ".rb",
+  ".sh",
+  ".yaml",
+  ".yml",
+]);
+const SECURITY_CONFIG_FILES = new Set([
+  ".env",
+  ".npmrc",
+  ".pypirc",
+  "dockerfile",
 ]);
 
 const DEFAULT_IGNORE = new Set([
@@ -117,11 +128,46 @@ const QUICK_PATTERNS = [
     suggestion: "Use spawn with arguments instead.",
   },
   {
-    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"']{6,}/gi,
+    pattern: /(?:password|secret|token|api_?key)\s*[:=]\s*["'][^"'${}\s][^"']{5,}/gi,
     severity: "high" as Severity,
     type: "HARDCODED_SECRET",
     message: "Possible hardcoded credential",
     suggestion: "Move secrets to environment variables.",
+  },
+  {
+    pattern: /\b(?:md5|sha1)\s*\(/gi,
+    severity: "medium" as Severity,
+    type: "WEAK_CRYPTO",
+    message: "Weak cryptographic hash usage detected",
+    suggestion: "Use SHA-256 or a password-specific KDF such as Argon2id, scrypt, or bcrypt.",
+  },
+  {
+    pattern: /\bMath\.random\s*\(/g,
+    severity: "medium" as Severity,
+    type: "INSECURE_RANDOMNESS",
+    message: "Math.random() is not cryptographically secure",
+    suggestion: "Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive values.",
+  },
+  {
+    pattern: /\brejectUnauthorized\s*:\s*false\b/g,
+    severity: "high" as Severity,
+    type: "TLS_VALIDATION_DISABLED",
+    message: "TLS certificate validation is disabled",
+    suggestion: "Keep certificate validation enabled and configure a trusted CA when necessary.",
+  },
+  {
+    pattern: /\b(?:verify|ssl_verify)\s*[:=]\s*(?:false|False)\b/g,
+    severity: "high" as Severity,
+    type: "TLS_VALIDATION_DISABLED",
+    message: "TLS certificate validation may be disabled",
+    suggestion: "Keep certificate validation enabled and configure a trusted CA when necessary.",
+  },
+  {
+    pattern: /\b(?:pickle\.loads?|yaml\.load)\s*\(/g,
+    severity: "high" as Severity,
+    type: "UNSAFE_DESERIALIZATION",
+    message: "Potentially unsafe deserialization detected",
+    suggestion: "Use a safe loader and never deserialize untrusted input.",
   },
 ];
 
@@ -221,9 +267,11 @@ function buildRepositoryProfile(input: {
 
 function shouldScanFile(filePath: string, ignore: Set<string>) {
   const segments = filePath.split("/");
+  const baseName = segments.at(-1)?.toLowerCase() ?? "";
   return (
     !segments.some((segment) => ignore.has(segment)) &&
-    SCAN_EXTENSIONS.has(path.extname(filePath))
+    (SCAN_EXTENSIONS.has(path.extname(filePath).toLowerCase()) ||
+      SECURITY_CONFIG_FILES.has(baseName))
   );
 }
 
@@ -343,11 +391,19 @@ export async function runGitHubScanWithToken(
         : "No supported manifest found at the repository root; continuing with source analysis.",
     );
     const ignore = new Set([...DEFAULT_IGNORE, ...(options.ignore ?? [])]);
-    const blobs = tree.tree.filter((entry) =>
+    const eligibleBlobs = tree.tree.filter((entry) =>
       entry.type === "blob" &&
       (entry.size ?? MAX_FILE_SIZE + 1) <= MAX_FILE_SIZE &&
       shouldScanFile(entry.path, ignore),
-    ).slice(0, MAX_FILES);
+    );
+    const blobs: typeof eligibleBlobs = [];
+    let selectedBytes = 0;
+    for (const blob of eligibleBlobs) {
+      const blobBytes = blob.size ?? 0;
+      if (blobs.length >= MAX_FILES || selectedBytes + blobBytes > MAX_SCAN_BYTES) break;
+      blobs.push(blob);
+      selectedBytes += blobBytes;
+    }
     const files: RepositoryFile[] = [];
     for (let index = 0; index < blobs.length; index += 10) {
       const batch = blobs.slice(index, index + 10);

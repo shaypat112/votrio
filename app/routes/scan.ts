@@ -89,8 +89,13 @@ export async function handleGitHubScan(input: {
       userId,
       event: "scan.completed",
       payload: {
+        scan_id: scanRows?.[0]?.id ?? null,
         repo_url: result.repoUrl,
+        repo_name: result.repoName,
         total_findings: total,
+        severity,
+        score: avgScore,
+        findings: result.findings,
       },
     });
 

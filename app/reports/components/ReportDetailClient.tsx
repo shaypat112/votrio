@@ -184,9 +184,9 @@ export function ReportDetailClient({ repo }: { repo: string }) {
 
       <section className="rounded-[2rem] border border-border bg-[radial-gradient(circle_at_top_left,rgba(248,113,113,0.12),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,var(--card),var(--background))] p-8 shadow-[0_24px_90px_rgba(0,0,0,0.1)]">
         <div className="space-y-4">
-          <Badge className="border-border bg-background text-foreground">
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Repository Report
-          </Badge>
+          </span>
           <div className="space-y-2">
             <h1 className="text-4xl font-semibold tracking-tight text-foreground">
               {latest.repo}

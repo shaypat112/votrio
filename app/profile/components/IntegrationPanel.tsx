@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -20,9 +19,9 @@ export default function IntegrationPanel({
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium text-white">{title}</p>
             {connected ? (
-              <Badge variant="outline" className="text-xs">
+              <span className="text-xs uppercase tracking-[0.14em] text-emerald-400">
                 connected
-              </Badge>
+              </span>
             ) : null}
           </div>
           <p className="text-xs text-zinc-500 mt-1">{description}</p>

@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     (body?.providerToken as string | null | undefined) ?? undefined;
   const repoFullName = body?.repo as string | undefined;
   const { accessToken, userId } = requireRequestAuth(request);
+  const repoForFailure = repoFullName;
+  const authForFailure = { accessToken, userId };
   const selectedTeamId = extractSelectedTeamId(request);
 
   if (!repoFullName) {
@@ -142,8 +144,12 @@ export async function POST(request: Request) {
       userId,
       event: "scan.completed",
       payload: {
+        scan_id: inserted?.[0]?.id ?? null,
         repo_url: repoFullName,
+        severity,
+        score,
         total_findings: issues,
+        findings,
       },
     });
 
@@ -185,6 +191,17 @@ export async function POST(request: Request) {
     const error = err as ErrorWithStatus;
     const status = Number(error?.status ?? 0);
     const message = String(error?.message ?? "Scan failed.");
+    if (repoForFailure && authForFailure) {
+      try {
+        await deliverWebhooks(getSupabaseEnv(), authForFailure.accessToken, {
+          userId: authForFailure.userId,
+          event: "scan.failed",
+          payload: { repo_url: repoForFailure, error: message },
+        });
+      } catch {
+        // Preserve the original scan error when webhook delivery fails.
+      }
+    }
     if (status === 409 && message.includes("Repository is empty")) {
       return NextResponse.json(
         {

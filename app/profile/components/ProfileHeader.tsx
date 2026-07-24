@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 
@@ -34,9 +33,9 @@ export default function ProfileHeader({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-semibold text-white">{name}</h1>
-              <Badge variant="outline" className="text-xs uppercase">
+              <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                 {tier}
-              </Badge>
+              </span>
             </div>
             <p className="text-xs text-zinc-400">{email ?? "no email"}</p>
           </div>

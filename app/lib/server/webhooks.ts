@@ -1,5 +1,6 @@
 import { supabaseFetch, type SupabaseEnv } from "./supabaseRest";
 import { createHmac } from "node:crypto";
+import { fetchWithTimeout, validatePublicHttpsUrl } from "./outboundRequests";
 
 const RETRY_MINUTES = 5;
 
@@ -76,7 +77,8 @@ export async function deliverWebhooks(
 
     try {
       const serializedPayload = JSON.stringify({ ...deliveryPayload, delivery_id: deliveryId });
-      const res = await fetch(endpoint.url, {
+      const targetUrl = await validatePublicHttpsUrl(endpoint.url);
+      const res = await fetchWithTimeout(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -143,7 +145,7 @@ export async function retryDeliveries(
   const now = new Date().toISOString();
   const deliveriesRes = await supabaseFetch(
     env,
-    `webhook_deliveries?status=eq.failed&next_retry_at=lte.${now}&webhook_endpoints!inner.user_id=eq.${userId}&select=id,payload,attempt_count,webhook_endpoints!inner(url,enabled,secret)&order=next_retry_at.asc&limit=10`,
+    `webhook_deliveries?status=eq.failed&attempt_count=lt.10&next_retry_at=lte.${now}&webhook_endpoints!inner.user_id=eq.${userId}&select=id,payload,attempt_count,webhook_endpoints!inner(url,enabled,secret)&order=next_retry_at.asc&limit=10`,
     { accessToken },
   );
 
@@ -157,7 +159,8 @@ export async function retryDeliveries(
 
     try {
       const serializedPayload = JSON.stringify({ ...delivery.payload, retry: true });
-      const res = await fetch(endpoint.url, {
+      const targetUrl = await validatePublicHttpsUrl(endpoint.url);
+      const res = await fetchWithTimeout(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

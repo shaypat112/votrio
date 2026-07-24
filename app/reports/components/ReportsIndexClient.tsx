@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { buildTeamAuthHeaders } from "@/app/lib/http";
 import { createClient } from "@/app/lib/supabase";
 import { useTeam } from "@/app/components/TeamProvider";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -105,9 +104,9 @@ export function ReportsIndexClient() {
       <section className="rounded-[2rem] border border-border bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.12),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_28%),linear-gradient(135deg,var(--card),var(--background))] p-8 shadow-[0_24px_90px_rgba(0,0,0,0.1)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <Badge className="border-border bg-background text-foreground">
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Reports
-            </Badge>
+            </span>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-foreground">
                 Scan results by repository

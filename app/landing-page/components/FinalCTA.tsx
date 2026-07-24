@@ -13,7 +13,8 @@ export function FinalCTA() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || status === "loading") return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || status === "loading") return;
 
     setStatus("loading");
     setError("");
@@ -22,7 +23,7 @@ export function FinalCTA() {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -31,6 +32,7 @@ export function FinalCTA() {
         throw new Error(data?.error || "Something went wrong. Please try again.");
       }
 
+      setEmail(normalizedEmail);
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -65,6 +67,8 @@ export function FinalCTA() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
+                autoComplete="email"
+                aria-label="Work email"
                 disabled={status === "loading"}
                 className="w-full rounded-full border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-foreground/40 disabled:opacity-60"
               />

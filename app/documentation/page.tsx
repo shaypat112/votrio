@@ -7,7 +7,6 @@ import {
   Cpu,
   CheckCircle2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -53,7 +52,7 @@ export default function MainDocsPage() {
   return (
     <div className="space-y-12">
       <section className="space-y-6">
-        <Badge variant="outline">v0.1.0-beta now available</Badge>
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">v0.1.0-beta now available</span>
 
         <div className="space-y-4">
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-5xl">

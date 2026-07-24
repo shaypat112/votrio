@@ -47,5 +47,5 @@ next-env.d.ts
 .votrio/
 
 
-#for the db sql 
+#for the db sql
 /db

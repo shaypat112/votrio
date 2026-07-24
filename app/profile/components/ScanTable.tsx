@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,7 +71,7 @@ export default function ScanTable({ scans }: { scans: ScanRow[] }) {
                     {new Date(scan.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{scan.severity}</Badge>
+                    <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{scan.severity}</span>
                   </TableCell>
                   <TableCell>{scan.issues}</TableCell>
                   <TableCell>{scan.score}</TableCell>
